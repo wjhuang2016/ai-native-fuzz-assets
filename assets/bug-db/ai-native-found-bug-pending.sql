@@ -1,0 +1,23 @@
+-- No pending found_bug inserts as of 2026-07-11.
+-- Remote found_bug was re-verified after inserting id1440001:
+--   MAX(id)=1440001, COUNT(*)=87, COUNT(DISTINCT root_cause_id)=64
+--
+-- Bug DB command:
+--   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
+--
+-- Latest inserted rows:
+--   id1440001 confirmed/high: MDL-off ADD INDEX lets concurrent async-commit txn fail despite delayForAsyncCommit safe-window protection
+--   id1410001 confirmed/high: Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine context-deadline-exceeded errors
+--   id1350002 confirmed/high: Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine engine-not-found errors
+--   id1350001 confirmed/high: MODIFY COLUMN rolls back on transient connection-family errors that sibling ADD INDEX retries through
+--   id1320001 confirmed/high: Ingest-mode ADD INDEX / ADD PRIMARY KEY roll back on retryable leader-change family instead of retrying
+--   id1290001 confirmed/high: Fast reorg ADD INDEX rolls back on transient PD TSO stream retry timeout instead of retrying
+--   id1260009 issue-filed: ingestctrl sstIter skips reader Close after iterator Close error
+--   id1260008 issue-filed: IMPORT INTO chunkWorker skips index writer Close after data writer Close error
+--   id1260007 current-red-green: BR storewatch can miss reboot notification when StartTimestamp collides within one second
+--   id1260006 issue-filed: DDL owner epoch token can collide across rapid owner handoff
+--   id1260005 current-red-green: S3 multipart writer can complete a partial object after UploadPart fails
+--   id1260004 confirmed: REVOKE table privilege can write wrong Grantor metadata through pooled sys session
+--   id1260003 confirmed: Fast ADMIN CHECK TABLE does not restore invisible-index optimizer state
+--   id1260002 contract-needed: RECOMMEND INDEX RUN consumes pending tx_read_ts
+--   id1260001 contract-needed: CREATE SESSION BINDING FROM HISTORY consumes pending tx_read_ts

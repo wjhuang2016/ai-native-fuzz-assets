@@ -1,0 +1,10 @@
+=== RUN   TestAINativeOnRebootWhenStoreRestartsWithinSameSecondRED
+    watching_test.go:145: 
+        	Error Trace:	/Users/bba/pc/tidb/br/pkg/utils/storewatch/watching_test.go:145
+        	Error:      	Should be true
+        	Test:       	TestAINativeOnRebootWhenStoreRestartsWithinSameSecondRED
+        	Messages:   	ai-native storewatch reboot evidence: Up->Offline->Up with the same second-level StartTimestamp must still notify reboot/recovery users
+--- FAIL: TestAINativeOnRebootWhenStoreRestartsWithinSameSecondRED (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/br/pkg/utils/storewatch	0.774s
+FAIL

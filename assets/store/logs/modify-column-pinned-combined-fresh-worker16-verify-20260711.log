@@ -1,0 +1,5 @@
+PREFILL rows=120000 table=`ai_native_issue62531_fresh16_verify`.`rows`
+CONFIG seed_base=1 rows_per_op=200 delete_hint=auto delete_session=fresh delete_start=immediate before_delete_reader=none worker_mode=combined op_order=insert-delete delete_shift=0 prefill_base=0 worker_base=0 skip_insert=false skip_delete=false with_index=true workers=16 oracle_workers=0 prefill=120000 max_val0=1000 hold=15s post_release=20s
+PAUSED hold=15s workers=16 prefill=120000 table=`ai_native_issue62531_fresh16_verify`.`rows` delete_session=fresh delete_start=immediate
+worker 11 delete path hit issue62531 signature on [73..272] (source [73..272], pre_delete_rows=0): Error 1105 (HY000): [components/tidb_query_executors/src/table_scan_executor.rs:467]: Data is corrupted, missing data for NOT NULL column (offset = 2)
+exit status 1

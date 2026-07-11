@@ -1,0 +1,4 @@
+2026/07/11 13:23:37 CONFIG ddl_kind=add-generated-index-rich txn_kind=async-commit metadata_lock=false hold=1.8s ddl_start_gap=1s expect_schema_changed=false
+2026/07/11 13:23:40 AFTER_HOLD ddl_status=running hold=1.8s
+2026/07/11 13:23:41 TXN_RESULT success
+2026/07/11 13:23:41 GREEN txn_kind=async-commit metadata_lock=false

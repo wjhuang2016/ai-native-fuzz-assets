@@ -1,0 +1,1352 @@
+# Autonomous Discovery Loop
+> 2026-07-02. How to run the proof-obligation method as an unattended, self-iterating loop. This is the automation spec that sits on top of methodology-v2; v2 defines the moves, this defines the controller that plays them without a human in the inner loop.
+
+## The core judgment (read this first)
+
+The bottleneck for full automation is NOT the loop logic. It is **the trustworthiness of the judgment**. An oracle that false-negatives lets real bugs pass; an oracle that false-positives floods the queue with noise. Put either into an unattended loop and the loop just manufactures wrong conclusions faster. So the automation's first duty is not "find more bugs" — it is "keep the instruments that decide *bug vs not* calibrated." Everything below follows from that.
+
+This is why the recent oracle work (adversarial verification, held-out, the refutation taxonomy, recursive trigger-evidence) is the prerequisite for automation, not a detour: it is the only thing that makes an unattended verdict believable.
+
+## Campaign objective and severity admission
+
+The object-loop is not a general bug counter. Its primary output is a **consequence-3 user
+failure**: silent data loss/corruption, a published invariant violation, a durable cross-session
+state leak, or a DDL/transaction liveness failure that prevents a user operation from completing.
+Methodology samples still matter, but they must not silently displace that objective.
+
+Before a target is eligible for `MINE_BUG`, its card must carry one of these admissions:
+
+```text
+C3_DIRECT       The predicted failure is already C3 and has a user-visible, state-observing
+                oracle: row multiset/constraint/invariant, durable metadata plus a failing
+                follow-up operation, or DDL/txn progress and terminal-state observation.
+                For transient-fault availability targets, the card must also name a sibling
+                green control and a terminal oracle that distinguishes "never retried" from
+                "retried and still failed" (for example `err_count=1` rollback vs exhausted
+                retry budget).
+
+C2_WITH_LIFT     The first observable symptom may be C2, but the card states the concrete
+                escalation path to C3 and the oracle that could prove it. Example: a rollback
+                cleanup omission must be shown to leave a residual object that corrupts a retry,
+                blocks future DDL, or changes visible rows. A local Close-count alone is not lift.
+
+NOT_ADMITTED     C1 wrong-error, metadata-only drift, ordinary resource cleanup, or any target
+                lacking a credible C3 consequence oracle. It may calibrate an oracle/selector,
+                but cannot consume the main discovery slot or become a public-bug candidate.
+```
+
+`C2_WITH_LIFT` is a bounded investigation: if the escalation oracle is clean, close it as
+calibration/negative evidence and return to C3 sourcing. Do not relabel a clean C2 symptom as a
+high-severity bug merely because the source shape was interesting.
+
+## Loop shape
+
+One tick:
+
+```text
+1. SENSE     read state: selector ledger, oracle library, catalog queue, found_bug, health metrics
+2. SCHEDULE  pick the highest-priority ready action (priority list below)
+3. ACT       run that action to a terminal state (a Family-Resolution close, or an oracle verdict)
+4. INTEGRATE write results back into the ledgers/library/catalog/bug-lib
+5. HEALTH    recompute drift metrics; if degraded, self-correct or escalate
+6. GATE      check human-escalation and budget conditions; pause if hit
+7. repeat
+```
+
+The loop never "parks." Every action ends in a terminal state (methodology-v2 Family Resolution), so the loop always has a next move or a documented reason it stopped.
+
+## Action space (finite, that is the point)
+
+An autonomous agent chooses only from these; a bounded action space is what makes the loop analyzable.
+
+```text
+MINE_BUG        run one audit-card -> matrix -> pause-gate cycle on a queued target
+VERIFY_ORACLE   held-out + adversarial pass on an oracle to move it up the evidence tiers
+FIX_ORACLE      repair a REFUTED oracle by its refutation class (split/harden/rescope)
+MINE_ORACLE     derive a new oracle from a Q_claim or a held-out FN ticket
+MINE_SELECTOR   reverse-engineer a new selector from a fresh hit, or retire a dead one
+EXTEND_BATTERY  add a D_dims entry from a hit; walk the battery for an under-covered target
+SOURCE_TARGETS  refresh the catalog queue (prover-name sweep, diff-directed intake)
+```
+
+## Scheduling priority (judgment health before discovery)
+
+Evaluate top-down; do the first action whose precondition is met.
+
+```text
+P0  FIX_ORACLE      any oracle is REFUTED. The instruments are broken; every downstream verdict
+                    using it is suspect. Fix before mining anything else.
+P1  VERIFY_ORACLE   any oracle used to CONFIRM a bug is below TRUSTED (single-shape held-out,
+                    LLM-VERIFIED-only, or USED). Calibrate the instrument before trusting its output.
+P2  VERIFY_ORACLE   any TRUSTED oracle has had no adversarial pass, OR a HYPOTHESIS oracle sits in
+                    an active suite. Pre-empt false confidence.
+P3  MINE_ORACLE     any open held-out FN ticket (a symptom class with no firing oracle).
+P4  MINE_BUG        selector ledger has a live selector, the catalog queue has a C3_DIRECT or
+                    C2_WITH_LIFT target, and novelty is healthy. Take the top admitted target
+                    ordered consequence-first (see "How P4 orders targets" below), not just the
+                    top-ranked selector's next.
+P5  MINE_SELECTOR / EXTEND_BATTERY   novelty is falling or hits cluster on one selector.
+P6  SOURCE_TARGETS  the catalog queue is near-empty.
+```
+
+The ordering encodes the core judgment: a loop that keeps mining with a broken or unverified oracle is the failure mode. P0-P2 are the guardrail that stops an unattended agent from scaling a bad instrument.
+
+### How P4 orders targets (consequence-first, severity-gated)
+
+P4 orders the ready queue by the methodology-v2 Target Selection scoring, with the `consequence`
+axis dominant. This is the scheduler-level fix for severity skew — the old five-axis order
+rewarded the cheapest bug class, so the loop drifted into wrong-error enumeration (S15/S10/S11).
+
+```text
+1. Admission precedes sorting. `NOT_ADMITTED` targets are absent from the P4 queue. C2 targets
+   enter only with a named, executable C3 lift oracle; C1 targets are oracle/selector calibration,
+   not bug-mining work.
+2. Sort admitted targets by consequence (3 > 2); break ties by the composite of the other five
+   axes. A C2 lift candidate never outranks a live C3 target — the first five axes break ties
+   within a class, they do not cross it.
+3. Wrong-error cap: consequence-1-only targets are ineligible for P4. They reopen only when a
+   new checklist step supplies a credible consequence escalation; a different owner is not enough.
+4. High-consequence lane first: targets in the state-transforming-DDL family (reorg / backfill /
+   id-swap / restore / pinned concurrent substate bypassing a normal-path invariant) are sourced
+   and scheduled ahead of static-precheck targets. 4 of the 5 highest-severity roots to date live
+   here, and its interleaving dimension (pinned substate x concurrent op) is barely exercised.
+```
+
+## Object-loop vs meta-loop
+
+- **Object-loop** (P4): find bugs with current selectors/oracles.
+- **Meta-loop** (P0-P3, P5): improve the instruments — oracles, selectors, battery.
+
+Full automation is mostly meta-loop. A self-iterating agent that only mines bugs plateaus the moment its fixed instruments hit their blind spots; a self-*improving* agent keeps widening what it can see and aim at. The scheduler spends on the meta-loop whenever an instrument is unverified or novelty drops — it does not wait for a human to notice.
+
+## Live-lift refinement rule
+
+Transient-fault and liveness targets need one more controller rule, because a local semantic red and
+a live green do not mean the same thing.
+
+```text
+LIFT_BLOCKED / NEGATIVE_BOUNDARY
+  Preconditions:
+    - local semantic RED is already confirmed
+    - live observer proves the fault hit the active window
+    - live terminal oracle remains GREEN under a coarse infrastructure fault
+
+  Meaning:
+    - not "false positive"
+    - not "bug disproved"
+    - the injected live fault shape is still too far from the classifier / bridge / state transition
+      that the proof obligation is actually about
+```
+
+Controller response:
+
+```text
+1. INTEGRATE the green live run as a first-class boundary asset.
+2. Freeze same-lane expansion of broader pod/owner/network chaos.
+3. Enqueue a bridge-proximal harness task instead:
+   - same active-window observer
+   - narrower injection closer to the semantic bridge
+   - same strong terminal oracle
+   - same sibling green control when applicable
+4. Reopen `MINE_BUG` on that lane only if the next task changes fault fidelity, not merely fault
+   intensity.
+```
+
+Typical bridge-proximal upgrades:
+
+```text
+- failpoint-enabled live image instead of topology chaos
+- TiDB<->specific-TiKV gRPC drop/blackhole instead of whole-pod delete
+- one-shot worker-return / error-wrap injection instead of generic restart or freeze
+```
+
+This keeps the loop from wasting ticks on "bigger hammer" escalation after a meaningful green
+boundary has already been learned.
+
+## Health / drift metrics (machine-computable each tick)
+
+```text
+selector_hit_rate      rolling hits / nominations per selector (from the ledger)
+oracle_debt            count of REFUTED + below-TRUSTED-but-in-use oracles
+novelty                fraction of recent hits that are NEW root_cause_id values (not blast-radius
+                       siblings sharing an existing root) — countable from found_bug directly
+queue_burn             audited / total catalog targets; battery coverage per active target
+concentration          share of recent hits from a single selector (high = fragile, one-trick)
+consequence_mix        severity distribution of recent hits (share graded consequence-3 vs -1);
+                       all-consequence-1 = the loop is drifting to cheap wrong-error targets
+admission_mix          share of P4 actions that were C3_DIRECT / C2_WITH_LIFT / NOT_ADMITTED;
+                       any NOT_ADMITTED P4 action is a controller violation
+fn_pressure            open held-out FN tickets; trend of oracle false-negative findings
+```
+
+Drift signals and the loop's automatic response:
+
+```text
+novelty -> 0 over K ticks        the lane is mined out -> downweight it, SOURCE_TARGETS elsewhere
+oracle_debt rising               stop MINE_BUG (P4 blocked), force P0-P2 until debt falls
+concentration -> 1               MINE_SELECTOR: the loop is riding one selector, diversify
+consequence_mix -> no C3         severity drift -> block P4, SOURCE_TARGETS from the C3 lanes;
+                                 do not compensate with easier C1/C2 targets
+admission_mix has NOT_ADMITTED   controller violation -> stop P4, classify the leaked target,
+                                 then repair the queue/admission rule before another run
+fn_pressure rising               MINE_ORACLE: instruments are missing a whole class
+```
+
+These are the anti-drift backstop: the classic failure of autonomous fuzzers — quietly degrading into blast-radius grinding or noise — is made visible and self-correcting instead of silent.
+
+## Human-escalation boundary (automation is not zero-human)
+
+Full automation means the *inner* loop runs unattended, not that nothing ever reaches a human. Escalate (pause + notify) on:
+
+```text
+- a CONFIRMED high-severity bug (correctness/data-loss): worth a human's eyes before anything external
+- any destructive or outward-facing action (cluster config change, data delete, filing upstream):
+  never autonomous — the standing rule from methodology-v2 still holds
+- budget threshold crossed
+- the loop cannot reach a terminal state, or a drift signal it cannot self-correct
+- an oracle flips REFUTED after having confirmed bugs: those confirmations need re-review
+```
+
+Everything else — target selection, matrix runs, oracle verification, ledger updates — is inner-loop and needs no human. The escalation set is deliberately small and specific; that is what makes "unattended" safe rather than reckless.
+
+## Convergence and restart
+
+"Keep mining forever" is not "mine blindly forever."
+
+```text
+CONVERGE  a lane hits loop-until-dry (K consecutive ticks, no new root cause) -> downweight it.
+          all lanes dry + queue empty -> WATCH mode: stop active mining, emit a run report.
+RESTART   WATCH mode is broken by diff-directed intake: a newly merged PR touching a prover /
+          adding a shortcut / fixing a bug re-activates SOURCE_TARGETS and the loop resumes.
+```
+
+This is what makes it genuinely continuous: the loop idles in WATCH when the current surface is exhausted and wakes itself on new code, rather than either stopping dead or spinning on exhausted targets.
+
+## INTEGRATE contract (what a confirmed hit writes)
+
+The INTEGRATE step is where the counting and severity rules actually bind. A surface that shares a
+fix with an already-recorded bug must be written as *reach on an existing root*, not a new bug —
+otherwise the loop inflates its own scoreboard by enumerating owners. Every confirmed MINE_BUG hit
+writes, before the tick ends:
+
+```text
+- SILENT-ORACLE GATE (run before setting severity/consequence). For any invariant-bypass or
+  state-transforming target, run the silent-consequence oracle even if a loud error already fired:
+  ADMIN CHECK, uniqueness GROUP BY, row-multiset/COUNT(*), FK-orphan scan, ADMIN CHECKSUM, and
+  DDL-job liveness (O28: poll ADMIN SHOW DDL >=2x for a wedged job — State running, ErrCount
+  climbing, SchemaState frozen). The consequence grade is NOT valid until this comes back clean;
+  a loud wrong-error must not be graded consequence-1 until the silent oracle has ruled out a
+  hidden data-corruption or liveness C3. (id30038: the loud false-duplicate looked C1; O28 found
+  the stuck-DDL liveness C3 the same defect also produces.)
+- found_bug row: severity, method(selector), oracle, repro/expected/actual, AND root_cause_id.
+  Assign root_cause_id with the Reopen test (methodology-v2 Blast-Radius Stop Rule):
+    * would an already-recorded sibling's fix also fix this?  -> reuse that sibling's
+      root_cause_id. This is a blast-radius surface: bump the root's "affects N owners" note,
+      do NOT count a new bug.
+    * needs a new checklist step, or escalates the consequence class?  -> mint a new slug.
+  root_cause_id is NEVER left NULL. Headline output = COUNT(DISTINCT root_cause_id), not COUNT(*).
+- selector ledger: nomination outcome, counted by root cause (a blast-radius surface is reach on
+  an existing root, not a fresh hit).
+- root-cause ledger (ai-native-root-cause-ledger.md): add the surface under its root row.
+- catalog / oracle library: as before.
+```
+
+## State storage (where the loop's memory lives)
+
+```text
+selector ledger      ai-native-selector-ledger.md      (which target shapes predict)
+oracle library       ai-native-oracle-library.md       (which verdicts are trustworthy, + scope)
+catalog / queue      ai-native-proof-obligation-catalog.md
+bug ledger           found_bug (tidbcloud bug lib); root_cause_id is the machine-countable
+                     root key, headline = COUNT(DISTINCT root_cause_id)
+root-cause ledger    ai-native-root-cause-ledger.md    (surface -> root map + counting convention)
+battery              methodology-v2 appendix
+health metrics       derived from the above each tick (no separate store needed yet)
+```
+
+For true automation these should become machine-readable (a small DB/JSON), not prose — the one engineering prerequisite the current markdown assets do not yet fully meet. First slice done: `found_bug.root_cause_id` makes the headline count and the surface->root map queryable instead of prose-only. The selector ledger and oracle tiers are the remaining prose-bound state.
+
+Update 2026-07-10: the second slice now exists as a local asset-store prototype at `/Users/bba/pc/ai-native-assets/`. It stores `selector`, `oracle`, `scenario`, `schedule_template`, `fault_point`, `obligation`, `module_profile`, immutable asset revisions, typed asset links, and RED/GREEN/INVALID run results. The first validation pack was `ddl/notifier + DURABLE_BEFORE_ACK` for held-out `issue59055/fix59157`:7 assets total, 4 reused methodology assets, 3 target-specific assets, `open_gaps=[]`, and prior runs `RED=1,GREEN=1`. This does not replace `found_bug`; it is the control-plane memory that tells the loop what to reuse, what to promote, and what not to retry. Remaining engineering work:migrate the stabilized schema to TiDB Cloud or TiDB, add retrieval/ranking over existing ledgers, and make every future tick report reuse metrics.
+
+Update 2026-07-10b: target scheduling is now represented in the same control plane. `target_queue` stores held-out/live targets with `discoverability`, `obligation_class`, priority, consequence, effort, uncertainty, and JSON provenance. The CLI exposes `queue`, `next`, and `health`. The first scheduler result selected `issue53843/fix53849` (`ddl/ingest + LIFECYCLE_EXACTLY_ONCE`) and, after target-analysis assets were added, its computed state moved to `ready_to_execute`. Current queue health:validated=1, ready_to_execute=1, needs_target_analysis=3. This is still a simple heuristic scheduler, but the important behavior is in place: the next action is derived from durable state, not from an ad hoc conversation choice.
+
+Update 2026-07-10c: the scheduled `issue53843/fix53849` target completed RED/GREEN and moved to `validated`. The vulnerable revision `cc127c14b8cc9887b1be946baa2f220690722c63` produced `close_calls=2 cleanup_calls=1`; the fixed revision `9c500ad9cb52c72372ad9d82f2a72190788d9478` produced `close_calls=1 cleanup_calls=1 remaining_engines=0`. The loop also split oracle trust correctly: `oracle.concurrent-unregister-exactly-once.v1` is `execution_verified`, while broad `oracle.no-leak-after-cancel.v1` stays `hypothesis` until an E2E SQL/cluster cancel flow proves it. Current queue health:validated=2, needs_target_analysis=3; the next target is `issue48164/fix48163` (`external-storage/s3 + ERROR_IDENTITY_PRESERVATION`). This is the first complete `queue -> target-analysis -> execution -> promotion/scope-split -> next` control-plane cycle.
+
+Update 2026-07-10d: the scheduled `issue48164/fix48163` target completed RED/GREEN and moved to `validated`. The vulnerable revision `5309c2ff7750a34a0137dd1d8bdb8c70aa533abc` logged the injected `mock error` in the background upload goroutine but returned `io: read/write on closed pipe`; the fixed revision `b99d1c4f7eb2729f5c4f57ef6f5551f1d0136d9f` preserved `mock error` and passed `TestMultiUploadErrorNotOverwritten`. The loop again split oracle trust: `oracle.concurrent-pipe-upload-error-identity.v1` is `execution_verified`, while broad `oracle.injected-error-identity-survives.v1` stays `hypothesis` for other wrappers/persisted/retry shapes. Current queue health:validated=3, needs_target_analysis=2; the next target is `issue51846/fix52315` (`ddl/job-scheduler + OWNER_TOPOLOGY_HANDOFF`).
+
+Update 2026-07-10e: the scheduled `issue51846/fix52315` target completed target analysis and root-boundary RED/GREEN, then moved to `validated`. The key proof was sharpened from broad "PD leader network partition" into a scheduler-local invariant: `RetireOwnerHook` firing does not prove already-delivered reorg workers have stopped, so owner retirement/re-entry must preserve `runningJobs.processingIDs` until the old worker returns. The vulnerable revision `bc841979a53e813d69c9fc8473ea0cc6703ef377` made the still-processing job runnable after retire semantics (`Should be false`), while the fixed revision `970962bdbc52547620be80817a7fc78e75b6221f` kept it non-runnable and passed. The loop again split oracle trust: `oracle.ddl-processing-id-survives-owner-retire.v1` is `execution_verified`, while broad `oracle.allowed-state-after-topology-fault.v1` stays `hypothesis` until a live-cluster ADD INDEX/PD-partition E2E proves final job state. Current queue health:validated=4, needs_target_analysis=1; the remaining analysis candidate is `issue62424/fix62607`.
+
+Update 2026-07-10f: the scheduled `issue62424/fix62607` target completed target analysis and upstream integration RED/GREEN, then moved to `validated`. The key proof was sharpened from broad "DDL inside transaction" into a GC observer invariant: `CurTxnStartTS` in processlist does not prove an active user transaction when the session is a queued DDL after implicit commit. The vulnerable revision `0501de48c5b033f17f300960ecfe4f40f9bc1742` failed `TestDDLInsideTXNNotBlockMinStartTS` because `ReportMinStartTS` never converged to the later real transaction startTS; the fixed revision `e9e8a04fe71611ed08ebfcf0755993812a07c521` passed after skipping `StmtCtx.IsDDLJobInQueue` entries. The loop again split oracle trust: `oracle.ddl-minstartts-ignores-queued-ddl.v1` is `execution_verified`, while broad `oracle.no-stale-txn-state-after-ddl.v1` stays `hypothesis` until live-cluster GC safepoint advancement is proved. Current queue health:validated=5; `store.py next` returns no active targets.
+
+Update 2026-07-10g: the queue was refilled from oracle debt instead of another hand-picked historical case. Added `target.lift.issue62424.live-gc-safepoint.v1` and `obligation.gc-ddl-transaction.live-gc-safepoint-advances.v1`, reusing issue62424's validated root-boundary assets but aiming at the broader live-cluster minStartTS effect on authorized testbed `8220955`. This exposed a control-plane issue: target state previously grouped runs by `module + selector`, so a new obligation under the same selector could inherit a neighbor's RED/GREEN and look validated. `store.py` now scopes prior runs to `payload.obligation_key` when present. The live-lift then completed GREEN: while DDL processlist still showed `TxnStart=467568057103679489`, `/tidb/server/minstartts` advanced past it to `467568057116524554` and later `467568066213183509` / `467568072111423519`. Current queue health:validated=6; `store.py next` returns no active targets.
+
+Update 2026-07-10h: `store.py refill` now automates the oracle-debt refill step. Before running it, the asset audit found one consistency hole: issue53843 had a validated target and RED/GREEN runs, but `obligation.ddl-ingest.unregister-cleanup.v1` remained candidate/hypothesis; `/Users/bba/pc/ai-native-assets/issue53843-promote-obligation.jsonl` promoted it and its fault asset to execution_verified. `store.py refill --limit 10 --jsonl-output /Users/bba/pc/ai-native-assets/refill-candidates-20260710.jsonl` generated three candidates from remaining broad oracle debt: ingest no-leak-after-cancel, S3 injected-error identity, and owner/topology allowed-state. A second control-plane fix was needed: refill candidates with `broad_oracle` but no `obligation_key` must stay `needs_target_analysis`; `base_obligation` is provenance, not execution identity. Queue health immediately after refill:validated=6, needs_target_analysis=3; next target was the ingest no-leak refill.
+
+Update 2026-07-10i: the first automated refill candidate completed target analysis and moved to `ready_to_execute`. `/Users/bba/pc/ai-native-assets/issue53843-refill-target-analysis.jsonl` added `obligation.ddl-ingest.sql-cancel-terminal-no-live-resource.v1`, `oracle.ddl-ingest-cancel-terminal-no-live-resource.v1`, and `fault.ddl-ingest.sql-cancel-after-local-engine-open.v1`, then updated the issue53843 refill target with a concrete `obligation_key`. The proof obligation is now E2E-shaped: after ADD INDEX local ingest has opened an engine, cancel must reach an allowed terminal state with no live backend context, engines, opened writers, duplicate close, or panic log. This prevents the loop from accepting a shallow SQL success as GREEN. Queue health after target analysis:validated=6, ready_to_execute=1, needs_target_analysis=2; the next executable target was the issue53843 SQL-cancel no-live-resource lift.
+
+Update 2026-07-10j: the issue53843 SQL-cancel no-live-resource lift produced a current GREEN with an instrumented mock backend. The local experiment added `pkg/ddl/ingest/ai_native_sql_cancel_test.go`, enabled TiDB failpoint transformation, ran `go test -tags=intest ./pkg/ddl/ingest -run '^TestAINativeAddIndexCancelLeavesNoLiveMockIngestResource$' -count=1 -v`, then disabled failpoints. Evidence: `active_writes=64`, `registered=1`, `created_writers=2`, `finish_calls=1`, `live_engines=0`, `live_writers=0`, `closed_engines=1`, `duplicate_closes=0`, `disk_root_count=0`, and the DDL job reached rollback-done with `ErrCancelledDDLJob`. The result is stored as `run.issue53843.refill.current.13282a8.GREEN`. The target intentionally moved to `needs_counterpart_run`, not `validated`: broad oracle promotion now requires a vulnerable RED counterpart that does not mask the original duplicate cleanup race.
+
+Update 2026-07-10k: the issue53843 vulnerable side gained a stronger root-boundary RED, but the SQL refill target correctly stayed open. A package-level harness on vulnerable `cc127c14b8cc9887b1be946baa2f220690722c63` ran `TestAINativeConcurrentUnregisterDoesNotDoubleReleaseMemory` and failed immediately with `expected_current_usage=0, actual_current_usage=-2877`, proving the old `UnregisterEngines` can double-release the same engine resource accounting. The run is stored as `run.issue53843.refill.vulnerable.cc127c14.RED.memory-double-release`; total runs are now `RED=6, GREEN=7`. Method lesson: lifecycle exactly-once oracles should cover the full ownership ledger, not just close/cleanup calls. Control-plane lesson: this RED strengthens `obligation.ddl-ingest.unregister-cleanup.v1`, but it is not a RED for `obligation.ddl-ingest.sql-cancel-terminal-no-live-resource.v1`, so no broad oracle promotion is allowed yet.
+
+Update 2026-07-10l: the issue53843 SQL-cancel refill now has the missing vulnerable RED counterpart and is validated. A SQL-level observing harness on vulnerable `cc127c14b8cc9887b1be946baa2f220690722c63` ran `TestAINativeIssue53843SQLCancelDoubleCleanupRED`; the SQL flow itself performed `ALTER TABLE ... ADD INDEX` and `ADMIN CANCEL DDL JOBS`, while the observing backend manager exposed cleanup ownership as a ledger. Evidence: `registered=1`, `writes=1`, `unregister_calls=2`, `cleanup_ledger=-1`, `cancelled=true`, and the ALTER returned `ErrCancelledDDLJob`. The run is stored as `run.issue53843.refill.vulnerable.cc127c14.RED.sql-cancel-double-cleanup`; the narrow SQL-cancel obligation/oracle/fault are now `execution_verified`, but broad `oracle.no-leak-after-cancel.v1` remains `hypothesis`. Current health: `asset_revisions=59`, `runs RED=7/GREEN=7`, `targets validated=7/candidate=2`, `queue_states validated=7/needs_target_analysis=2`; `store.py next` now selects the S3 injected-error-identity refill. Method lesson: AI-native fuzz becomes more powerful when it can modify TiDB/harness to expose hidden ownership ledgers, but promotion must be scoped by the exact obligation and observer strength.
+
+Update 2026-07-10m: the S3 injected-error-identity refill found a new current bug and validated the asset-reuse loop. The broad oracle from historical issue48164 was narrowed into `obligation.external-storage-s3.multipart-failed-part-terminal-no-complete.v1`: after multipart part 1 succeeds and part 2 `UploadPart` returns an injected root error, terminal `Close` must not `CompleteMultipartUpload` a prefix-only object and must preserve the root error. Current master `13282a8` RED evidence from `TestAINativeS3StorageCreateUploadPartFailureThenCloseRED`: `writeErr=ai-native mock upload part failed`, `closeErr=<nil>`, `completeCalls=1`, `completedParts=1`. A minimal local fix stored the failed state and made `Close` call `AbortMultipartUpload`; the same storage entry and direct multipart writer entry both passed with `abortCalls=1` and `closeErr=ai-native mock upload part failed`. The run pair is stored as `run.issue48164.refill.current.13282a8.RED.s3-multipart-part-fail-close` and `run.issue48164.refill.local-fix.13282a8.GREEN.s3-multipart-part-fail-close`; current health is `asset_revisions=62`, `runs RED=8/GREEN=8`, `targets validated=8/candidate=1`, `queue_states validated=8/needs_target_analysis=1`. Method lesson: for storage/error-identity oracles, final error text is not enough; the LOOP must also observe terminal state actions such as Complete vs Abort. This is exactly the "asset reuse -> target-specific P/Q/F -> small matrix -> RED/GREEN -> selector refinement" path the evolving system is meant to automate.
+
+Update 2026-07-10n: the issue51846 owner-topology refill found a new current DDL owner epoch bug candidate and drained the active queue. The broad oracle was narrowed into `obligation.ddl-job-scheduler.owner-epoch-token-unique-across-handoff.v1`: `runReorgJob` accepts a `reorgFnResult` when `res.ownerTS == curTS`, but `OnBecomeOwner` allocated ownerTS with `time.Now().Unix()`, so rapid retire/re-become on the same TiDB can give two owner epochs the same token. Current master `13282a8` RED evidence from `TestAINativeOwnerEpochSecondCollisionRED`: `previousOwnerTS=1000 curOwnerTS=1000`, meaning a stale reorg result would pass the equality filter. A minimal local fix added monotonic `renewOwnerTS(wallTS)` and made `OnBecomeOwner` call it; GREEN `TestAINativeOwnerEpochRenewalRejectsSameSecondStaleResult` passed. The run pair is stored as `run.issue51846.refill.current.13282a8.RED.owner-epoch-second-collision` and `run.issue51846.refill.local-fix.13282a8.GREEN.owner-epoch-renewal`; current health is `asset_revisions=65`, `runs RED=9/GREEN=9`, `targets validated=9`, `queue_states validated=9`, and `store.py next` returns `null`. Method lesson: identity-token uniqueness is a first-class proof obligation for async result filters; cluster chaos should be the lift, not the first oracle, when a deterministic token-collision boundary exists in source.
+
+Update 2026-07-10o: after the active queue drained, SOURCE_TARGETS promoted the owner-epoch lesson into `selector.identity-token-async-filter.v1`. The selector requires four gates: token-gated state action, lifecycle overlap, product-feasible token collision schedule, and a strong state-action oracle. The first source pass produced both sides of the selector calibration. BR registry heartbeat was stored as `run.source.br-registry.current.13282a8.INVALID.heartbeat-token-precision-screen`: it matched token equality but failed the schedule gate because heartbeat and stale-check cadence are one minute. BR storewatch then produced a new current RED/GREEN: `Up(T)->Offline(T)->Up(T)` skipped `OnReboot` when `StartTimestamp` did not change, even though BR backup/restore consumers rely on that callback for retry/recovery. The local fix preserves StartTimestamp-change detection and adds `non-Up -> Up` as a conservative reboot notification; full `go test ./br/pkg/utils/storewatch` passed. Current health is `asset_revisions=76`, `runs RED=10/GREEN=10/INVALID=1`, `targets validated=10/retired=1`, and `store.py next` remains `null`. Method lesson: SOURCE_TARGETS must emit positive targets and retired negative screens; that pair prevents a new selector from decaying into broad pattern scanning.
+
+Update 2026-07-10p: `store.py source-targets --rule identity-token` now turns the SOURCE_TARGETS rule into an executable queue refresh. On current `/Users/bba/pc/tidb` it skipped the already-covered DDL owner epoch, BR registry, and BR storewatch cases, then emitted one held-out candidate: `target.source.tiflash-mpp-logical-core-starttimestamp.v1`. The source shape is TiFlash MPP logical-core cache reuse: `splitTiFlashLogicalCoreCache` refreshes only when cached `StartTimestamp` differs, while TiFlash server info exposes `tiflash.StartTime.Unix()` as a seconds-level token. The target was imported as `candidate` and correctly lands in `needs_target_analysis`, missing `module_profile`, `obligation`, and `fault_point`; current health is `targets validated=10/retired=1/candidate=1`, `queue_states validated=10/retired=1/needs_target_analysis=1`, `runs RED=10/GREEN=10/INVALID=1`. Method lesson: an evolving loop needs a queue-refresh primitive after refill drains. The generator may propose source-shaped work, but the queue gate must force G3 schedule proof and G4 effect proof before any RED claim.
+
+Update 2026-07-10q: the TiFlash MPP cache candidate was intentionally retired as `LOW_VALUE` rather than executed. G1/G2 were real, and G4 had a weak observable through `TiFlashFineGrainedShuffleStreamCount`, but G3 was not proven: a meaningful RED would require TiFlash restart/re-registration within the same second, address reuse, and changed logical CPU count. A forced unit test could make `StartTimestamp` collide, but that would test the harness assumption rather than product behavior. `/Users/bba/pc/ai-native-assets/source-targets-tiflash-mpp-cache-retire-analysis.jsonl` records the decision as `retired_invalid_schedule_effect_quality`. `store.py source-targets` now reports retired targets as `retired_target_exists`, and a rerun produced `candidates=[]`; current health is `targets validated=10/retired=2`, `queue_states validated=10/retired=2`, `next=null`. A follow-up `store.py refill` exposed and fixed a control-plane issue: the broad identity-token oracle could generate a recursive "refill of a refill" from the owner-epoch refill target. Refill now rejects bases whose key starts with `target.refill.`, whose obligation class contains `REFILL`, or whose provenance is `refill_candidate`; the rerun writes 0 rows and reports `recursive_refill_base_only`. Method lesson: negative cache is part of the loop. A selector improves when low-quality near-misses are retained with gate-failure reasons, and the scheduler improves when it refuses recursive work items, not just when it finds bugs.
+
+Update 2026-07-10r: a new S23-derived source-target lane produced a current RED but correctly stayed open. The selector is `STATE_INGRESS_INTERNAL_SQL`: current-session internal SQL between one-shot state setup and the user's intended read must not silently consume sibling session state. The target is `target.source.binding-history-executeinternal-txreadts.v1`. Current master `13282a8` has two RED runs: a root-boundary run showing current-session restricted SQL consumes pending `TxnReadTS`, and a user-visible run where `CREATE SESSION BINDING FROM HISTORY USING PLAN DIGEST` after `SET TRANSACTION READ ONLY AS OF TIMESTAMP` makes the next `SELECT` read current rows `[1,2]` instead of stale rows `[1]`. A local save/restore experiment was recorded as `INVALID`, not GREEN, because the timestamp/SnapshotInfoschema oracle was incomplete. Current health is `asset_revisions=87`, `runs RED=12/GREEN=10/INVALID=2`, `targets validated=10/retired=2/running=1`, `queue_states validated=10/retired=2/needs_counterpart_run=1`; `store.py next` returns the binding-history target. Method lesson: the autonomous loop needs an explicit middle state for "RED is worth pursuing, but promotion is blocked by missing counterpart or contract." That state is what keeps the system honest.
+
+Update 2026-07-10s: the same binding-history source target was closed with a TSO-stable RED/GREEN pair. The RED probe now derives `@stale_ts` from row1 `LastCommitTS + 10ms`, verifies direct `AS OF @stale_ts` sees only row `[1]`, then shows current master consuming pending `tx_read_ts`: `before=467570589524557824 after=0 next_select_rows=[[1] [2]]`. The GREEN uses the same probe under a temporary `ExecuteInternal` isolation patch that saves/restores pending `TxnReadTS` and `SnapshotInfoschema`: `before=467570643908952064 after=467570643908952064 next_select_rows=[[1]]`, PASS. The run pair is stored in `/Users/bba/pc/ai-native-assets/source-state-ingress-binding-history-tso-pair-results.jsonl`; temporary source edits and probe were removed. Current health is `asset_revisions=90`, `runs RED=13/GREEN=11/INVALID=2`, `targets validated=11/retired=2`, `queue_states validated=11/retired=2`, and `store.py next` returns `null`. Method lesson: `needs_counterpart_run` worked as intended: it held a high-signal RED, forced oracle cleanup, then promoted only after the same user-visible rowset oracle passed under a plausible boundary fix.
+
+Update 2026-07-10t: `store.py source-targets --rule state-ingress` now turns the validated S23 selector into a queue-refresh primitive. It skips the already validated binding-history target and emits three conservative `SOURCE_ONLY` candidates: DDL foreign-key current-session restricted SQL, executor user-management ExecuteInternal lookups, and planner index-advisor ExecuteInternal lookups. After importing `/Users/bba/pc/ai-native-assets/source-targets-state-ingress-generated-20260710.jsonl`, health is `targets validated=11/retired=2/candidate=3`, `queue_states validated=11/retired=2/needs_target_analysis=3`; `store.py next` returns `target.source.ddl-foreign-key-use-cur-session-state-ingress.v1`. Method lesson: a productive selector should become an incremental candidate generator, but generated targets must still stop at target-analysis until P/Q/F, product-feasible wrapper, and strong oracle are named.
+
+Update 2026-07-10u: the generated state-ingress batch is now closed. Foreign-key was retired as `INVALID(session-ownership-proof)` because the restricted SQL runs in the DDL worker/internal session, not the user's session. User-management was retired as `INVALID(sys-session-isolation-proof)` because the path uses sys sessions. Planner index-advisor became the second positive: `RECOMMEND INDEX RUN` passes the current session into `indexadvisor.AdviseIndexes`, whose helper calls `ExecuteInternal` and drains the result set. Current RED on `13282a8`: `before=467570885856329728 after=0 next_select_rows=[[1] [2]]`. Local-fix GREEN: temporarily isolate pending `TxnReadTS`/`SnapshotInfoschema` before internal SQL and restore after; the same probe recorded `before=467570913639661568 after=467570913639661568 next_select_rows=[[1]]`. Assets are stored in `/Users/bba/pc/ai-native-assets/source-state-ingress-indexadvisor-results.jsonl`; current health is `asset_revisions=93`, `runs RED=14/GREEN=12/INVALID=2`, `targets validated=12/retired=4`, `queue_states validated=12/retired=4`, and `store.py next` returns `null`. Method lesson: a selector becomes stronger when it carries both positive siblings and negative ownership screens. Also, post-hoc restoration after `ExecuteInternal` returns is too late for some paths; the correct fix-probe boundary is ingress isolation before internal SQL enters the generic session state machine.
+
+Update 2026-07-10v: the state-ingress generator was upgraded from static seeds to a dynamic source scan with the `session-ownership-proof` gate encoded in tool behavior. It now skips known validated/retired paths, screens or downgrades DDL worker/sys/session-pool/new-session/internal-helper/nil-restricted-SQL cases, scores local `UseCurSession` hits higher, and no longer treats unrelated file-level sys/new-session markers as a whole-file veto. Running `store.py source-targets --rule state-ingress --repo /Users/bba/pc/tidb --limit 20 --jsonl-output /Users/bba/pc/ai-native-assets/source-targets-state-ingress-dynamic-20260710.jsonl` produced 9 new targets and they were imported. The first target, `target.source.dynamic-state-ingress.pkg-executor-show.v1`, was target-analyzed on testbed 8220955: `SET TRANSACTION READ ONLY AS OF TIMESTAMP @ts; SHOW TABLE STATUS LIKE 't'; SELECT ...` makes the final SELECT read current rows `1,2`, while direct `SET TRANSACTION; SELECT` reads stale row `1`. Evidence is stored in `/Users/bba/pc/ai-native-assets/logs/source-state-ingress-show-table-status-testbed8220955.log`, and the target is now `blocked/CONTRACT_NEEDED(show-is-next-query-statement)` rather than filed as a bug. Current health is `targets blocked=1/candidate=8/validated=12/retired=4`, `queue_states blocked=1/needs_target_analysis=8/validated=12/retired=4`; `store.py next` selects `target.source.dynamic-state-ingress.pkg-infoschema-infoschema.v1`. Method lesson: retired negatives now become selector gates, validated positives become source patterns, and live-but-contract-gray behavior becomes a blocked target instead of a premature bug claim.
+
+Update 2026-07-10w/x: the dynamic state-ingress queue produced two useful negative screens and one new SQL-only RED. `infoschema` was retired as `INVALID(sys-executor-factory-proof)`: masking-policy load uses a sys executor factory session, so `UseCurSession` does not mean the user statement session. `BRIE` was retired as `INVALID(new-glue-session-proof)`: BACKUP/RESTORE is user-visible, but subtask SQL runs through newly created glue/one-shot sessions. The next target, `check_table_index`, pivoted from pending `TxnReadTS` ingress to exact user-session state restoration. Source anchor: `pkg/executor/check_table_index.go:295-298` forces `OptimizerUseInvisibleIndexes=true` and defers a hard reset to `false`. On testbed 8220955, with `tidb_enable_fast_table_check=ON` and `tidb_opt_use_invisible_indexes=ON`, an invisible-index query used `IndexReader/IndexRangeScan` before `ADMIN CHECK TABLE`, then `@@tidb_opt_use_invisible_indexes` still showed `1` while the same query used `TableReader/TableFullScan`. With fast check OFF, the plan stayed on the invisible index. Assets are stored in `/Users/bba/pc/ai-native-assets/source-targets-state-ingress-infoschema-retire-analysis.jsonl`, `/Users/bba/pc/ai-native-assets/source-targets-state-ingress-brie-retire-analysis.jsonl`, and `/Users/bba/pc/ai-native-assets/source-state-ingress-check-table-index-results.jsonl`; logs are in `/Users/bba/pc/ai-native-assets/logs/source-state-ingress-check-table-index-testbed8220955.log` and `...-fast-off-control.log`. Current health is `asset_revisions=100`, `runs RED=15/GREEN=12/INVALID=2/INFO=1`, `targets validated=13/retired=6/blocked=1/candidate=5`, and `store.py next` selects `target.source.dynamic-state-ingress.pkg-executor-grant.v1`. Method lesson: generated source targets should not be forced to keep their original selector label. If P/Q/F leads to a stronger state contract, promote that as a new reusable selector; here `selector.user-session-state-restore.v1` is the real asset.
+
+## Minimal runnable form (first tick, concretely)
+
+The loop can run today with the existing tools (subagent orchestration for parallel finders/skeptics, a scheduler for the tick cadence). A concrete first tick against current state:
+
+```text
+SENSE:     oracle library has O9->O9' and O2->O2' not yet full-blind-verified; O1 rescoped.
+SCHEDULE:  P1 fires (oracles used to confirm bugs are below TRUSTED) before any P4 mining.
+ACT:       VERIFY_ORACLE O9' — run its multi-shape blind held-out (drop+re-add, type-change,
+           multi-column, controls); adversarial pass; land counterexamples in execution.
+INTEGRATE: update oracle library O9' tier; open any FN tickets found.
+HEALTH:    oracle_debt decremented; novelty unchanged; no drift.
+GATE:      no escalation; under budget -> next tick.
+```
+
+Note what the scheduler did NOT do: it did not go mine a new bug, even though selectors are hot,
+because an instrument it would judge with is still unverified. That single ordering decision is the
+difference between an automated bug factory and an automated bug factory you can trust.
+
+## First tick, EXECUTED (2026-07-02)
+
+The tick above was run by hand to prove the controller is executable, not just describable:
+
+```text
+SENSE:     oracle library: O9' at LLM-VERIFIED+partial, O2' TRUSTED-on-3-shapes, both used to
+           judge metadata/wrong-result bugs -> below full TRUSTED.
+SCHEDULE:  P1 fired (verify an in-use sub-TRUSTED oracle) over P4 (mine a bug) — even though
+           selectors S3/S6 were hot and the catalog queue was non-empty.
+ACT:       VERIFY_ORACLE O9' via ai_native_heldout_o9prime.py — multi-shape blind held-out.
+           Result: tp=3 fn=0 fp=0 tn=3, scope boundary 2/2 clean (rename left to O9).
+INTEGRATE: oracle library O9' -> TRUSTED (value-staleness shapes + verified scope boundary);
+           opened one held-out ticket (bucket-level staleness after type change).
+HEALTH:    oracle_debt -1; novelty unchanged; no drift.
+GATE:      no escalation; under budget.
+NEXT:      P1 still non-empty (O2' full multi-shape run incl. CE-2/CE-3; then O5/O7/O8 adversarial
+           passes) -> the loop keeps servicing instruments before returning to P4 mining.
+```
+
+The scheduler chose instrument-verification over bug-mining on its own priority rule, and the
+verification not only promoted O9' but confirmed the earlier O9/O9' obligation split holds under
+blind test. That is the loop working as designed: it spent a tick making its own judgment more
+trustworthy before using it. This is the executable proof that "judgment health before discovery"
+is a rule an unattended agent can actually follow, not just a slogan.
+
+## Second P1 tick, EXECUTED (2026-07-03)
+
+This tick used the requested "one subagent per round" shape: the subagent ran the adversarial
+review of O4 while the main loop executed the held-out matrix on testbed `8192975`.
+
+```text
+SENSE:     O4 had confirmed/candidate extractor findings (id30010/id30013) but was only USED.
+           S3 is the strongest live selector, so a noisy O4 would corrupt future P4 mining.
+SCHEDULE:  P1 fired again: verify/harden an in-use sub-TRUSTED oracle before mining new bugs.
+ACT:       VERIFY_ORACLE O4 -> O4':
+           - RED positive: InfoSchema TABLE_NAME LIKE under utf8mb4_bin returned `Acase` on the
+             fast path; CASE-wrapped scalar reference returned only `a%b,a_b`.
+           - GREEN(triggered): lowercase-only control used the same fast extractor and matched
+             the CASE-wrapped reference (`a_b,a_c`).
+           - INVALID guard: `LOWER(table_name) LIKE 'a_%'` bypassed the extractor but changed
+             semantics, so it is not a valid reference and cannot count as green.
+           - INFO guard: cluster_log `type='PD'` vs `type LIKE 'PD'` split fast extractor from
+             scalar semantics, but remains contract-ambiguous and routes to O6/reference diff.
+INTEGRATE: O4 was replaced by O4' in the oracle library with explicit RED/GREEN/INVALID/INFO
+           classification and trigger-evidence requirements.
+HEALTH:    oracle_debt improved in quality but not fully decremented: O4' is execution-hardened,
+           not TRUSTED; O5/O7/O8 remain USED and need later P1 ticks.
+GATE:      no new high-severity confirmed bug in this tick; no human escalation.
+NEXT:      Continue P1 on O5/O7/O8 or run a blind O4' held-out before using S3 for another P4
+           mining round.
+```
+
+The important automation lesson is that an oracle can end a tick without promotion and still be
+progress: it learned how to say "INVALID" and "INFO" instead of forcing every mismatch into
+GREEN/RED. That reduces future false positives and prevents S3 from turning contract ambiguity
+into fake confirmations.
+
+## Follow-up P4 tick, EXECUTED (2026-07-03)
+
+After O4' was hardened, the loop used S3 again on a deliberately new sub-shape rather than more
+InfoSchema LIKE variants:
+
+```text
+SENSE:     S3 was still hot, but id30010/id30013 blast-radius expansion was guarded.
+SCHEDULE:  P4 was allowed because O4' had RED/GREEN/INVALID/INFO guards and a concrete queued
+           shortcut target existed.
+ACT:       MINE_BUG on InfoSchema object-name scalar pushdown:
+           shortcut extractor + LOWER/UPPER pushdown + value normalization + removed predicate.
+           Result: id30018 confirmed. Fast path returned `Acase` for wrong-case constants, while
+           the projected self predicate was 0 and the CASE reference returned no rows.
+INTEGRATE: found_bug id30018 inserted; selector ledger S3 gained the "composed shortcut" rule;
+           proof catalog and O4' gained row self-predicate evidence.
+HEALTH:    novelty remained healthy because the hit used a new mechanism, not another LIKE
+           pattern variant. Concentration risk remains, so further InfoSchema object-name variants
+           are guarded.
+NEXT:      Reuse S3 on a different shortcut/cache/extractor owner, or return to DDL-only owner
+           selectors if the lane needs re-anchoring.
+```
+
+## Follow-up P4 blast-radius tick, EXECUTED (2026-07-03)
+
+The next tick deliberately reused S3 on a different owner, but stopped once it proved the same
+generic helper was the root shape:
+
+```text
+SENSE:     id30018 showed `extractCol(..., valueToLower=true)` can combine scalar pushdown,
+           value/key normalization, and predicate removal unsafely. The open question was whether
+           this was InfoSchema-specific or helper-level.
+SCHEDULE:  P4 was allowed for one representative cross-owner check, not for broad helper-user
+           enumeration.
+ACT:       MINE_BUG on `information_schema.metrics_summary`:
+           `MetricSummaryTableExtractor` calls `extractCol(..., "metrics_name", true)`.
+           Result: id30019 confirmed. `METRICS_NAME='TIDB_QPS'` returned `tidb_qps`, while the
+           projected self predicate was 0 and the CASE reference returned no rows.
+INTEGRATE: found_bug id30019 inserted; proof catalog, O4', handoff, selector ledger, draft, probe,
+           and method case updated.
+HEALTH:    novelty would now fall if the loop kept enumerating `valueToLower=true` users, so the
+           selector gained a helper-level stop rule.
+NEXT:      Stop this helper family. Choose a different shortcut mechanism or return to DDL owner
+           selectors.
+```
+
+Automation lesson: one cross-owner blast-radius case is useful evidence; a third or fourth user of
+the same helper is usually low-novelty enumeration. The loop should record the representative case,
+learn the stop rule, and spend the next tick on a different proof obligation.
+
+## Follow-up P4 cache-purity tick, EXECUTED (2026-07-03)
+
+The next tick obeyed the id30019 stop rule and moved to a different shortcut mechanism instead of
+enumerating more `valueToLower=true` helper users:
+
+```text
+SENSE:     S3 helper-family novelty was exhausted. Source scan switched to another reuse path:
+           Apply cache. Planner enables cache from correlated-key NDV; executor keys only the
+           correlated values and reuses cached inner chunk.List on hit.
+SCHEDULE:  P4 was allowed because the target had a new proof obligation:
+           key equality must imply cached payload purity.
+ACT:       MINE_BUG on correlated scalar subquery with `UUID()`:
+           cache ON collapsed 24/16 duplicate-key outer rows to 1/1 distinct UUIDs; cache OFF
+           restored 24/16 distinct UUIDs. Deterministic `CONCAT('v', inner_t.a)` stayed green.
+INTEGRATE: found_bug id30020 inserted; selector ledger gained S7 cache payload purity; oracle
+           library gained O10 cache-disabled volatile re-execution; proof catalog, draft, probe,
+           handoff, and method case updated.
+HEALTH:    novelty improved because the hit used a new mechanism and a new D_dim, not another
+           S3 extractor variant.
+NEXT:      For cache/reuse targets, require both key completeness and payload purity. Continue
+           only on distinct cache owners with new D_dims, or return to DDL selectors.
+```
+
+Automation lesson: after a stop rule fires, the loop should not merely switch files. It should
+switch proof obligations. Here the transfer was from "shortcut prefilter must preserve SQL
+predicate" to "cached payload must be pure with respect to its key".
+
+## Follow-up P4 interval-skip tick, EXECUTED (2026-07-03)
+
+This tick returned to S3, but changed the D_dim instead of reopening the `valueToLower=true`
+helper family:
+
+```text
+SENSE:     DDL next-owner scan had no obvious uncovered owner with strong oracle. Source scan
+           moved to a different extractor mechanism: statements_summary coarse time range.
+SCHEDULE:  P4 was allowed because the proof obligation was new:
+           interval rows must not be treated as point ranges when deciding skip_request.
+ACT:       MINE_BUG on `information_schema.statements_summary`:
+           `summary_begin_time <= A AND summary_end_time >= B` with A<B triggered
+           `skip_request:true` and returned 0 rows. The CASE-wrapped reference returned rows,
+           each projecting both predicates as true. Green overlap control also returned rows.
+INTEGRATE: found_bug id30021 inserted; S3 gained the interval-overlap coarse-skip rule; O4'
+           gained the "triggered empty fast arm" classification; proof catalog, draft, probe,
+           handoff, and method case updated.
+HEALTH:    novelty stayed healthy: id30021 is not helper normalization and not Apply cache. It is
+           a new D_dim under the same shortcut/extractor discipline.
+NEXT:      Stop statement-summary predicate permutations. Continue only with a new D_dim or return
+           to DDL owner selectors.
+```
+
+Automation lesson: a comment that states a shortcut proof is a high-value target. The useful move
+is to ask whether the row model has dimensions that the shortcut abstraction erased.
+
+## Follow-up P4 backend-not-found tick, EXECUTED (2026-07-03)
+
+This tick stayed in S3 but changed the D_dim again: backend error domain vs SQL predicate domain.
+
+```text
+SENSE:     DDL candidates were either saturated or runtime-blocked: EXCHANGE PARTITION x CHECK
+           was a WITHOUT VALIDATION boundary, and TiFlash availability needed unavailable runtime hooks.
+SCHEDULE:  P4 was allowed because `tikv_region_peers` had a different shortcut contract:
+           REGION_ID predicates become PD point lookups.
+ACT:       MINE_BUG on `information_schema.tikv_region_peers`:
+           `region_id=0` and `region_id IN (0,2)` triggered `region_ids:[...]` and returned PD
+           400 errors. CASE references returned 0 rows for `0` and 3 rows for `IN(0,2)`.
+INTEGRATE: found_bug id30022 inserted; S3 gained backend-not-found-as-empty-rowset rule; O4'
+           gained wrong-error classification for triggered shortcut errors whose reference succeeds.
+HEALTH:    novelty stayed healthy: id30022 is not value normalization, time precision, interval
+           skip, or cache purity. It adds the backend error-domain D_dim.
+NEXT:      Stop `tikv_region_peers` region-id variants. Reuse only on another backend point-lookup
+           owner with a distinct oracle, or return to DDL owner selectors.
+```
+
+Automation lesson: external APIs often have a narrower error contract than SQL predicates. Before
+trusting a shortcut, ask whether backend "not found" is an exceptional state or simply an empty SQL
+rowset.
+
+## Follow-up P4 request/render-context tick, EXECUTED (2026-07-03)
+
+This tick reused S3 but did not enumerate `tikv_region_peers`; it moved to a different table and a
+different proof obligation: backend request context vs SQL-visible row construction context.
+
+```text
+SENSE:     `TIKV_REGION_STATUS` numeric table_id extraction was green. Source scan then found
+           `tidb_hot_regions_history`: extractor uses session tz for the backend time range, but
+           row construction calls `updateTimestamp.In(tz)` without assigning the returned value.
+SCHEDULE:  P4 was allowed because this is a distinct request/render context split, not a
+           `tikv_region_peers` id variant.
+ACT:       MINE_BUG on `information_schema.tidb_hot_regions_history`:
+           under `time_zone='+14:00'`, fast `update_time` range returned 69 rows displayed as
+           `2026-07-02 23:40:41`; projected predicate sum was 0. CASE self-recheck returned 0.
+INTEGRATE: found_bug id30023 inserted; S3 gained request-context vs row-render-context rule; O4'
+           gained another self-predicate false-row classification.
+HEALTH:    novelty is medium: time-zone D_dim existed from id30012, but the owner and root shape
+           are different (`Time.In` return value ignored). Stop further time-column enumeration.
+NEXT:      Reuse only when source shows a distinct request/render context split, or return to DDL
+           selectors.
+```
+
+Automation lesson: a shortcut can be correct in what it asks the backend for and still wrong in
+how it materializes rows. The oracle must check the returned row's own predicate, not just the
+backend request bounds.
+
+## Follow-up S7 semantic-switch tick, EXECUTED (2026-07-03)
+
+This tick reused S7 but did not enumerate Apply-cache variants. It moved to plan cache key
+construction and asked which semantic switches are consumed before the cached object exists.
+
+```text
+SENSE:     after id30020, inspect `NewPlanCacheKey` and expression construction. Source shows
+           `tidb_sysdate_is_now` rewrites `sysdate()` into `now()` during scalar function build,
+           but the key omits `SysdateIsNow`.
+SCHEDULE:  P4 allowed because this is a distinct S7 sub-shape: semantic-switch coverage, not
+           volatile payload reuse.
+ACT:       MINE_BUG on prepared plan cache:
+           OFF->cache->ON kept `sysdate(6)=now(6)` at 0 with `@@last_plan_from_cache=1`, while
+           `ADMIN FLUSH SESSION PLAN_CACHE` made the same prepared statement return 1.
+           ON->cache->OFF symmetrically kept 1 until flush, then returned 0.
+INTEGRATE: id30024 documented locally and inserted into remote `found_bug` as confirmed
+           (`MAX(id)=30024,COUNT=26`). S7 gained semantic-switch coverage; O11 registered.
+HEALTH:    cache-key candidates need a green gate: prove whether the cache hit rebuilds the
+           relevant semantic boundary. The timezone/DST plan-cache candidate was GREEN because
+           range rebuild used the current session timezone.
+NEXT:      Do not enumerate session variables. Reopen only when source proves the variable is
+           consumed during cached-object construction, omitted from the key, and has a same-query
+           flush/off-cache oracle.
+```
+
+## Follow-up S7 coarse-key tick, EXECUTED (2026-07-03)
+
+This tick reused the previous timezone GREEN calibration instead of discarding it. The question was:
+which timezone-dependent boundary is not rebuilt after a cache hit?
+
+```text
+SENSE:     `NewPlanCacheKey` stores only the current timezone offset. TIMESTAMP range rebuild was
+           GREEN because the boundary was rebuilt under the current session timezone after hit.
+SCHEDULE:  P4 allowed because this is a distinct S7 sub-shape: coarse-key sufficiency for folded
+           values, not another random timezone/function enumeration.
+ACT:       MINE_BUG on prepared plan cache:
+           Africa/Johannesburg and Europe/Amsterdam have the same current offset, but differ for
+           2025-01-15. `UNIX_TIMESTAMP('2025-01-15 12:00:00')` cached under Johannesburg stayed
+           `1736935200` after switching to Amsterdam with `@@last_plan_from_cache=1`; flush
+           returned `1736938800`. Reverse direction reproduced. A summer date with the same
+           historical offset stayed GREEN.
+INTEGRATE: id30025 inserted into remote `found_bug` as confirmed (`MAX(id)=30025,COUNT=27`).
+           S7 gained coarse-key sufficiency; O11 generalized to cache-hit plus flush reference.
+HEALTH:    coarse-key candidates need both a RED value/date where the omitted detail matters and a
+           GREEN value/date where it does not, otherwise the oracle overclaims.
+NEXT:      Pause this family. Reopen only when another cache key stores an approximation and source
+           proves a cached/folded value depends on omitted details.
+```
+
+## Follow-up S3 type-domain conversion tick, EXECUTED (2026-07-03)
+
+This tick respected the S7 pause gate and moved to a different proof obligation instead of
+enumerating more time/cache variants.
+
+```text
+SENSE:     `extractCol` removes extracted predicates before table-specific extractors convert
+           values into backend request domains. `parseUint64` silently ignores parse failures.
+SCHEDULE:  P4 allowed because this is a distinct S3 sub-shape: SQL type-domain conversion, not
+           another backend-not-found or timezone/render variant.
+ACT:       MINE_BUG on `information_schema.tikv_region_peers`:
+           `region_id=-1`, `store_id=-1`, and `region_id IN (-1)` returned the full 269-row peer
+           table. CASE-wrapped references returned 0, and returned rows projected the predicate
+           as false. `peer_id=-1` was a GREEN control because it was not extracted; mixed
+           `IN(-1, valid_region_id)` matched the valid rows only.
+INTEGRATE: id30026 inserted into remote `found_bug` as confirmed (`MAX(id)=30026,COUNT=28`).
+           S3 gained type-domain conversion: conversion into a narrower backend request domain
+           is part of Q_claim.
+HEALTH:    Do not enumerate every `parseUint64` owner. Reopen only when another owner has a
+           distinct consequence oracle or contract surface.
+NEXT:      Continue pulling new targets from the selector ledger. Current best rule remains:
+           source first, small matrix second, strong oracle third, pause after a representative hit.
+```
+
+## Follow-up S3 cache-key-granularity tick, EXECUTED (2026-07-03)
+
+This tick respected the id30026 pause gate. It did not enumerate more numeric conversion owners;
+it moved to a different S3 mechanism: table-name-only cache reuse inside inspection memtables.
+
+```text
+SENSE:     `MemTableReaderExec.Next` can serve inspection cacheable tables from
+           `SessionVars.InspectionTableCache` by table name. The code comment already notes that
+           cached rows are returned fully. `inspection_result` first scans `cluster_config`
+           broadly, then later asks for type-specific details.
+SCHEDULE:  P4 allowed because this is a distinct S3 sub-shape: cache snapshot key granularity, not
+           type-domain conversion, backend not-found, or request/render context.
+ACT:       MINE_BUG on `information_schema.inspection_result`:
+           direct `cluster_config WHERE type='tikv' AND key='foo-test'` returned only
+           `tikv-a,tikv-b`, but `inspection_result` produced a `type='tikv'` config detail that
+           included `tidb-a`. Trigger evidence showed the detail query consumed `type='tikv'`
+           into `node_types:["tikv"]`, leaving only `key='foo-test'` as scalar Selection.
+INTEGRATE: id30027 inserted into remote `found_bug` as confirmed (`MAX(id)=30027,COUNT=29`).
+           S3 gained cache key granularity: cache keys must include extractor-consumed dimensions
+           or cache hits must reapply them.
+HEALTH:    Novelty stayed healthy. This is not another system-table value normalization case; it
+           is a cache/reuse proof obligation with a direct diagnostic-output oracle.
+NEXT:      Stop broad `InspectionTableCache` enumeration. Reopen only when another cacheable table
+           has a distinct missing dimension or stronger user-visible consequence.
+```
+
+Automation lesson: a cache TODO is a proof-obligation beacon when the cached object is broader
+than later query semantics. The oracle should compare the cached user-facing report with a direct
+reference query, not just prove that the cache was used.
+
+## Follow-up S8 prepared/preprocess-freeze tick, EXECUTED (2026-07-03)
+
+This tick respected the id30027 pause gate. It did not enumerate more inspection-cache users; it
+moved to a different reuse mechanism: prepared statements that store an AST after PREPARE-time
+preprocessing.
+
+```text
+SENSE:     `GeneratePlanCacheStmtWithAST` runs `Preprocess(..., InPrepare, ...)` during PREPARE.
+           `checkSelectNoopFuncs` and `checkGroupBy` consume `tidb_enable_noop_functions`, while
+           `planCachePreprocess` only re-runs Preprocess on schema-version changes.
+SCHEDULE:  P4 allowed because this is a new selector: prepared/preprocess semantic freeze, not
+           S7 physical plan-cache key completeness and not S3 diagnostic cache reuse.
+ACT:       MINE_BUG on prepared statements:
+           direct OFF rejected `SQL_CALC_FOUND_ROWS` and `GROUP BY expr DESC` with error 1235.
+           The same statements prepared under ON then executed under OFF returned rows with
+           warning_count=0. `ADMIN FLUSH SESSION PLAN_CACHE` did not fix it; the same prepared
+           statements still returned rows with `@@last_plan_from_cache=0`.
+INTEGRATE: id30028 inserted into remote `found_bug` as confirmed (`MAX(id)=30028,COUNT=30`).
+           Selector ledger gained S8; oracle library gained O12 direct-vs-prepared semantic
+           switch; proof catalog, draft, handoff, and method case updated.
+HEALTH:    Good novelty. The flush/off-cache controls prevent misclassifying this as another
+           prepared plan cache bug; the reusable shape is PREPARE-time validation consuming a
+           session switch without execute-time freshness.
+NEXT:      Do not enumerate every `tidb_enable_noop_functions` surface. Reopen S8 only for another
+           preprocessor/session switch with a direct current-session reference and a cache-flush
+           or off-cache proof.
+```
+
+Automation lesson: when a cache/reuse hypothesis survives cache flush, do not keep calling it a
+cache-key bug. Move the proof boundary earlier and ask which semantic validation was already
+frozen before the cached object existed.
+
+## Follow-up S8 AST-mutation tick, EXECUTED (2026-07-03)
+
+This tick reopened S8 only under the documented condition: a different preprocessor/session
+switch and a direct current-session reference. It did not enumerate more noop syntax.
+
+```text
+SENSE:     `hasAutoConvertWarning` reads `SQLMode.HasStrictMode()` during preprocessing and, under
+           non-strict mode, mutates overlong VARCHAR to TEXT/BLOB while emitting warning 1246.
+SCHEDULE:  P4 allowed because this is a distinct S8 sub-shape: PREPARE-time AST mutation, not the
+           id30028 stale noop validation result.
+ACT:       MINE_BUG_CANDIDATE on prepared CREATE TABLE:
+           direct strict `VARCHAR(70000) CHARACTER SET utf8mb4` returned error 1074. Direct
+           non-strict converted to `mediumtext` with warning 1246. PREPARE under non-strict then
+           EXECUTE under STRICT_TRANS_TABLES succeeded and created `mediumtext`; PREPARE under
+           strict failed immediately. ALTER TABLE same shape did not reproduce.
+INTEGRATE: id30029 inserted into remote `found_bug` as candidate (`MAX(id)=30029,COUNT=31`).
+           S8 gained an AST-mutation sub-shape, and O12 gained INFO/CANDIDATE classification for
+           prepared DDL cases where PREPARE itself emitted the relevant warning.
+HEALTH:    Useful but contract-sensitive. The direct-vs-prepared split is real, but product may
+           choose PREPARE-time DDL normalization as authoritative. Do not count as confirmed until
+           that contract is settled.
+NEXT:      Guard S8 now. After id30028 + id30029, ordinary session-switch enumeration is low
+           novelty. Reopen only for a different consequence oracle or non-DDL/current-session
+           contract with lower ambiguity.
+```
+
+Automation lesson: a selector can produce a candidate rather than a confirmed bug. That is still
+method progress when it sharpens the oracle's classification boundary and tells the loop where to
+stop.
+
+## Follow-up S9 identity-fast-path tick, EXECUTED (2026-07-03)
+
+This tick returned to DDL and did not continue ordinary S8 session-switch enumeration.
+
+```text
+SENSE:     `REORGANIZE PARTITION` has a nonclustered duplicate-rowid repair path. Source comments
+           say duplicate `_tidb_rowid` can happen across partitions after `EXCHANGE PARTITION`,
+           and the code skips a row when the target key exists and raw bytes are equal.
+SCHEDULE:  P1 allowed because this is a new proof obligation inside DDL: equality used as identity
+           proof, not another reorg/global-index iterator variant.
+ACT:       MINE_BUG on partition reorg:
+           ordinary reorg preserved count 2->2. After `EXCHANGE PARTITION ... WITHOUT VALIDATION`
+           created two old partitions each containing `(1,1,_tidb_rowid=1)`, `ALTER TABLE ...
+           REORGANIZE PARTITION p0,p1` succeeded but changed `COUNT(*)` from 2 to 1.
+           Guard cells showed same rowid with different bytes is repaired to a new rowid, and same
+           bytes with different rowid preserves both rows.
+INTEGRATE: id600001 inserted into remote `found_bug` as confirmed (`MAX(id)=600001,COUNT=32`).
+           Selector ledger gained S9 identity proof fast path; oracle library gained O13 rowset
+           cardinality invariant; draft, handoff, and method case updated.
+HEALTH:    High novelty and high quality. This is not more global-index/reorg enumeration: the
+           reusable shape is "payload equality is not object identity when source/container ID is
+           omitted."
+NEXT:      Guard this exact reorg owner. Reopen S9 only for a different fast path that converts
+           equality/existence into identity while skipping a safe repair, or for fix validation.
+```
+
+Automation lesson: when the code comment names a known hard case, look at the proof the fix uses
+to decide "already handled." The fastest bug is often the one-cell adversary that satisfies the
+check but violates the identity relation the check is standing in for.
+
+## Follow-up S10 precheck-metric tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL after S9, but deliberately moved to a different proof shape instead of
+enumerating more `REORGANIZE PARTITION` syntax.
+
+```text
+SENSE:     `MODIFY COLUMN` no-reorg-with-check validates existing rows by building restricted SQL.
+           For non-integer checks, `buildCheckSQLFromModifyColumn` uses `LENGTH(col) > newFlen`.
+SCHEDULE:  P4 allowed because this is a new DDL selector: validation metric mismatch, not another
+           identity proof or partition iterator case.
+ACT:       MINE_BUG on MODIFY COLUMN shrink:
+           direct target references accepted `_utf8mb4'中中中'` in both `varchar(3)` and
+           `char(3)` with `LENGTH=9,CHAR_LENGTH=3`. ASCII `abc` from `varchar(4)` to `varchar(3)`
+           succeeded. But `varchar(4)->varchar(3)` and `char(4)->char(3)` for `中中中` both
+           failed with ERROR 1265, leaving the old schema unchanged.
+INTEGRATE: id630001 inserted into remote `found_bug` as confirmed (`MAX(id)=630001,COUNT=33`).
+           Selector ledger gained S10 DDL precheck metric mismatch; oracle library gained O14
+           target-type acceptance reference; draft, handoff, methodology, and method case updated.
+HEALTH:    Medium bug quality, high method quality. The user-visible symptom is false rejection,
+           not data loss, but the oracle is strong and the source-to-matrix path is short.
+NEXT:      Guard this modify-column owner. Reopen S10 only for a different precheck metric, a
+           silent wrong-acceptance consequence, or fix validation across binary/indexed controls.
+```
+
+Automation lesson: for validation fast paths, the most productive adversarial question is often
+"what unit did this checker measure?" If the checker measures bytes but the contract is in
+characters, the red matrix is smaller than any random fuzz run could make it.
+
+## Follow-up S10 target-state validation tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL and reused S10, but did not enumerate id630001's charset/string variants.
+It moved from value-fit prechecks to target-state validators.
+
+```text
+SENSE:     FK creation accepts string columns with matching type/charset/collation even when
+           parent/child VARCHAR lengths differ. FK modify validation separately requires
+           newFlen >= originalFlen and newFlen >= relatedFlen.
+SCHEDULE:  P4 allowed because this is a distinct S10 sub-shape: target-state validation metric
+           mismatch, not byte-vs-character data-fit checking.
+ACT:       MINE_BUG on FK MODIFY COLUMN:
+           direct target schemas p10/c10, p10/c15, and p15/c20 created successfully. But child
+           varchar(20)->varchar(10/15) failed with ERROR 1832, and parent varchar(10)->varchar(15)
+           with child varchar(20) failed with ERROR 1833. Existing child data had max CHAR_LENGTH
+           10. Widening controls child 20->25 and parent 10->20 succeeded.
+INTEGRATE: id630002 inserted into remote `found_bug` as confirmed (`MAX(id)=630002,COUNT=34`).
+           S10 generalized from precheck metric mismatch to DDL validation metric mismatch; O14
+           now covers direct target-schema acceptance, not only target-type value acceptance.
+HEALTH:    Good novelty inside DDL. This is a wrong-error bug, not data loss, but it validates a
+           reusable source move: compare transition validators against sibling create/add target
+           validators for the same final schema.
+NEXT:      Guard FK type-pair enumeration. Reopen S10 only for a different validation metric, a
+           silent wrong-acceptance consequence, or fix validation across parent/child directions.
+```
+
+Automation lesson: if two DDL entrypoints produce the same final metadata relation, the stricter
+one must justify every extra predicate. A hidden inequality over old metadata is a compact red
+flag when the final schema is accepted directly.
+
+## Follow-up S10 partition-column validation tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL and reused S10, but did not enumerate FK varchar length pairs. It moved to
+partition-column modify validation, a different validator owner.
+
+```text
+SENSE:     Partition-column MODIFY validation contains a target partition-definition validator,
+           but an earlier allowlist only permits string length extension.
+SCHEDULE:  P4 allowed because this is a distinct S10 owner: partition-column transition allowlist
+           vs target partition-definition/data-fit contract.
+ACT:       MINE_BUG on LIST/RANGE/KEY partition columns:
+           direct target schemas with varchar(5) partition columns and fitting literals/data
+           succeeded; non-partition varchar(6)->varchar(5) with max CHAR_LENGTH=3 succeeded;
+           partition-column varchar(6)->varchar(5) failed with ERROR 8200 across LIST/RANGE/KEY;
+           partition-column varchar(6)->varchar(7) succeeded as checker-aligned control.
+INTEGRATE: id630003 inserted into remote `found_bug` as confirmed (`MAX(id)=630003,COUNT=35`).
+           S10 now has three calibrated sub-shapes: value metric mismatch, target-state hidden
+           inequality, and partition-column transition allowlist mismatch.
+HEALTH:    Medium quality wrong-error, user-visible, strong O14 oracle. The methodology value is
+           higher than the bug severity: the selector jumped to a new DDL validator without random
+           enumeration.
+NEXT:      Guard partition/string variant enumeration. Reopen S10 only for a different metric,
+           silent wrong-acceptance, or fix validation across LIST/RANGE/KEY and binary boundaries.
+```
+
+Automation lesson: once a validator contains both a coarse transition allowlist and a later
+target-state validator, put the allowlist on trial first. The matrix should ask whether the final
+state and data fit, not whether the transition name sounds risky.
+
+## Follow-up S11 dependency-gate tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL but left S10. It targeted generated-column dependency checks, a different
+proof shape from length or target-state validation.
+
+```text
+SENSE:     `MODIFY COLUMN` computes whether generated columns depend on the base column. Rename
+           uses that fact precisely, but a later common gate rejects every MODIFY when dependency
+           exists.
+SCHEDULE:  P4 allowed because this is a new DDL selector: dependency existence vs semantic-change
+           proof, not another validation metric mismatch.
+ACT:       MINE_BUG on generated-column dependency:
+           direct target schemas for base-column COMMENT and DEFAULT changes created and evaluated
+           correctly. ALTER COMMENT and ALTER DEFAULT on the depended-on base column failed with
+           ERROR 3106/3108. Non-dependent column COMMENT and generated-column own COMMENT were
+           green. True base-column type change remained a green reject.
+INTEGRATE: id630004 inserted into remote `found_bug` as confirmed (`MAX(id)=630004,COUNT=36`).
+           Selector ledger gained S11 DDL dependency gate overbroad; O14 gained a generated-column
+           target-schema behavior reference.
+HEALTH:    Medium quality wrong-error. Strong methodology value because it demonstrates a new
+           P/Q pattern: "dependency exists" was used as "all operations are unsafe".
+NEXT:      Guard generated-expression enumeration. Reopen S11 only for a different dependency
+           owner, silent wrong-acceptance, or fix validation across virtual/stored/functional-index
+           boundaries.
+```
+
+Automation lesson: dependency owners are high-density only when the matrix separates graph
+existence from operation semantics. If both red and green controls use the same dependency graph,
+the selector is testing the proof, not the syntax.
+
+## Follow-up S13 shallow-copy target-mutation tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL. It first tried a CHECK-constraint entrypoint gap and rediscovered old
+`found_bug` id1, so that path was classified as duplicate and stopped. The next target moved to a
+different proof shape: target reconstruction from source metadata.
+
+```text
+SENSE:     `CREATE TABLE ... LIKE` builds target table metadata from source `TableInfo`. The code
+           does a top-level copy and then renames CHECK constraints for the target.
+SCHEDULE:  P4 allowed because this is not more CHECK expression enumeration. It tests whether
+           target reconstruction proves nested metadata ownership.
+ACT:       MINE_BUG on `CREATE TABLE dst_auto LIKE src_auto`:
+           direct sibling CREATE TABLE controls produced independent `d1_chk_1` / `d2_chk_1`.
+           But after LIKE, source `SHOW CREATE TABLE src_auto` changed from `src_auto_chk_1` to
+           `dst_auto_chk_1`, including from a new SQL connection. Violating inserts on the source
+           reported `dst_auto_chk_1`. `information_schema.check_constraints` still listed both
+           source and target names, so SQL-visible metadata surfaces disagreed.
+INTEGRATE: id630005 inserted into remote `found_bug` as confirmed (`MAX(id)=630005,COUNT=37`).
+           Selector ledger gained S13 DDL shallow-copy target mutation; oracle library gained O16
+           source/target metadata isolation.
+HEALTH:    Medium quality metadata-corruption bug. The methodology value is high because it adds a
+           new proof family: top-level copy is not nested ownership proof.
+NEXT:      Guard LIKE option and CHECK expression enumeration. Reopen S13 only for another
+           pointer-backed metadata owner, behavior-changing source mutation, or fix validation.
+```
+
+Automation lesson: for DDL clone/rebuild paths, the first oracle should inspect the source after
+creating the target. If the code mutates nested pointers, the target can look fine while the source
+quietly becomes wrong.
+
+## Follow-up S14 recovery-namespace tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL and reused the CHECK-constraint metadata owner without enumerating CHECK
+expressions. The new question was whether sibling recovery paths re-prove the schema-level
+namespace invariants that normal create/add paths prove.
+
+```text
+SENSE:     `CREATE TABLE` and `ALTER TABLE ADD CHECK` call `checkConstraintNamesNotExists`, but
+           `RecoverTable` checks only table name and table ID before publishing recovered
+           `TableInfo`. `FLASHBACK TABLE ... TO new_name` changes only `TableInfo.Name`.
+SCHEDULE:  P4 allowed because this is a new proof shape: old metadata valid in a drop snapshot is
+           not necessarily valid in the current schema namespace.
+ACT:       MINE_BUG on `FLASHBACK TABLE f TO f_old`:
+           normal duplicate `CREATE TABLE` rejected `base_chk_1` with ERROR 3822. Then a dropped
+           `f(a CHECK a>0)` and a recreated current `f(a CHECK a>1)` both had `f_chk_1`.
+           `FLASHBACK TABLE f TO f_old` succeeded, leaving `SHOW CREATE f` and `SHOW CREATE f_old`
+           both with `CONSTRAINT f_chk_1`. `information_schema.check_constraints` listed two
+           `f_chk_1` rows with different clauses, and both tables' CHECK violation errors named
+           `f_chk_1`. `CREATE TABLE like_copy LIKE f` was the green sibling reconstruction control
+           and produced `like_copy_chk_1`.
+INTEGRATE: id630006 inserted into remote `found_bug` as confirmed (`MAX(id)=630006,COUNT=38`).
+           Selector ledger gained S14 DDL recovery namespace validation bypass; oracle library
+           gained O17 schema CHECK constraint namespace oracle.
+HEALTH:    Medium quality metadata-corruption bug. The method value is high because it separates
+           "restore object identity" from "prove current schema-level invariants".
+NEXT:      Guard recover-field enumeration. Reopen S14 only for another create/add validator
+           skipped by recovery, a stronger behavioral consequence, or fix validation.
+```
+
+Automation lesson: recovery paths are high-density only when a normal sibling path has an explicit
+validator and the recovered metadata owner has a SQL-visible current-schema oracle. Otherwise,
+"restored object looks odd" is only a boundary sample, not a confirmed bug.
+
+## Follow-up S11 expression-index companion tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL but switched away from recovery. It reused S11 on a second dependency owner:
+expression indexes.
+
+```text
+SENSE:     Expression indexes are represented by hidden generated columns. The same dependency
+           checker used for generated columns returns `ErrDependentByFunctionalIndex` for a base
+           column referenced by an expression index.
+SCHEDULE:  P4 allowed because the owner is different from id630004, but root-cause accounting is
+           required: this may validate selector blast radius rather than a new root-cause family.
+ACT:       MINE_BUG on `INDEX idx_expr ((a+1))`:
+           direct target schema `a INT COMMENT ...` with the expression index succeeded, rows
+           queried correctly, and `ADMIN CHECK TABLE` passed. Direct `a INT DEFAULT 5` with the
+           same expression index also succeeded and default insert returned `5,6`. But ALTER
+           COMMENT and ALTER DEFAULT on the existing expression-index base column both failed with
+           ERROR 3106 wrapping `ddl:3837`, saying the column cannot be dropped or renamed. Non-
+           dependent column COMMENT and DROP INDEX then COMMENT were green; true type change
+           remained a green reject.
+INTEGRATE: id630007 inserted into remote `found_bug` as confirmed (`MAX(id)=630007,COUNT=39`).
+           Selector ledger and O14 were updated to record expression-index owner coverage.
+HEALTH:    Medium quality wrong-error. Method value is honest blast-radius validation: S11
+           generalized to a second user-facing dependency owner, but shares id630004's common
+           MODIFY gate root cause.
+NEXT:      Guard expression-index syntax enumeration. Reopen S11 only for a different dependency
+           code path, silent wrong-acceptance, or fix validation.
+```
+
+Automation lesson: cross-owner hits need a two-column scorecard: selector generalization and
+root-cause novelty. The former can be high while the latter is low; recording both keeps the method
+from drifting into inflated bug counts.
+
+## Follow-up S15 idempotence-flag tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL. It first tried to reuse S14 on FK constraint names, but the green control
+showed ordinary TiDB DDL allows the same FK name on two different child tables, so that is not a
+schema-level namespace red cell. The loop then pivoted to a source-comment proof obligation in
+`ALTER TABLE ADD CONSTRAINT`.
+
+```text
+SENSE:     `ALTER TABLE ADD CONSTRAINT` dispatch passes `constr.IfNotExists` to ADD INDEX and
+           ADD COLUMNAR INDEX, but the ADD FOREIGN KEY branch has a comment saying IF NOT EXISTS
+           is ignored and calls `CreateForeignKey` directly.
+SCHEDULE:  P4 allowed because this is a new DDL proof family: parser/AST idempotence flag
+           propagation across sibling owners.
+ACT:       MINE_BUG on `ADD FOREIGN KEY IF NOT EXISTS`:
+           first `ALTER TABLE c ADD CONSTRAINT fk_pid FOREIGN KEY IF NOT EXISTS (pid) REFERENCES
+           p(id)` succeeded and `information_schema.referential_constraints` showed exactly one
+           FK row. Re-running the same statement failed with ERROR 1826 duplicate FK name. Plain
+           duplicate ADD FOREIGN KEY also failed, as expected. Sibling `ADD INDEX IF NOT EXISTS`
+           duplicate returned Note 1061 and preserved one index. `DROP FOREIGN KEY IF EXISTS` was
+           rejected by the parser and excluded.
+INTEGRATE: id630008 inserted into remote `found_bug` as confirmed (`MAX(id)=630008,COUNT=40`).
+           Selector ledger gained S15 DDL idempotence flag dropped; oracle library gained O18
+           idempotent DDL flag oracle.
+HEALTH:    Low-to-medium wrong-error. No data corruption, but user-facing idempotent migration
+           scripts can fail. Method value is high because grammar flags are now first-class proof
+           obligations.
+NEXT:      Guard FK option enumeration. Reopen S15 only for another DDL idempotence flag owner,
+           silent duplicate-write/wrong-acceptance, or fix validation.
+```
+
+Automation lesson: a negative calibration can be the bridge to the real hit. FK-name recovery was
+not a bug because the normal path allowed cross-table duplicate FK names; the source comment then
+exposed a sharper sibling flag-propagation proof.
+
+## Follow-up S11 partial-index condition tick, EXECUTED (2026-07-03)
+
+This tick returned from S15 to DDL dependency gates and found a distinct checker owner: partial
+index condition columns.
+
+```text
+SENSE:     `checkColumnReferencedByPartialCondition` returns ERROR 8272 whenever a column appears
+           in `idx.AffectColumn` for a partial index condition. The MODIFY path calls it before
+           distinguishing metadata-only COMMENT/DEFAULT from semantic changes.
+SCHEDULE:  P4 allowed because this is a different dependency checker from generated/expression
+           indexes. The matrix must prove target-schema validity, not merely show an ALTER error.
+ACT:       MINE_BUG on `INDEX idx_a(a) WHERE b > 0`:
+           direct target schemas with `b INT COMMENT 'new-comment'` and `b INT DEFAULT 5` both
+           succeeded and passed `ADMIN CHECK TABLE`; the default target inserted `b=5`. Existing
+           tables with the same partial index rejected `ALTER TABLE ... MODIFY COLUMN b INT COMMENT
+           ...` and `... DEFAULT 5` with ERROR 8272. Non-condition column COMMENT succeeded, and
+           DROP INDEX then condition-column COMMENT succeeded.
+INTEGRATE: id630009 inserted into remote `found_bug` as confirmed (`MAX(id)=630009,COUNT=41`).
+           Selector ledger and O14 were updated to record partial index condition owner coverage.
+HEALTH:    Low-to-medium wrong-error. Method value is high: S11 now covers an independent
+           dependency gate, not only the generated-column hidden-column machinery.
+NEXT:      Guard partial-index predicate enumeration. Reopen S11 only for silent wrong-acceptance,
+           another dependency checker, or fix validation.
+```
+
+Automation lesson: a negative S10 metric probe still paid off because it forced the next source
+search to ask "which dependency gate gives a precise P/Q split?" The high-yield move was not more
+types; it was switching from metric mismatch to dependency-existence-as-danger proof.
+
+## Follow-up S15 spec-splitting flag tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL idempotence flags but did not enumerate FK options. It looked for a
+different way a parser flag can disappear: a parent `AlterTableSpec` is split into child specs that
+read a different flag owner.
+
+```text
+SENSE:     parser.y accepts `ADD IfNotExists (TableElementList)` and stores the flag on
+           `spec.IfNotExists`. `ResolveAlterTableSpec` splits `NewConstraints` into
+           `AlterTableAddConstraint`, but the index branch calls `createIndex(...,
+           constr.IfNotExists)` and the CHECK branch never checks `spec.IfNotExists`.
+SCHEDULE:  P4 allowed because this is a new S15 sub-shape: spec-splitting / AST-rewrite flag
+           ownership, not the FK executor branch from id630008.
+ACT:       MINE_BUG on `ALTER TABLE ... ADD IF NOT EXISTS (...)`:
+           outer column retry `ADD IF NOT EXISTS (b INT)` returned Note 1060; outer key retry
+           `ADD IF NOT EXISTS (KEY idx_a(a))` failed with ERROR 1061; inner key retry
+           `ADD IF NOT EXISTS (KEY IF NOT EXISTS idx_a(a))` returned Note 1061; outer CHECK retry
+           failed with ERROR 3822. Index/CHECK counts stayed one.
+INTEGRATE: id630010 inserted into remote `found_bug` as confirmed (`MAX(id)=630010,COUNT=42`).
+           Selector ledger S15 now records two sub-shapes: sibling executor branch flag loss and
+           parent-spec split flag loss. O18 and the proof catalog were updated.
+HEALTH:    Low-to-medium wrong-error. No data corruption, but user-facing migration idempotence
+           fails. Method value is high because future S15 scans must follow parse node -> resolved
+           spec -> split child job -> executor helper args.
+NEXT:      Guard table-element syntax enumeration. Reopen S15 only for another spec-splitting or
+           AST-rewrite flag loss, silent duplicate-write/wrong-acceptance, or fix validation.
+```
+
+Automation lesson: once a selector mentions a parser/AST bit, the audit must follow ownership
+through every intermediate representation. A copied parent struct is not proof that the child
+executor reads the copied field.
+
+## Follow-up S16 validator-ordering tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL but moved away from idempotence flags. It targeted a validator-ordering
+shape in `MODIFY COLUMN`: the FK compatibility check runs before column options are applied.
+
+```text
+SENSE:     `checkModifyColumnWithForeignKeyConstraint` returns nil when type/flen/decimal are
+           unchanged. In `buildModifyColumnAndConstraint`, that check runs before
+           `ProcessModifyColumnOptions`, which later applies `ColumnOptionNotNull`.
+SCHEDULE:  P4 allowed because this is a new proof shape: validator runs on incomplete target state,
+           not another S15 flag-loss or S11 dependency-overbroad case.
+ACT:       MINE_BUG on child FK columns with SET NULL actions:
+           direct target schemas `pid INT NOT NULL` + `ON DELETE SET NULL` and `ON UPDATE SET NULL`
+           both rejected with ERROR 1830. But nullable child FK tables could be altered to
+           `pid INT NOT NULL` with no warning. `SHOW CREATE TABLE` showed the invalid final state,
+           and parent DELETE/UPDATE then failed with ERROR 1048 when SET NULL tried to write NULL.
+           `ON DELETE RESTRICT` was the green control and accepted nullable->NOT NULL.
+INTEGRATE: id630011 inserted into remote `found_bug` as confirmed (`MAX(id)=630011,COUNT=43`).
+           Selector ledger gained S16 DDL validator ordering gap; oracle library gained O19
+           target-state rejection reference; proof catalog and handoff were updated.
+HEALTH:    Medium wrong-acceptance. It is fail-stop rather than silent corruption, but DDL accepts
+           an illegal target schema that normal CREATE/ADD FK rejects. Method value is high because
+           it adds "complete target state before validation" as a reusable proof obligation.
+NEXT:      Guard FK action/type enumeration. Reopen S16 only for another validator-before-options
+           gap, a stronger silent consequence, or fix validation.
+```
+
+Automation lesson: when a validator receives an object named "new", prove that it is actually the
+final target object. If later code applies flags/options that change the claim, those later
+mutations become first-class D dimensions.
+
+## Follow-up S16 proof-precision tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL and deliberately did not enumerate more FK actions. It used id630011's
+source predicate to ask which dimensions `type/flen/decimal` equality failed to prove.
+
+```text
+SENSE:     CREATE/ADD FK compatibility compares type, unsigned flag, charset, and collation.
+           `checkModifyColumnWithForeignKeyConstraint` returns early on only type/flen/decimal.
+           That coarse predicate omits nullability, signedness, charset, and collation.
+SCHEDULE:  P4 allowed because this is the same S16 validator but a different missing dimension
+           with its own behavior oracle. A coverage pass downweighted dimensions with later safe
+           validators: primary-key NULL and indexed-column collation both looked suspicious but
+           were blocked later.
+ACT:       MINE_BUG on child FK signedness:
+           direct parent `INT` / child `INT UNSIGNED` FK rejected with ERROR 3780; valid
+           signed/signed `ON UPDATE CASCADE` control updated parent and child from `1` to `-1`;
+           valid signed/signed FK followed by child `MODIFY a INT UNSIGNED` succeeded and
+           published the FK; parent update `1 -> -1` then failed with ERROR 1264. Dropping and
+           re-adding the same FK after the red ALTER failed with ERROR 3780.
+INTEGRATE: id630012 inserted into remote `found_bug` as confirmed (`MAX(id)=630012,COUNT=44`).
+           Selector ledger S16 now records nullability and signedness as proven target-state
+           dimensions, and O19 records the signedness cascade/round-trip oracle.
+HEALTH:    Medium wrong-acceptance. The consequence is fail-stop DML, not silent corruption, but
+           the method value is high: one selector produced a second confirmed bug and two useful
+           green calibrations without broad FK fuzzing.
+NEXT:      Guard FK dimension enumeration. Reopen S16 only for a missing dimension not covered by
+           a later complete-target validator, a silent consequence, or fix validation.
+```
+
+Automation lesson: after a hit, do not blindly vary syntax. Re-read the exact predicate that made
+the previous proof too weak, list the omitted D dimensions, and spend SQL only on dimensions that
+lack a later safety owner.
+
+## Follow-up S17 reorg-invariant tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL but moved from schema validators to data rewrite owners. The target was
+`MODIFY COLUMN` reorg, where existing rows are decoded, cast to the new column type, and written
+back through a low-level path.
+
+```text
+SENSE:     ordinary AddRecord/UpdateRecord calls CheckRowConstraint, and ADD CHECK scans existing
+           rows through verifyRemainRecordsForCheckConstraint. The MODIFY COLUMN update worker
+           instead casts the old value and writes the encoded row with txn.Set.
+SCHEDULE:  P4 allowed because this is a new owner boundary: a raw DDL writer must re-prove row
+           invariants after conversion. It is not another FK dimension.
+ACT:       MINE_BUG on CHECK(a > 0) with lossy-but-successful conversions:
+           DECIMAL(10,2) 0.40, DOUBLE 0.4, and VARCHAR '0.4' each satisfied CHECK(a > 0) before
+           ALTER. `ALTER TABLE ... MODIFY a INT` succeeded with no warnings and produced final
+           rows where a=0 and a>0=0. ADD CHECK on an INT table containing 0 rejected with ERROR
+           3819, and ordinary INSERT 0 into the altered table also rejected with ERROR 3819.
+INTEGRATE: id630013 inserted into remote `found_bug` as confirmed (`MAX(id)=630013,COUNT=45`).
+           Selector ledger gained S17 DDL reorg constraint bypass; oracle library gained O20
+           post-conversion CHECK oracle; proof catalog, handoff, draft, and method case were
+           updated. The side rediscovery of CREATE TABLE LIKE source CHECK-name mutation was
+           classified as duplicate id630005 and not reinserted.
+HEALTH:    High data-integrity bug. The CHECK constraint remains published while existing rows
+           violate it, and ADMIN CHECK TABLE does not catch the inconsistency.
+NEXT:      Guard type-pair enumeration. Reopen S17 only for another raw DDL writer, another row
+           invariant owner, or fix validation that routes MODIFY reorg through post-conversion
+           constraint evaluation.
+```
+
+Automation lesson: proof obligations are not only in validators. Any special writer that bypasses
+the normal safe write path must prove every invariant the safe path would have checked.
+
+## Follow-up S4 side-owner remap tick, EXECUTED (2026-07-03)
+
+This tick returned to DDL side-state ownership after a green masking-policy baseline. It did not
+expand the old masking-policy matrix; it searched for a sibling DDL entrypoint that changed the same
+owner key but bypassed the helper that made the baseline green.
+
+```text
+SENSE:     masking-policy rename/drop/column/truncate paths were green, and source showed explicit
+           owner-specific helpers. Truncate remaps table_id; rename rewrites names. EXCHANGE
+           PARTITION swaps a standalone table ID with a partition physical ID, but its check and
+           exchange path did not mention masking-policy side state.
+SCHEDULE:  P4 allowed under S4 because this is a new ID-swap entrypoint on a side sys table keyed
+           by object ID and exposed through logical table DDL.
+ACT:       MINE_BUG on masking policy x EXCHANGE PARTITION:
+           before exchange, ALTER TABLE nt DISABLE/ENABLE MASKING POLICY mp_nt worked. After
+           ALTER TABLE pt EXCHANGE PARTITION p0 WITH TABLE nt, the policy row still said
+           table_name=nt but table_id matched pt.p0's tidb_partition_id. DISABLE/DROP by nt and
+           by pt both failed with ERROR 1105. Recreating mp_nt on nt created a second row on the new
+           table ID; DISABLE affected only the new row and left the old row ENABLED.
+INTEGRATE: id630014 inserted into remote `found_bug` as confirmed (`MAX(id)=630014,COUNT=46`).
+           Selector ledger S4 now has two post-birth hits: stats lock and masking policy after
+           EXCHANGE PARTITION. Oracle library gained O21 side-state owner remap; proof catalog,
+           handoff, owner matrix, draft, and method case were updated.
+HEALTH:    High side-state ownership bug. The user-visible oracle is management DDL failing to
+           reach a visible policy row; it is not just a sys-table display mismatch.
+NEXT:      Guard masking-policy basic rewrite/cleanup. Reopen S4 for a different ID-swap or
+           move/rekey owner, id630014 fix validation, or a stronger security/data behavior oracle.
+```
+
+Automation lesson: a green owner matrix can be more than a negative result. It identifies which
+helpers make common paths safe; the next high-yield search is the sibling path that changes the same
+dimension without those helpers.
+
+## Follow-up S18 embedded-owner handoff tick, EXECUTED (2026-07-03)
+
+This tick stayed in DDL and focused on CHECK constraints after the reorg-invariant hit. The target
+was not another type-conversion matrix; it was the ownership boundary between `ADD COLUMN` and
+`ADD CHECK`.
+
+```text
+SENSE:     buildColumnAndConstraint extracts ColumnOptionCheck into ast.Constraint, and CREATE
+           TABLE consumes that constraint into table metadata. But CreateNewColumn calls the helper
+           as `col, _, err := ...`, discarding constraints, and AddColumn submits only
+           ActionAddColumn/TableColumnArgs.
+SCHEDULE:  P4 allowed because this is a new proof-obligation shape: a parent DDL owner accepts an
+           embedded child obligation but may not transfer it to the child owner. This is not S17
+           type-pair enumeration and not S15 idempotence-flag enumeration.
+ACT:       MINE_BUG on `ALTER TABLE ... ADD COLUMN b INT DEFAULT 1 CHECK(b > 0)`:
+           direct CREATE with inline CHECK published CHECK and rejected b=0; sequential ADD COLUMN
+           then ADD CHECK also published CHECK and rejected b=0. Inline ALTER ADD COLUMN CHECK
+           succeeded with @@warning_count=0, published no CHECK in SHOW CREATE or
+           information_schema.check_constraints, and accepted b=0. A named inline CHECK behaved
+           the same, proving this was not anonymous-name generation.
+INTEGRATE: id30032 inserted into remote `found_bug` as confirmed (`MAX(id)=630014,COUNT=49`).
+           Selector ledger gained S18 embedded constraint owner loss; oracle library gained O23
+           target-schema constraint reference; proof catalog, handoff, draft, pending SQL, and
+           method case were updated.
+HEALTH:    Medium schema-integrity bug. The DDL silently removes a requested data-integrity
+           constraint and allows future bad writes, but it is not as severe as id630013 because a
+           published CHECK is not left containing violating existing rows.
+NEXT:      Guard column-option enumeration. Reopen S18 only for another embedded child owner,
+           same-root fix validation, or a stronger consequence oracle.
+```
+
+Automation lesson: when the source proves a parent object is valid, ask whether the statement also
+contains child obligations with a different owner. The red cell often appears when the parent path
+submits its own job and quietly drops the child proof obligation.
+
+## Follow-up S19 validation-builder tick, EXECUTED (2026-07-03)
+
+This tick exercised the updated P4 scheduler: it stayed in the high-risk state-transforming DDL
+lane instead of taking another static-precheck target. The hit is only consequence-1, so HEALTH
+records that honestly and keeps the next tick biased toward higher-consequence outcomes.
+
+```text
+SENSE:     EXCHANGE PARTITION WITH VALIDATION builds restricted SQL to prove standalone rows
+           belong to the target partition. Source TODOs in the LIST/LIST COLUMNS builders said
+           DEFAULT partitions were not handled.
+SCHEDULE:  P4 allowed because the target is state-transforming DDL validation, not S15/S10/S11
+           static precheck enumeration. The direct oracle was cheap: prove ordinary DML routes the
+           row to DEFAULT, then compare exchange validation against sibling controls.
+ACT:       MINE_BUG on LIST DEFAULT exchange validation:
+           value 3 routes to `PARTITION pdef DEFAULT`; ordinary no-DEFAULT LIST exchange
+           validation succeeds; `ALTER TABLE pt_default EXCHANGE PARTITION pdef WITH TABLE
+           nt_default` fails with `ERROR 1064 ... near ") limit 1"`; the same legal row swaps with
+           `WITHOUT VALIDATION`. LIST COLUMNS DEFAULT hits the same builder shape.
+INTEGRATE: id630025 inserted into remote `found_bug` as confirmed
+           (`COUNT(*)=68,COUNT(DISTINCT root_cause_id)=46`).
+           Reopen test minted `root_cause_id=exchange-default-validation-sql`: this is not
+           id630016 blast radius because the fix is DEFAULT-complement validation SQL, not
+           duplicate/existence ordering. Selector ledger gained S19; oracle library gained O24;
+           root-cause ledger, proof catalog, handoff, next-owner scan, draft, method case, and
+           pending SQL were updated.
+HEALTH:    consequence_mix records a new C1 hit. This is acceptable for one tick because P4 chose
+           the high-risk lane and found a new root, but the drift response is active: do not keep
+           mining partition validation wrong-errors. Pull another consequence-3/2 target next, or
+           reopen S19 only for wrong-acceptance/data-placement or fix validation.
+NEXT:      Guard partition syntax enumeration. Source the next high-risk lane target from
+           reorg/backfill/id-swap/restore/pinned-substate with a consequence oracle stronger than
+           syntax/wrong-error when possible.
+```
+
+Automation lesson: consequence-first scheduling is a target-selection rule, not a promise every
+hit will be severe. When a high-risk target lands as C1, record the root honestly, learn the
+selector, and let `consequence_mix` steer the next tick away from cheap repeats.
+
+## Non-DDL proof-obligation calibration tick, EXECUTED (2026-07-03)
+
+This tick followed the scope correction: stop mining reorg/partition-validation variants, and use
+other modules only to improve the AI-native bug-finding method. It intentionally treated green
+results as selector training data instead of as failed bug hunts.
+
+```text
+SENSE:     Two source-shaped candidates looked dangerous:
+           1. S7 cache payload purity: `windowing_use_high_precision` is read by aggregate builder
+              code but is not a prepared-plan cache key dimension.
+           2. Prepared PointGet fast path: cached point-get plans have a source-side
+              `skipPrivCheck` branch because the executor is "specially handled".
+SCHEDULE:  P4 allowed this as calibration, not as a new bug-count push. The question was whether
+           the P/Q/F template overclaims when it sees a missing key dimension or a skipped checker.
+ACT:       Window aggregate matrix:
+             direct ON/OFF semantics differed on cancellation-prone DOUBLE windows
+             (`row5/row7: 0` vs `-1`), and the prepared statement hit cache after the switch.
+             The cached execution followed the current OFF result, and a flush-cache reference
+             matched it. GREEN: cache hit did not reuse old aggregate payload.
+           Prepared PointGet privilege matrix:
+             user prepared `SELECT * FROM t WHERE id=?`, executed once uncached and once cached,
+             root revoked SELECT, and the same prepared EXECUTE in the original session failed
+             with ERROR 1142. GREEN: the apparent `skipPrivCheck` did not produce a privilege
+             bypass; the safe path still blocked execution.
+           Predicate simplification source revisit:
+             id30002 remains a strong existing red cell. `updateInPredicate`/`mergeInAndNotEQLists`
+             delete `!=` after shrinking `IN`, while a sibling contradiction checker has explicit
+             collation-compatibility guards. This sharpens the selector to "predicate deletion
+             after value substitution without carrying collation/coercibility".
+INTEGRATE: No new bug was inserted. S7 getter scan was updated with the windowing green result.
+           Methodology v2 gained a four-gate red-cell rule and a requirement to label which gate
+           a green cell failed.
+HEALTH:    High methodology value, no bug-count value. The pass reduced false positives in two
+           attractive source candidates and preserved id30002 as the better next optimizer
+           selector.
+NEXT:      For the next non-DDL search, start from a proof obligation whose oracle can distinguish
+           all four gates: direct semantic drift, trigger evidence, stale payload / skipped safe
+           path, and current-reference behavior. Do not reopen PointGet privilege or windowing
+           precision unless source changes identify a different payload or safe-path owner.
+```
+
+Automation lesson: source comments and omitted key dimensions create candidates, not claims. A
+confirmed red cell needs the whole chain: old/new semantics differ, the shortcut fires, the shortcut
+reuses or trusts the wrong thing, and a strong reference path proves the current semantics.
+
+## Follow-up S20 semantic-domain rewrite tick, EXECUTED (2026-07-03)
+
+This tick used a non-DDL planner target only to improve the method. It deliberately picked a new
+proof shape instead of continuing reorg/partition-validation variants.
+
+```text
+SENSE:     Source showed `join_key_type_cast` rewrites mixed INT/VARCHAR join equality from
+           DOUBLE-domain comparison into INT equality, guarded by signed-int round-trip.
+SCHEDULE:  P4 allowed because this had a consequence-2 oracle and a precise P/Q/F card:
+           the rule checked integer round-trip but claimed equivalence to the original mixed
+           comparison domain.
+ACT:       MINE_BUG on scientific-notation VARCHAR values:
+           scalar contract gave `10='1e1' -> 1`, `CAST('1e1' AS DOUBLE)=10`,
+           `CAST('1e1' AS SIGNED)=1`, and rule guard=0. Default join returned
+           `1:1,2:2e0,10:10,10:10.0`; CASE-wrapped and rule-disabled references returned
+           `1:1,2:2e0,10:10,10:10.0,10:1e1`.
+INTEGRATE: id30040 inserted into remote `found_bug` as confirmed
+           (`COUNT(*)=69,COUNT(DISTINCT root_cause_id)=47`).
+           Reopen test minted `root_cause_id=join-key-type-cast-domain-narrowing`.
+           Selector ledger gained S20; oracle library gained O25; root-cause ledger, proof
+           catalog, handoff, draft, method case, and pending SQL were updated.
+HEALTH:    Novelty is healthy: this is not S3 extractor loss, not S7 cache reuse, and not DDL
+           side-state blast radius. It validates the improved method's `D_dims` discipline:
+           name D_old and D_new, then search for the smallest value where they disagree.
+NEXT:      Guard numeric-string enumeration. Reopen only for another semantic-domain rewrite,
+           a stronger consequence, or fix validation of join_key_type_cast.
+```
+
+Automation lesson: "code checks P, system believes Q" becomes much sharper when Q names the
+semantic domain it is preserving. The AI speedup came from reading the rewrite and asking which
+parser/equality domain was lost, not from trying many values.
+
+## Follow-up S23 txn state-ingress tick, EXECUTED (2026-07-09)
+
+This tick obeyed the no-partition boundary and moved into txn/NT-DML only to validate the improved
+proof-obligation method on a new state container.
+
+```text
+SENSE:     Source comment in HandleNonTransactionalDML says NT-DML is a write and should not be
+           affected by read_staleness; code clears ReadStaleness but buildShardJobs runs an
+           internal SELECT through se.Execute.
+SCHEDULE:  P4 allowed because the proof obligation was not "try txn combos"; it was a precise
+           sibling-input audit: ReadStaleness, TxnReadTS, tidb_snapshot.
+ACT:       MINE_BUG on SET TRANSACTION READ ONLY AS OF TIMESTAMP:
+           AS OF control saw only old row `1:10`; ordinary UPDATE under tx_read_ts rejected
+           read-only stale write; NT-DML without tx_read_ts updated `1:110,2:120`; NT-DML with
+           tx_read_ts reported one successful job and left `1:110,2:20`.
+INTEGRATE: id1230001 inserted into remote `found_bug` as confirmed
+           (`MAX(id)=1230001,COUNT(*)=72,COUNT(DISTINCT root_cause_id)=50`).
+           Reopen test minted `root_cause_id=ntdml-tx-read-ts-split-range-stale`.
+           Selector ledger gained S23; oracle library gained O29; root-cause ledger, proof
+           catalog, handoff, draft, and method case were updated.
+HEALTH:    Novelty is healthy: not savepoint stack semantics (S21), not plan cache (S7), not DDL.
+           It validates the improved "state ingress inventory" rule: a code path clearing one
+           state input has not proven that sibling inputs are impossible.
+NEXT:      Guard BATCH syntax enumeration. Reopen only for another stale input channel, stronger
+           DELETE/INSERT-SELECT consequence, or fix validation.
+```
+
+Automation lesson: when a wrapper internally executes SQL, the wrapper inherits the full session
+state machine unless it explicitly clears or rejects every relevant state input. That is a sharp
+selector for AI because the candidate list comes from source-owned state fields, not random SQL.

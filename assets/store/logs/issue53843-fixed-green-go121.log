@@ -1,0 +1,7 @@
+# github.com/pingcap/tidb/pkg/ddl/ingest.test
+ld: warning: -bind_at_load is deprecated on macOS
+=== RUN   TestAINativeUnregisterEnginesExactlyOnce
+    ai_native_lifecycle_test.go:112: close_calls=1 cleanup_calls=1 remaining_engines=0
+--- PASS: TestAINativeUnregisterEnginesExactlyOnce (0.22s)
+PASS
+ok  	github.com/pingcap/tidb/pkg/ddl/ingest	2.341s

@@ -1,0 +1,13 @@
+phase	value
+version	8.0.11-TiDB-v9.0.0-beta.2.pre-1895-g5c9198e948
+phase	use_invisible	fast_check
+before_var	1	1
+id	estRows	task	access object	operator info
+IndexReader	10.00	root		index:IndexRangeScan
+└─IndexRangeScan	10.00	cop[tikv]	table:t, index:idx_v(v)	range:[20,20], keep order:false, stats:pseudo
+phase	use_invisible	fast_check
+after_var	1	1
+id	estRows	task	access object	operator info
+TableReader	10.00	root		data:Selection
+└─Selection	10.00	cop[tikv]		eq(ai_native_chk_20260710.t.v, 20)
+  └─TableFullScan	10000.00	cop[tikv]	table:t	keep order:false, stats:pseudo

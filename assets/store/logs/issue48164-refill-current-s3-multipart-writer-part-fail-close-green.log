@@ -1,0 +1,7 @@
+=== RUN   TestContentMD5OptionForS3Compatible
+=== RUN   TestContentMD5OptionForS3Compatible/AINativeMultipartWriterUploadPartFailureThenCloseRED
+    client_test.go:422: ai-native s3 multipart terminal evidence: writeErr=ai-native mock upload part failed closeErr=ai-native mock upload part failed abortCalls=1
+--- PASS: TestContentMD5OptionForS3Compatible (0.00s)
+    --- PASS: TestContentMD5OptionForS3Compatible/AINativeMultipartWriterUploadPartFailureThenCloseRED (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/pkg/objstore/s3store	0.707s

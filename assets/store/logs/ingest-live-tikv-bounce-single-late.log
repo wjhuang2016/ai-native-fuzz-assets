@@ -1,0 +1,27 @@
+2026/07/11 00:28:20 prefill progress: 800000/800000
+2026/07/11 00:28:21 prefill done, row_count=800000
+2026/07/11 00:28:22 split table requested: regions=256
+2026/07/11 00:28:22 ddl start: alter table ai_native_ingest_live_probe.rows add index idx_c(c)
+2026/07/11 00:28:22 ddl job observed: job_id=1525 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:28:22 ddl entered active fault window: job_id=1525 schema_state=write reorganization row_count=0
+2026/07/11 00:28:22 ddl active fault window: job_id=1525 schema_state=write reorganization row_count=0 active_for=0s
+2026/07/11 00:28:23 ddl job observed: job_id=1525 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:28:23 ddl active fault window: job_id=1525 schema_state=write reorganization row_count=0 active_for=500ms
+2026/07/11 00:28:23 ddl job observed: job_id=1525 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:28:23 ddl active fault window: job_id=1525 schema_state=write reorganization row_count=0 active_for=1s
+2026/07/11 00:28:24 ddl job observed: job_id=1525 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:28:24 ddl active fault window: job_id=1525 schema_state=write reorganization row_count=0 active_for=1.5s
+2026/07/11 00:28:24 ddl job observed: job_id=1525 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:28:24 ddl active fault window: job_id=1525 schema_state=write reorganization row_count=0 active_for=2s
+2026/07/11 00:28:25 ddl job observed: job_id=1525 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:28:25 ddl active fault window: job_id=1525 schema_state=write reorganization row_count=0 active_for=2.5s
+2026/07/11 00:28:25 ddl job observed: job_id=1525 state=synced schema_state=public row_count=800000
+2026/07/11 00:28:25 observed ddl job: job_id=1525 state=synced schema_state=public row_count=800000
+2026/07/11 00:28:25 skip tikv bounce because ddl already reached state=synced before scheduling
+2026/07/11 00:28:26 ddl terminal wait sees: job_id=1525 state=synced schema_state=public row_count=800000
+2026/07/11 00:28:26 observed terminal ddl job: job_id=1525 state=synced schema_state=public row_count=800000
+2026/07/11 00:28:28 ddl session returned success after 6.020424375s
+2026/07/11 00:28:28 visible indexes after terminal state: [PRIMARY idx_c]
+2026/07/11 00:28:30 final counts: table_count=800000 value_count=800000 d_count=800000
+2026/07/11 00:28:30 matching ddl history: 1525 | ai_native_ingest_live_probe | rows | add index | public | 1517 | 1523 | 800000 | 2026-07-10 16:28:22.359000 | 2026-07-10 16:28:22.359000 | 2026-07-10 16:28:25.409000 | synced | ingest, thread=1, batch_size=32, max_node_count=3
+2026/07/11 00:28:30 probe finished cleanly

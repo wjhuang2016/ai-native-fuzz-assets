@@ -1,0 +1,14 @@
+PAUSED inferred_by_runtime=true wait=2s
+REPLACE_RC=0
+REPLACE_OK
+DDL_ERR:
+ROWS:
+2	2	20
+3	3	30
+4	1	40
+USE_INDEX val0=1:
+4
+IGNORE_INDEX val0=1:
+4
+ADMIN_CHECK:
+ADMIN_CHECK_OK

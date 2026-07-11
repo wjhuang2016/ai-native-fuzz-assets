@@ -1,0 +1,4 @@
+2026/07/11 12:49:34 CONFIG ddl_kind=add-primary-key metadata_lock=true hold=6s ddl_start_gap=1s expect_schema_changed=false
+2026/07/11 12:49:41 AFTER_HOLD ddl_status=running hold=6s
+2026/07/11 12:49:42 TXN_RESULT success
+2026/07/11 12:49:42 GREEN metadata_lock=true

@@ -1,0 +1,4 @@
+2026/07/11 15:19:12 CONFIG ddl_kind=add-index txn_kind=1pc txn_shape=basicrev metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 15:19:12 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 15:19:15 TXN_RESULT success
+2026/07/11 15:19:15 GREEN txn_kind=1pc metadata_lock=false

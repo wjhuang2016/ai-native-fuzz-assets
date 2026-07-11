@@ -1,0 +1,233 @@
+[2026-07-12 00:28:49] start DB=ai_native_ingest_merge_downscale2_20260712
+START_LOG_LINE=25205
+PREFILL_OFFSET=1
+PREFILL_OFFSET=2
+PREFILL_OFFSET=4
+PREFILL_OFFSET=8
+PREFILL_OFFSET=16
+PREFILL_OFFSET=32
+PREFILL_OFFSET=64
+PREFILL_OFFSET=128
+PREFILL_OFFSET=256
+PREFILL_OFFSET=512
+PREFILL_OFFSET=1024
+PREFILL_OFFSET=2048
+PREFILL_OFFSET=4096
+PREFILL_OFFSET=8192
+PREFILL_OFFSET=16384
+PREFILL_OFFSET=32768
+BASE_COUNT=65536
+SPLIT_OUT=7	1
+DDL_WATERMARK=4636
+PAUSE_CODE=204
+DDL_PID=76739
+DML_PID=76742
+DML_BATCH start=1000001 end=1000500 rc=0
+DML_BATCH start=1000501 end=1001000 rc=0
+JOB_LINE=4637	add index	write reorganization	running	0
+DML_BATCH start=1001001 end=1001500 rc=0
+JOB_LINE=4637	add index	write reorganization	running	0
+DML_BATCH start=1001501 end=1002000 rc=0
+DML_BATCH start=1002001 end=1002500 rc=0
+JOB_LINE=4637	add index	write reorganization	running	67536
+DML_BATCH start=1002501 end=1003000 rc=0
+DML_BATCH start=1003001 end=1003500 rc=0
+DML_BATCH start=1003501 end=1004000 rc=0
+DML_BATCH start=1004001 end=1004500 rc=0
+DML_BATCH start=1004501 end=1005000 rc=0
+DML_BATCH start=1005001 end=1005500 rc=0
+JOB_LINE2=4637	add index	write reorganization	running	67536
+PAUSE_OBSERVED job_id=4637
+INSERTED_ROWS=5500
+TOTAL_ROWS_PAUSED=71536
+FAILPOINT_CODES err=204 sleep=204
+PAUSE_RELEASE_CODE=204
+LOG_POLL_BEGIN
+[2026/07/11 16:28:49.943 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4634] [conn=220203844] [job="ID:4634, Type:create schema, State:synced, SchemaState:public, SchemaID:4633, TableID:0, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.809 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:50.125 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4636] [conn=220203844] [job="ID:4636, Type:create table, State:synced, SchemaState:public, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.96 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:55.130 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:queueing, SchemaState:none, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.241 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:delete only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.299 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.356 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.864 +00:00] [INFO] [reorg.go:968] ["job get table range"] [category=ddl] [jobID=4637] [physicalTableID=4635] [startKey=74800000000000121b5f728000000000000001] [endKey=74800000000000121b5f7280000000000f4a1000]
+[2026/07/11 16:28:57.870 +00:00] [INFO] [job_worker.go:1170] ["schema version doesn't change"] [category=ddl] [jobID=4637]
+[2026/07/11 16:28:57.871 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.875 +00:00] [INFO] [job_scheduler.go:771] ["resume physical table ID from checkpoint"] [category=ddl-ingest] [jobID=4637] ["global sync key"=] ["checkpoint physical ID"=4635]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:141] ["build add index local storage operators"] [jobID=4637] [jobID=4637] [avgRowSize=0] [reader=2] [writer=4]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=0] [task="TableScanTask: id=0, startKey=74800000000000121b5f728000000000000001, endKey=74800000000000121b5f728000000000002001"]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=1] [task="TableScanTask: id=1, startKey=74800000000000121b5f728000000000002001, endKey=74800000000000121b5f728000000000004001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=2] [task="TableScanTask: id=2, startKey=74800000000000121b5f728000000000004001, endKey=74800000000000121b5f728000000000006001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=3] [task="TableScanTask: id=3, startKey=74800000000000121b5f728000000000006001, endKey=74800000000000121b5f728000000000008001"]
+[2026/07/11 16:28:57.945 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=4] [task="TableScanTask: id=4, startKey=74800000000000121b5f728000000000008001, endKey=74800000000000121b5f72800000000000a001"]
+[2026/07/11 16:28:57.947 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=5] [task="TableScanTask: id=5, startKey=74800000000000121b5f72800000000000a001, endKey=74800000000000121b5f72800000000000c001"]
+[2026/07/11 16:28:57.955 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=6] [task="TableScanTask: id=6, startKey=74800000000000121b5f72800000000000c001, endKey=74800000000000121b5f72800000000000e001"]
+[2026/07/11 16:28:57.957 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=7] [task="TableScanTask: id=7, startKey=74800000000000121b5f72800000000000e001, endKey=74800000000000121b5f7280000000000f4a1000"]
+[2026/07/11 16:28:57.970 +00:00] [INFO] [backfilling_operators.go:476] ["table scan operator total count"] [jobID=4637] [count=67536]
+[2026/07/11 16:28:57.993 +00:00] [INFO] [backend.go:285] ["set ingest ts before import"] [engineUUID=f75d9cab-8823-5503-94ba-459a1de580da] [jobID=4637] [ts=0]
+[2026/07/11 16:28:57.995 +00:00] [INFO] [local.go:1468] ["pause pd scheduler of table scope"] [jobID=4637]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1509] ["start import engine"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] ["region ranges"=1] [count=67536] [size=2566368] [maxReqInFlight=0] [maxReqPerSec=0]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1131] ["import engine ranges"] [jobID=4637] [len(regionSplitKeys)=2] [splitRangesBatch=2048] [splitRangePerSec=0]
+[2026/07/11 16:28:58.017 +00:00] [INFO] [local.go:1325] ["generate region jobs"] [jobID=4637] [len(jobs)=1] [startOfAllRanges=74800000000000121b5f698000000000000001038000000000000001038000000000000001] [endOfAllRanges=74800000000000121b5f6980000000000000010380000000000f4a100380000000000f4a1000] [startKeyOfFirstRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff0000000103800000ff0000000001000000fc] [endKeyOfLastRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff000f4a1003800000ff00000f4a10000000fd]
+[2026/07/11 16:28:58.087 +00:00] [INFO] [local.go:1528] ["import engine success"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] [size=2566368] [kvs=67536] [importedSize=2566368] [importedCount=67536]
+[2026/07/11 16:28:58.097 +00:00] [INFO] [backend.go:356] ["close one backend for DDL job"] [jobID=4637] ["current memory usage"=0] ["max memory quota"=183637442560]
+[2026/07/11 16:28:58.098 +00:00] [INFO] [reorg.go:435] ["run reorg job done"] [category=ddl] [jobID=4637] ["handled rows"=67536]
+[2026/07/11 16:28:58.158 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:01.896 +00:00] [INFO] [index.go:1913] ["index backfill state ready to merge"] [category=ddl] ["job ID"=4637] [table=t] [index=idx_b]
+[2026/07/11 16:29:01.956 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+LOG_POLL_END
+LOG_POLL_BEGIN
+[2026/07/11 16:28:49.943 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4634] [conn=220203844] [job="ID:4634, Type:create schema, State:synced, SchemaState:public, SchemaID:4633, TableID:0, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.809 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:50.125 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4636] [conn=220203844] [job="ID:4636, Type:create table, State:synced, SchemaState:public, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.96 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:55.130 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:queueing, SchemaState:none, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.241 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:delete only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.299 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.356 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.864 +00:00] [INFO] [reorg.go:968] ["job get table range"] [category=ddl] [jobID=4637] [physicalTableID=4635] [startKey=74800000000000121b5f728000000000000001] [endKey=74800000000000121b5f7280000000000f4a1000]
+[2026/07/11 16:28:57.870 +00:00] [INFO] [job_worker.go:1170] ["schema version doesn't change"] [category=ddl] [jobID=4637]
+[2026/07/11 16:28:57.871 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.875 +00:00] [INFO] [job_scheduler.go:771] ["resume physical table ID from checkpoint"] [category=ddl-ingest] [jobID=4637] ["global sync key"=] ["checkpoint physical ID"=4635]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:141] ["build add index local storage operators"] [jobID=4637] [jobID=4637] [avgRowSize=0] [reader=2] [writer=4]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=0] [task="TableScanTask: id=0, startKey=74800000000000121b5f728000000000000001, endKey=74800000000000121b5f728000000000002001"]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=1] [task="TableScanTask: id=1, startKey=74800000000000121b5f728000000000002001, endKey=74800000000000121b5f728000000000004001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=2] [task="TableScanTask: id=2, startKey=74800000000000121b5f728000000000004001, endKey=74800000000000121b5f728000000000006001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=3] [task="TableScanTask: id=3, startKey=74800000000000121b5f728000000000006001, endKey=74800000000000121b5f728000000000008001"]
+[2026/07/11 16:28:57.945 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=4] [task="TableScanTask: id=4, startKey=74800000000000121b5f728000000000008001, endKey=74800000000000121b5f72800000000000a001"]
+[2026/07/11 16:28:57.947 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=5] [task="TableScanTask: id=5, startKey=74800000000000121b5f72800000000000a001, endKey=74800000000000121b5f72800000000000c001"]
+[2026/07/11 16:28:57.955 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=6] [task="TableScanTask: id=6, startKey=74800000000000121b5f72800000000000c001, endKey=74800000000000121b5f72800000000000e001"]
+[2026/07/11 16:28:57.957 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=7] [task="TableScanTask: id=7, startKey=74800000000000121b5f72800000000000e001, endKey=74800000000000121b5f7280000000000f4a1000"]
+[2026/07/11 16:28:57.970 +00:00] [INFO] [backfilling_operators.go:476] ["table scan operator total count"] [jobID=4637] [count=67536]
+[2026/07/11 16:28:57.993 +00:00] [INFO] [backend.go:285] ["set ingest ts before import"] [engineUUID=f75d9cab-8823-5503-94ba-459a1de580da] [jobID=4637] [ts=0]
+[2026/07/11 16:28:57.995 +00:00] [INFO] [local.go:1468] ["pause pd scheduler of table scope"] [jobID=4637]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1509] ["start import engine"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] ["region ranges"=1] [count=67536] [size=2566368] [maxReqInFlight=0] [maxReqPerSec=0]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1131] ["import engine ranges"] [jobID=4637] [len(regionSplitKeys)=2] [splitRangesBatch=2048] [splitRangePerSec=0]
+[2026/07/11 16:28:58.017 +00:00] [INFO] [local.go:1325] ["generate region jobs"] [jobID=4637] [len(jobs)=1] [startOfAllRanges=74800000000000121b5f698000000000000001038000000000000001038000000000000001] [endOfAllRanges=74800000000000121b5f6980000000000000010380000000000f4a100380000000000f4a1000] [startKeyOfFirstRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff0000000103800000ff0000000001000000fc] [endKeyOfLastRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff000f4a1003800000ff00000f4a10000000fd]
+[2026/07/11 16:28:58.087 +00:00] [INFO] [local.go:1528] ["import engine success"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] [size=2566368] [kvs=67536] [importedSize=2566368] [importedCount=67536]
+[2026/07/11 16:28:58.097 +00:00] [INFO] [backend.go:356] ["close one backend for DDL job"] [jobID=4637] ["current memory usage"=0] ["max memory quota"=183637442560]
+[2026/07/11 16:28:58.098 +00:00] [INFO] [reorg.go:435] ["run reorg job done"] [category=ddl] [jobID=4637] ["handled rows"=67536]
+[2026/07/11 16:28:58.158 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:01.896 +00:00] [INFO] [index.go:1913] ["index backfill state ready to merge"] [category=ddl] ["job ID"=4637] [table=t] [index=idx_b]
+[2026/07/11 16:29:01.956 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+LOG_POLL_END
+LOG_POLL_BEGIN
+[2026/07/11 16:28:49.943 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4634] [conn=220203844] [job="ID:4634, Type:create schema, State:synced, SchemaState:public, SchemaID:4633, TableID:0, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.809 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:50.125 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4636] [conn=220203844] [job="ID:4636, Type:create table, State:synced, SchemaState:public, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.96 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:55.130 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:queueing, SchemaState:none, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.241 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:delete only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.299 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.356 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.864 +00:00] [INFO] [reorg.go:968] ["job get table range"] [category=ddl] [jobID=4637] [physicalTableID=4635] [startKey=74800000000000121b5f728000000000000001] [endKey=74800000000000121b5f7280000000000f4a1000]
+[2026/07/11 16:28:57.870 +00:00] [INFO] [job_worker.go:1170] ["schema version doesn't change"] [category=ddl] [jobID=4637]
+[2026/07/11 16:28:57.871 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.875 +00:00] [INFO] [job_scheduler.go:771] ["resume physical table ID from checkpoint"] [category=ddl-ingest] [jobID=4637] ["global sync key"=] ["checkpoint physical ID"=4635]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:141] ["build add index local storage operators"] [jobID=4637] [jobID=4637] [avgRowSize=0] [reader=2] [writer=4]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=0] [task="TableScanTask: id=0, startKey=74800000000000121b5f728000000000000001, endKey=74800000000000121b5f728000000000002001"]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=1] [task="TableScanTask: id=1, startKey=74800000000000121b5f728000000000002001, endKey=74800000000000121b5f728000000000004001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=2] [task="TableScanTask: id=2, startKey=74800000000000121b5f728000000000004001, endKey=74800000000000121b5f728000000000006001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=3] [task="TableScanTask: id=3, startKey=74800000000000121b5f728000000000006001, endKey=74800000000000121b5f728000000000008001"]
+[2026/07/11 16:28:57.945 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=4] [task="TableScanTask: id=4, startKey=74800000000000121b5f728000000000008001, endKey=74800000000000121b5f72800000000000a001"]
+[2026/07/11 16:28:57.947 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=5] [task="TableScanTask: id=5, startKey=74800000000000121b5f72800000000000a001, endKey=74800000000000121b5f72800000000000c001"]
+[2026/07/11 16:28:57.955 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=6] [task="TableScanTask: id=6, startKey=74800000000000121b5f72800000000000c001, endKey=74800000000000121b5f72800000000000e001"]
+[2026/07/11 16:28:57.957 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=7] [task="TableScanTask: id=7, startKey=74800000000000121b5f72800000000000e001, endKey=74800000000000121b5f7280000000000f4a1000"]
+[2026/07/11 16:28:57.970 +00:00] [INFO] [backfilling_operators.go:476] ["table scan operator total count"] [jobID=4637] [count=67536]
+[2026/07/11 16:28:57.993 +00:00] [INFO] [backend.go:285] ["set ingest ts before import"] [engineUUID=f75d9cab-8823-5503-94ba-459a1de580da] [jobID=4637] [ts=0]
+[2026/07/11 16:28:57.995 +00:00] [INFO] [local.go:1468] ["pause pd scheduler of table scope"] [jobID=4637]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1509] ["start import engine"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] ["region ranges"=1] [count=67536] [size=2566368] [maxReqInFlight=0] [maxReqPerSec=0]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1131] ["import engine ranges"] [jobID=4637] [len(regionSplitKeys)=2] [splitRangesBatch=2048] [splitRangePerSec=0]
+[2026/07/11 16:28:58.017 +00:00] [INFO] [local.go:1325] ["generate region jobs"] [jobID=4637] [len(jobs)=1] [startOfAllRanges=74800000000000121b5f698000000000000001038000000000000001038000000000000001] [endOfAllRanges=74800000000000121b5f6980000000000000010380000000000f4a100380000000000f4a1000] [startKeyOfFirstRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff0000000103800000ff0000000001000000fc] [endKeyOfLastRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff000f4a1003800000ff00000f4a10000000fd]
+[2026/07/11 16:28:58.087 +00:00] [INFO] [local.go:1528] ["import engine success"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] [size=2566368] [kvs=67536] [importedSize=2566368] [importedCount=67536]
+[2026/07/11 16:28:58.097 +00:00] [INFO] [backend.go:356] ["close one backend for DDL job"] [jobID=4637] ["current memory usage"=0] ["max memory quota"=183637442560]
+[2026/07/11 16:28:58.098 +00:00] [INFO] [reorg.go:435] ["run reorg job done"] [category=ddl] [jobID=4637] ["handled rows"=67536]
+[2026/07/11 16:28:58.158 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:01.896 +00:00] [INFO] [index.go:1913] ["index backfill state ready to merge"] [category=ddl] ["job ID"=4637] [table=t] [index=idx_b]
+[2026/07/11 16:29:01.956 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:04.461 +00:00] [INFO] [reorg.go:968] ["job get table range"] [category=ddl] [jobID=4637] [physicalTableID=4635] [startKey=74800000000000121b5f69ffff000000000001] [endKey=74800000000000121b5f69ffff000000000001ff]
+[2026/07/11 16:29:04.468 +00:00] [INFO] [job_worker.go:1170] ["schema version doesn't change"] [category=ddl] [jobID=4637]
+[2026/07/11 16:29:04.469 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [index.go:2934] ["start to merge temp index"] [category=ddl] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:1, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"] [reorgInfo="CurrElementType:_idx_,CurrElementID:1,StartKey:74800000000000121b5f69ffff000000000001,EndKey:74800000000000121b5f69ffff000000000001ff,First:false,PhysicalTableID:4635,Ingest mode:true"]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [backfilling.go:533] ["backfill worker exit"] [category=ddl] [worker="backfill-worker 0, tp merge temporary index"] [jobID=4637]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [backfilling.go:533] ["backfill worker exit"] [category=ddl] [worker="backfill-worker 1, tp merge temporary index"] [jobID=4637]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [backfilling.go:533] ["backfill worker exit"] [category=ddl] [worker="backfill-worker 3, tp merge temporary index"] [jobID=4637]
+LOG_POLL_END
+DOWNSCALE_TRIGGER=after_idle_merge_exits
+DOWNSCALE_RC=0
+DOWNSCALE_OUT=
+DDL_RC=0
+DDL_OUT_BEGIN
+DDL_OUT_END
+FINAL_JOB=4637	add index	public	synced	67536
+SHOW_CREATE_BEGIN
+*************************** 1. row ***************************
+t
+CREATE TABLE `t` (
+  `id` int NOT NULL,
+  `b` int NOT NULL,
+  `pad` varchar(64) NOT NULL DEFAULT 'x',
+  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,
+  KEY `idx_b` (`b`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+SHOW_CREATE_END
+ROW_COUNT=71536
+IDX_B_COUNT=71536
+ADMIN_CHECK_RC=0
+ADMIN_CHECK_OUT=
+SAMPLE_CHECKS_BEGIN
+table	6
+idx_b	6
+SAMPLE_CHECKS_END
+OWNER_TAIL_BEGIN
+[2026/07/11 16:28:49.943 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4634] [conn=220203844] [job="ID:4634, Type:create schema, State:synced, SchemaState:public, SchemaID:4633, TableID:0, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.809 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:50.125 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4636] [conn=220203844] [job="ID:4636, Type:create table, State:synced, SchemaState:public, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:49.96 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:28:55.130 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:queueing, SchemaState:none, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.241 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:delete only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.299 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write only, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:55.356 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.864 +00:00] [INFO] [reorg.go:968] ["job get table range"] [category=ddl] [jobID=4637] [physicalTableID=4635] [startKey=74800000000000121b5f728000000000000001] [endKey=74800000000000121b5f7280000000000f4a1000]
+[2026/07/11 16:28:57.870 +00:00] [INFO] [job_worker.go:1170] ["schema version doesn't change"] [category=ddl] [jobID=4637]
+[2026/07/11 16:28:57.871 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:0, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:28:57.875 +00:00] [INFO] [job_scheduler.go:771] ["resume physical table ID from checkpoint"] [category=ddl-ingest] [jobID=4637] ["global sync key"=] ["checkpoint physical ID"=4635]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:141] ["build add index local storage operators"] [jobID=4637] [jobID=4637] [avgRowSize=0] [reader=2] [writer=4]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=0] [task="TableScanTask: id=0, startKey=74800000000000121b5f728000000000000001, endKey=74800000000000121b5f728000000000002001"]
+[2026/07/11 16:28:57.889 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=1] [task="TableScanTask: id=1, startKey=74800000000000121b5f728000000000002001, endKey=74800000000000121b5f728000000000004001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=2] [task="TableScanTask: id=2, startKey=74800000000000121b5f728000000000004001, endKey=74800000000000121b5f728000000000006001"]
+[2026/07/11 16:28:57.935 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=3] [task="TableScanTask: id=3, startKey=74800000000000121b5f728000000000006001, endKey=74800000000000121b5f728000000000008001"]
+[2026/07/11 16:28:57.945 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=4] [task="TableScanTask: id=4, startKey=74800000000000121b5f728000000000008001, endKey=74800000000000121b5f72800000000000a001"]
+[2026/07/11 16:28:57.947 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=5] [task="TableScanTask: id=5, startKey=74800000000000121b5f72800000000000a001, endKey=74800000000000121b5f72800000000000c001"]
+[2026/07/11 16:28:57.955 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=6] [task="TableScanTask: id=6, startKey=74800000000000121b5f72800000000000c001, endKey=74800000000000121b5f72800000000000e001"]
+[2026/07/11 16:28:57.957 +00:00] [INFO] [backfilling_operators.go:529] ["start a table scan task"] [jobID=4637] [id=7] [task="TableScanTask: id=7, startKey=74800000000000121b5f72800000000000e001, endKey=74800000000000121b5f7280000000000f4a1000"]
+[2026/07/11 16:28:57.970 +00:00] [INFO] [backfilling_operators.go:476] ["table scan operator total count"] [jobID=4637] [count=67536]
+[2026/07/11 16:28:57.993 +00:00] [INFO] [backend.go:285] ["set ingest ts before import"] [engineUUID=f75d9cab-8823-5503-94ba-459a1de580da] [jobID=4637] [ts=0]
+[2026/07/11 16:28:57.995 +00:00] [INFO] [local.go:1468] ["pause pd scheduler of table scope"] [jobID=4637]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1509] ["start import engine"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] ["region ranges"=1] [count=67536] [size=2566368] [maxReqInFlight=0] [maxReqPerSec=0]
+[2026/07/11 16:28:58.016 +00:00] [INFO] [local.go:1131] ["import engine ranges"] [jobID=4637] [len(regionSplitKeys)=2] [splitRangesBatch=2048] [splitRangePerSec=0]
+[2026/07/11 16:28:58.017 +00:00] [INFO] [local.go:1325] ["generate region jobs"] [jobID=4637] [len(jobs)=1] [startOfAllRanges=74800000000000121b5f698000000000000001038000000000000001038000000000000001] [endOfAllRanges=74800000000000121b5f6980000000000000010380000000000f4a100380000000000f4a1000] [startKeyOfFirstRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff0000000103800000ff0000000001000000fc] [endKeyOfLastRegion=7480000000000012ff1b5f698000000000ff0000010380000000ff000f4a1003800000ff00000f4a10000000fd]
+[2026/07/11 16:28:58.087 +00:00] [INFO] [local.go:1528] ["import engine success"] [jobID=4637] [uuid=f75d9cab-8823-5503-94ba-459a1de580da] [size=2566368] [kvs=67536] [importedSize=2566368] [importedCount=67536]
+[2026/07/11 16:28:58.097 +00:00] [INFO] [backend.go:356] ["close one backend for DDL job"] [jobID=4637] ["current memory usage"=0] ["max memory quota"=183637442560]
+[2026/07/11 16:28:58.098 +00:00] [INFO] [reorg.go:435] ["run reorg job done"] [category=ddl] [jobID=4637] ["handled rows"=67536]
+[2026/07/11 16:28:58.158 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609147895709697, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:01.896 +00:00] [INFO] [index.go:1913] ["index backfill state ready to merge"] [category=ddl] ["job ID"=4637] [table=t] [index=idx_b]
+[2026/07/11 16:29:01.956 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:04.461 +00:00] [INFO] [reorg.go:968] ["job get table range"] [category=ddl] [jobID=4637] [physicalTableID=4635] [startKey=74800000000000121b5f69ffff000000000001] [endKey=74800000000000121b5f69ffff000000000001ff]
+[2026/07/11 16:29:04.468 +00:00] [INFO] [job_worker.go:1170] ["schema version doesn't change"] [category=ddl] [jobID=4637]
+[2026/07/11 16:29:04.469 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [index.go:2934] ["start to merge temp index"] [category=ddl] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:1, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"] [reorgInfo="CurrElementType:_idx_,CurrElementID:1,StartKey:74800000000000121b5f69ffff000000000001,EndKey:74800000000000121b5f69ffff000000000001ff,First:false,PhysicalTableID:4635,Ingest mode:true"]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [backfilling.go:533] ["backfill worker exit"] [category=ddl] [worker="backfill-worker 0, tp merge temporary index"] [jobID=4637]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [backfilling.go:533] ["backfill worker exit"] [category=ddl] [worker="backfill-worker 1, tp merge temporary index"] [jobID=4637]
+[2026/07/11 16:29:04.472 +00:00] [INFO] [backfilling.go:533] ["backfill worker exit"] [category=ddl] [worker="backfill-worker 3, tp merge temporary index"] [jobID=4637]
+[2026/07/11 16:29:06.473 +00:00] [INFO] [backfilling.go:1293] ["adjust ddl job config success"] [category=ddl] ["current worker count"=1]
+[2026/07/11 16:29:09.476 +00:00] [INFO] [job_scheduler.go:621] ["transit one job step failed"] [category=ddl] [jobID=4637] [conn=220203884] [error="[kv:9007]Write conflict, txnStartTS=467609149625860102, conflictStartTS=467609149992861699, conflictCommitTS=467609149992861701, key={tableID=281474976710654, tableName=mysql.tidb_ddl_job, handle=4637}, originalKey=748000fffffffffffe5f72800000000000121d, primary={tableID=281474976710654, tableName=mysql.tidb_ddl_job, handle=4637}, originalPrimaryKey=748000fffffffffffe5f72800000000000121d, reason=Optimistic [try again later]"] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:1, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:09.478 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:14.485 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:19.491 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:24.498 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:29.504 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:34.478 +00:00] [WARN] [backfilling.go:455] ["mock backfill post-batch error injected"] [category=ddl] [workerID=2] [failpointValue=tail] [taskID=0]
+[2026/07/11 16:29:34.478 +00:00] [INFO] [backfilling.go:653] ["backfill worker exit on error"] [category=ddl] [worker="backfill-worker 2, tp merge temporary index"] [jobID=4637] [error="mock backfill post-batch error on worker 2"]
+[2026/07/11 16:29:34.478 +00:00] [INFO] [backfilling.go:1196] ["backfill workers successfully processed"] [category=ddl] [element=ID:1,TypeKey:_idx_] ["total added count"=67536] ["start key"=74800000000000121b5f69ffff000000000001]
+[2026/07/11 16:29:34.478 +00:00] [INFO] [reorg.go:435] ["run reorg job done"] [category=ddl] [jobID=4637] ["handled rows"=67536]
+[2026/07/11 16:29:34.538 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:running, SchemaState:write reorganization, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:0, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:34.596 +00:00] [INFO] [delete_range.go:445] ["insert into delete-range indices"] [category=ddl] [jobID=4637] [tableID=4635] [indexIDs="[9223090561878065153]"] [comment="add index: physical table ID(s)"]
+[2026/07/11 16:29:34.601 +00:00] [INFO] [delete_range.go:112] ["add job into delete-range table"] [category=ddl] [jobID=4637] [jobType="add index"]
+[2026/07/11 16:29:34.601 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4637] [conn=220203884] [job="ID:4637, Type:add index, State:synced, SchemaState:public, SchemaID:4633, TableID:4635, RowCount:67536, ArgLen:1, start time: 2026-07-11 16:28:55.11 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467609149625860098, Version: v2, UniqueWarnings:0"]
+[2026/07/11 16:29:34.608 +00:00] [INFO] [executor.go:7380] ["DDL job is finished"] [category=ddl] [jobID=4637]
+OWNER_TAIL_END
+[2026-07-12 00:29:36] done

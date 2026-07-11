@@ -1,0 +1,4 @@
+PREFILL rows=60000 table=`ai_native_issue62531_pinned_broad`.`rows`
+PAUSED hold=15s workers=16 prefill=60000 table=`ai_native_issue62531_pinned_broad`.`rows`
+DDL released and finished, post_release=20s
+GREEN workers=16 prefill=60000 hold=15s post_release=20s insert_ops=549 delete_ops=540 insert_errs=0 delete_errs=0 oracle_delete_ops=246 oracle_select_ops=246 oracle_errs=0 final_rows=350

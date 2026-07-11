@@ -1,0 +1,4 @@
+2026/07/11 14:58:20 CONFIG ddl_kind=add-virtual-generated-index-rich txn_kind=async-commit txn_shape=mixed3 metadata_lock=true hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 14:58:20 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 14:58:20 TXN_RESULT success
+2026/07/11 14:58:20 GREEN txn_kind=async-commit metadata_lock=true

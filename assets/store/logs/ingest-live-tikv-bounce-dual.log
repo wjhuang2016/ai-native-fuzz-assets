@@ -1,0 +1,39 @@
+2026/07/11 00:30:42 prefill progress: 1600000/1600000
+2026/07/11 00:30:43 prefill done, row_count=1600000
+2026/07/11 00:30:45 split table requested: regions=512
+2026/07/11 00:30:45 ddl start: alter table ai_native_ingest_live_probe.rows add unique index uk_c(c), add index idx_d(d)
+2026/07/11 00:30:45 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:46 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:46 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:47 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:47 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:48 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:48 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:49 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:49 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:50 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:50 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:51 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:51 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:52 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:52 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:53 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:53 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:54 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:54 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:55 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:55 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:56 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:56 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:57 ddl job observed: job_id=1533 state=running schema_state=none row_count=0
+2026/07/11 00:30:57 ddl job observed: job_id=1533 state=synced schema_state=none row_count=0
+2026/07/11 00:30:57 observed ddl job: job_id=1533 state=synced schema_state=none row_count=0
+2026/07/11 00:30:57 skip tikv bounce because ddl already reached state=synced before scheduling
+2026/07/11 00:30:59 ddl terminal wait sees: job_id=1533 state=synced schema_state=none row_count=0
+2026/07/11 00:30:59 observed terminal ddl job: job_id=1533 state=synced schema_state=none row_count=0
+2026/07/11 00:30:59 ddl session returned success after 12.041436375s
+2026/07/11 00:30:59 visible indexes after terminal state: [PRIMARY idx_d uk_c]
+2026/07/11 00:31:03 final counts: table_count=1600000 value_count=1600000 d_count=1600000
+2026/07/11 00:31:04 matching ddl history: 1533 | ai_native_ingest_live_probe | rows | alter table multi-schema change | none | 1517 | 1531 | 0 | 2026-07-10 16:30:45.359000 | 2026-07-10 16:30:45.359000 | 2026-07-10 16:30:57.359000 | synced | ingest
+2026/07/11 00:31:04 matching ddl history: 1533 | ai_native_ingest_live_probe | rows | add index /* subjob */ | public | 1517 | 1531 | 1600000 | 2026-07-10 16:30:45.359000 | 2026-07-10 16:30:45.359000 | 2026-07-10 16:30:57.359000 | done | thread=1, batch_size=32, max_node_count=3
+2026/07/11 00:31:04 probe finished cleanly

@@ -1,0 +1,4 @@
+2026/07/11 17:28:20 CONFIG ddl_kind=add-primary-key txn_kind=1pc txn_shape=insert2 metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:28:20 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:28:21 TXN_RESULT success
+2026/07/11 17:28:21 GREEN txn_kind=1pc metadata_lock=true

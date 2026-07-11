@@ -1,0 +1,9 @@
+TXN_ERR:
+DDL_ERR:
+id	b	pad
+1	10	a
+2	2	b
+count(*)
+2
+count(*)
+2

@@ -1,0 +1,10 @@
+=== RUN   TestAINativeOwnerEpochSecondCollisionRED
+    reorg_test.go:78: 
+        	Error Trace:	/Users/bba/pc/tidb/pkg/ddl/reorg_test.go:78
+        	Error:      	Should not be: 1000
+        	Test:       	TestAINativeOwnerEpochSecondCollisionRED
+        	Messages:   	ai-native owner epoch collision evidence: previousOwnerTS=1000 curOwnerTS=1000; a stale reorg result would be accepted because the owner token is second-granularity
+--- FAIL: TestAINativeOwnerEpochSecondCollisionRED (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/pkg/ddl	1.396s
+FAIL

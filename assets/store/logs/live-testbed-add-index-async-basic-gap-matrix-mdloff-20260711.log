@@ -1,0 +1,60 @@
+GAP=0ms REP=1 EXIT=1
+2026/07/11 17:48:35 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:48:35 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:48:38 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:48:38 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=0ms REP=2 EXIT=1
+2026/07/11 17:48:40 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:48:40 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:48:43 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:48:43 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=1ms REP=1 EXIT=1
+2026/07/11 17:48:44 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=1ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:48:44 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:48:47 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:48:47 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=1ms REP=2 EXIT=1
+2026/07/11 17:48:49 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=1ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:48:49 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:48:55 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:48:55 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=2ms REP=1 EXIT=1
+2026/07/11 17:48:56 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=2ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:48:56 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:48:59 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:48:59 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=2ms REP=2 EXIT=1
+2026/07/11 17:49:01 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=2ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:01 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:04 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:49:04 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=5ms REP=1 EXIT=1
+2026/07/11 17:49:05 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=5ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:05 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:08 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:49:09 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=5ms REP=2 EXIT=1
+2026/07/11 17:49:10 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=5ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:10 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:13 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:49:13 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=10ms REP=1 EXIT=1
+2026/07/11 17:49:14 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=10ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:14 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:18 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:49:18 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+
+GAP=10ms REP=2 EXIT=1
+2026/07/11 17:49:19 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=10ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:19 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:22 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 17:49:22 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+

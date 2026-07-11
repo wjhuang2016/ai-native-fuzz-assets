@@ -1,0 +1,36 @@
+testbed: 8220955
+endpoint: root:@tcp(10.2.12.57:32334)/
+date_utc_seen_by_tidb: 2026-07-10
+purpose: target-analysis for target.source.dynamic-state-ingress.pkg-executor-show.v1
+
+SQL shape:
+  DROP DATABASE IF EXISTS ai_state_show_probe;
+  CREATE DATABASE ai_state_show_probe;
+  USE ai_state_show_probe;
+  CREATE TABLE t(id INT PRIMARY KEY, v INT);
+  INSERT INTO t VALUES (1,10);
+  SET @stale_ts = DATE_FORMAT(NOW(6), '%Y-%m-%d %H:%i:%s.%f');
+  DO SLEEP(0.2);
+  INSERT INTO t VALUES (2,20);
+  SELECT 'asof', GROUP_CONCAT(id ORDER BY id) FROM t AS OF TIMESTAMP @stale_ts;
+  SELECT 'current', GROUP_CONCAT(id ORDER BY id) FROM t;
+  SET TRANSACTION READ ONLY AS OF TIMESTAMP @stale_ts;
+  SHOW TABLE STATUS LIKE 't';
+  SELECT 'after_show', GROUP_CONCAT(id ORDER BY id) FROM t;
+  SET TRANSACTION READ ONLY AS OF TIMESTAMP @stale_ts;
+  SELECT 'direct_after_set', GROUP_CONCAT(id ORDER BY id) FROM t;
+
+Observed output:
+  ts                 2026-07-10 02:54:34.003320
+  asof               1
+  current            1,2
+  SHOW TABLE STATUS  returned row for t
+  after_show         1,2
+  direct_after_set   1
+
+Interpretation:
+  SHOW TABLE STATUS does consume the pending SET TRANSACTION READ ONLY AS OF TIMESTAMP state.
+  This is live, user-visible behavior on the supplied testbed, but it is not enough to file a bug.
+  The product contract must decide whether SHOW TABLE STATUS counts as the next query statement.
+  If SHOW is a query statement, consumption is expected. If SET TRANSACTION is intended only for
+  the next user data SELECT/execute statement, this is a semantic-gray state-ingress candidate.

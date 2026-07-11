@@ -1,0 +1,5 @@
+2026/07/11 12:26:55 setup done, rows=120000
+2026/07/11 12:26:55 ddl start: alter table `ai_native_global_move_live1`.`rows` add unique index idx_b(b) global
+2026/07/11 12:26:56 ddl active window observed: job_id=2500 state=running schema_state=write reorganization row_count=0
+2026/07/11 12:27:11 ddl finished successfully in 15.849479167s
+2026/07/11 12:27:12 probe finished cleanly

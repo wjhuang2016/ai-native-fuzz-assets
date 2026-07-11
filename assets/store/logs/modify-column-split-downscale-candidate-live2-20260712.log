@@ -1,0 +1,58 @@
+[2026-07-12 00:05:00] start DB=ai_native_modcol_split_downscale2_20260712
+PREFILL_OFFSET=1
+PREFILL_OFFSET=2
+PREFILL_OFFSET=4
+PREFILL_OFFSET=8
+PREFILL_OFFSET=16
+PREFILL_OFFSET=32
+PREFILL_OFFSET=64
+PREFILL_OFFSET=128
+PREFILL_OFFSET=256
+PREFILL_OFFSET=512
+PREFILL_OFFSET=1024
+PREFILL_OFFSET=2048
+PREFILL_OFFSET=4096
+PREFILL_OFFSET=8192
+PREFILL_OFFSET=16384
+PREFILL_OFFSET=32768
+COUNT_BEFORE=65536
+SPLIT_OUT=8	1
+FAILPOINT_CODES err=204 sleep=204
+DDL_PID=36818
+JOB_ID=4602
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	0	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	0	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	0	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	0	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	0	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	0	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	57344	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	57344	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	57344	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+STATE_LINE=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	write reorganization	4598	4600	57344	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	NULL	running	
+DDL_RC=1
+DDL_OUT_BEGIN
+ERROR 1105 (HY000) at line 1: mock backfill post-batch error on worker 3
+DDL_OUT_END
+FINAL_JOB=4602	ai_native_modcol_split_downscale2_20260712	t	modify column	none	4598	4600	57344	2026-07-11 16:05:07.810000	2026-07-11 16:05:07.909000	2026-07-11 16:05:31.759000	rollback done	
+SHOW_CREATE_BEGIN
+*************************** 1. row ***************************
+t
+CREATE TABLE `t` (
+  `id` int NOT NULL,
+  `val0` int NOT NULL,
+  `val1` int NOT NULL,
+  `padding` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,
+  KEY `val0_idx` (`val0`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+SHOW_CREATE_END
+ROW_COUNT=65536
+FORMULA_BAD=0
+ADMIN_CHECK_RC=0
+ADMIN_CHECK_OUT=
+SAMPLE_DIFF_BEGIN
+use	4
+ignore	4
+SAMPLE_DIFF_END
+[2026-07-12 00:05:32] done

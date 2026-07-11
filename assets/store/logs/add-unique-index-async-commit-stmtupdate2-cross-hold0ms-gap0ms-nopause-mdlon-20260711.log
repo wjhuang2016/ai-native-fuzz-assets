@@ -1,0 +1,5 @@
+2026/07/11 17:36:12 CONFIG ddl_kind=add-unique-index txn_kind=async-commit txn_shape=stmtupdate2 metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:36:12 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:36:12 TXN_RESULT success
+2026/07/11 17:36:13 probe failed: success oracle failed: unexpected final rows: got=[1:10] want=[1:10 2:20]
+exit status 1

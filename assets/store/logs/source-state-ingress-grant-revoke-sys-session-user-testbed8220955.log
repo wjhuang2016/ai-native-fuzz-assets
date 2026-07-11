@@ -1,0 +1,109 @@
+# 2026-07-10T03:21:06Z grant/revoke sys-session user state probe on testbed 8220955
+# TiDB version
+*************************** 1. row ***************************
+Release Version: v9.0.0-beta.2.pre-1895-g5c9198e948
+Edition: Community
+Git Commit Hash: 5c9198e9484db852b8477ce0014e0422ff9ec6a9
+Git Branch: HEAD
+UTC Build Time: 2026-06-22 02:44:25
+GoVersion: go1.25.10
+Race Enabled: false
+Check Table Before Drop: false
+Store: tikv
+Kernel Type: Classic
+# setup
+--------------
+DROP DATABASE IF EXISTS ai_grant_bug
+--------------
+
+Query OK, 0 rows affected (0.016 sec)
+
+--------------
+CREATE DATABASE ai_grant_bug
+--------------
+
+Query OK, 0 rows affected (0.040 sec)
+
+--------------
+CREATE TABLE ai_grant_bug.t(id INT PRIMARY KEY)
+--------------
+
+Query OK, 0 rows affected (0.040 sec)
+
+--------------
+DROP USER IF EXISTS 'ai_grantor_a'@'%'
+--------------
+
+Query OK, 0 rows affected, 1 warning (0.030 sec)
+
+--------------
+DROP USER IF EXISTS 'ai_grantor_b'@'%'
+--------------
+
+Query OK, 0 rows affected, 1 warning (0.031 sec)
+
+--------------
+DROP USER IF EXISTS 'ai_target'@'%'
+--------------
+
+Query OK, 0 rows affected, 1 warning (0.032 sec)
+
+--------------
+CREATE USER 'ai_grantor_a'@'%'
+--------------
+
+Query OK, 0 rows affected (0.038 sec)
+
+--------------
+CREATE USER 'ai_grantor_b'@'%'
+--------------
+
+Query OK, 0 rows affected (0.029 sec)
+
+--------------
+CREATE USER 'ai_target'@'%'
+--------------
+
+Query OK, 0 rows affected (0.029 sec)
+
+--------------
+GRANT ALL PRIVILEGES ON ai_grant_bug.* TO 'ai_grantor_a'@'%' WITH GRANT OPTION
+--------------
+
+Query OK, 0 rows affected (0.030 sec)
+
+--------------
+GRANT ALL PRIVILEGES ON ai_grant_bug.* TO 'ai_grantor_b'@'%' WITH GRANT OPTION
+--------------
+
+Query OK, 0 rows affected (0.030 sec)
+
+Bye
+# grantor_a grants SELECT, INSERT
+--------------
+GRANT SELECT, INSERT ON ai_grant_bug.t TO 'ai_target'@'%'
+--------------
+
+Query OK, 0 rows affected (0.143 sec)
+
+Bye
+# after grantor_a grant
++-----------+------+--------------+------------+----------------+---------------+---------------+
+| User      | Host | DB           | Table_name | Grantor        | Table_priv    | Column_priv   |
++-----------+------+--------------+------------+----------------+---------------+---------------+
+| ai_target | %    | ai_grant_bug | t          | ai_grantor_a@% | Select,Insert | Select,Insert |
++-----------+------+--------------+------------+----------------+---------------+---------------+
+# grantor_b revokes SELECT only
+--------------
+REVOKE SELECT ON ai_grant_bug.t FROM 'ai_target'@'%'
+--------------
+
+Query OK, 0 rows affected (0.209 sec)
+
+Bye
+# after grantor_b revoke: expected Grantor to identify ai_grantor_b if revoke updates by current actor
++-----------+------+--------------+------------+---------+------------+-------------+
+| User      | Host | DB           | Table_name | Grantor | Table_priv | Column_priv |
++-----------+------+--------------+------------+---------+------------+-------------+
+| ai_target | %    | ai_grant_bug | t          |         | Insert     | Insert      |
++-----------+------+--------------+------------+---------+------------+-------------+

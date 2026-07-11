@@ -1,0 +1,4 @@
+POLL[1]=4612	ai_native_modcol_split_downscale4_20260712	t	modify column	write reorganization	4608	4610	57344	2026-07-11 16:08:52.209000	2026-07-11 16:08:52.209000	NULL	running	
+TRIGGER_AT row_count=57344 state=write reorganization
+DOWNSCALE_RC=0
+DOWNSCALE_OUT=

@@ -1,0 +1,13 @@
+[2026-07-12 01:16:04] start
+WATERMARK=4715
+INGEST_STAGE=4716	add index	write reorganization	running	0
+INGEST_STAGE=4716	add index	write reorganization	running	0
+INGEST_STAGE=4716	add index	write reorganization	running	0
+INGEST_STAGE=4716	add index	write reorganization	running	0
+INGEST_STAGE=4716	add index	write reorganization	running	0
+INGEST_STAGE=4716	add index	write reorganization	running	0
+INGEST_STAGE=4716	add index	write reorganization	running	32000
+INGEST_STAGE=4716	add index	write reorganization	running	32000
+INGEST_STAGE=4716	add index	write reorganization	running	32000
+JOB_ID=4716
+COUNT_AFTER_STAGE1=33000

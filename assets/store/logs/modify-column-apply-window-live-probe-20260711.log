@@ -1,0 +1,2 @@
+PAUSED inferred_by_runtime=true wait=2s
+GREEN table=`ai_native_issue62531_apply_window`.`rows` rows=128 batch=32

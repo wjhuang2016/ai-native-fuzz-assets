@@ -1,0 +1,4 @@
+2026/07/11 12:57:34 CONFIG ddl_kind=add-unique-index metadata_lock=true hold=6s ddl_start_gap=1s expect_schema_changed=false
+2026/07/11 12:57:41 AFTER_HOLD ddl_status=running hold=6s
+2026/07/11 12:57:41 TXN_RESULT success
+2026/07/11 12:57:41 GREEN metadata_lock=true

@@ -1,0 +1,6 @@
+=== RUN   TestAINativeS3StorageCreateUploadPartFailureThenCloseRED
+    client_test.go:499: ai-native s3 storage terminal evidence: writeErr=ai-native mock upload part failed closeErr=<nil> completeCalls=1 completedParts=1; after a buffered UploadPart failure Close must not complete a partial object and must preserve the root error
+--- FAIL: TestAINativeS3StorageCreateUploadPartFailureThenCloseRED (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/pkg/objstore/s3store	0.584s
+FAIL

@@ -1,0 +1,7 @@
+# github.com/pingcap/tidb/br/pkg/storage.test
+ld: warning: -bind_at_load is deprecated on macOS
+=== RUN   TestMultiUploadErrorNotOverwritten
+[2026/07/10 04:24:01.204 +08:00] [WARN] [s3.go:1049] ["upload to s3 failed"] [filename=file] [error="mock error"] [errorVerbose="mock error\ngithub.com/pingcap/tidb/br/pkg/storage_test.TestMultiUploadErrorNotOverwritten\n\t/private/tmp/ai-native-48164-fixed/br/pkg/storage/s3_test.go:493\ntesting.tRunner\n\t/Users/bba/.gvm/gos/go1.21.0/src/testing/testing.go:1595\nruntime.goexit\n\t/Users/bba/.gvm/gos/go1.21.0/src/runtime/asm_arm64.s:1197"]
+--- PASS: TestMultiUploadErrorNotOverwritten (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/br/pkg/storage	1.924s

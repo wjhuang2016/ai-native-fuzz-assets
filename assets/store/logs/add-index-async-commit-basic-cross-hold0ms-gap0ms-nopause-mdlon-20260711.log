@@ -1,0 +1,4 @@
+2026/07/11 15:10:31 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 15:10:31 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 15:10:31 TXN_RESULT success
+2026/07/11 15:10:31 GREEN txn_kind=async-commit metadata_lock=true

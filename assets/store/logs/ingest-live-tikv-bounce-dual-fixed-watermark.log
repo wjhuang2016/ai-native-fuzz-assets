@@ -1,0 +1,89 @@
+2026/07/11 00:34:02 prefill progress: 1600000/1600000
+2026/07/11 00:34:02 prefill done, row_count=1600000
+2026/07/11 00:34:04 split table requested: regions=512
+2026/07/11 00:34:04 ddl job watermark before submit: 1537
+2026/07/11 00:34:04 ddl start: alter table ai_native_ingest_live_probe.rows add unique index uk_c(c), add index idx_d(d)
+2026/07/11 00:34:05 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:05 ddl entered active fault window: job_id=1541 schema_state=write reorganization row_count=0
+2026/07/11 00:34:05 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=0s
+2026/07/11 00:34:05 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:05 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=500ms
+2026/07/11 00:34:06 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:06 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=1s
+2026/07/11 00:34:06 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:06 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=1.5s
+2026/07/11 00:34:07 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:07 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=1.9s
+2026/07/11 00:34:07 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:07 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=2.7s
+2026/07/11 00:34:08 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:08 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=2.9s
+2026/07/11 00:34:08 ddl job observed: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:08 ddl active fault window: job_id=1541 schema_state=write reorganization row_count=0 active_for=3.5s
+2026/07/11 00:34:08 observed ddl job: job_id=1541 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:34:08 current tikv pod tc-tikv-0: uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f phase=Running ready=true
+2026/07/11 00:34:08 tikv bounce 1/2 start: pod=tc-tikv-0 uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f
+2026/07/11 00:34:09 delete tikv pod tc-tikv-0 ok: Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "tc-tikv-0" force deleted
+2026/07/11 00:34:11 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Pending ready=false
+2026/07/11 00:34:13 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:15 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:17 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:19 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:21 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:23 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:25 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:27 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:29 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:31 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:33 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:35 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:37 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:39 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:41 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:43 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:45 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:47 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:49 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:51 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:53 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:55 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=false
+2026/07/11 00:34:57 tikv pod tc-tikv-0 status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=true
+2026/07/11 00:34:57 tikv bounce 1/2 done: pod=tc-tikv-0 new_uid=c526cad9-5de7-47ca-8045-266bf0322954
+2026/07/11 00:35:00 current tikv pod tc-tikv-1: uid=13933403-64b9-4a07-b4e5-ff9338537a70 phase=Running ready=true
+2026/07/11 00:35:00 tikv bounce 2/2 start: pod=tc-tikv-1 uid=13933403-64b9-4a07-b4e5-ff9338537a70
+2026/07/11 00:35:00 delete tikv pod tc-tikv-1 ok: Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "tc-tikv-1" force deleted
+2026/07/11 00:35:02 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Pending ready=false
+2026/07/11 00:35:04 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:06 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:08 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:10 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:12 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:14 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:16 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:18 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:20 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:22 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:24 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:26 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:28 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:30 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:32 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:34 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:36 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:38 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:40 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:42 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=false
+2026/07/11 00:35:44 tikv pod tc-tikv-1 status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=true
+2026/07/11 00:35:44 tikv bounce 2/2 done: pod=tc-tikv-1 new_uid=a0adb41e-c6e7-445a-82ec-f1896e77f151
+2026/07/11 00:35:45 ddl terminal wait sees: job_id=1541 state=done schema_state=public row_count=1600000
+2026/07/11 00:35:45 observed terminal ddl job: job_id=1541 state=done schema_state=public row_count=1600000
+2026/07/11 00:35:45 ddl session returned success after 8.949629958s
+2026/07/11 00:35:47 tikv pod tc-tikv-0 recovery status: uid=c526cad9-5de7-47ca-8045-266bf0322954 phase=Running ready=true
+2026/07/11 00:35:49 tikv pod tc-tikv-1 recovery status: uid=a0adb41e-c6e7-445a-82ec-f1896e77f151 phase=Running ready=true
+2026/07/11 00:35:49 visible indexes after terminal state: [PRIMARY idx_d uk_c]
+2026/07/11 00:35:55 final counts: table_count=1600000 value_count=1600000 d_count=1600000
+2026/07/11 00:35:59 matching ddl history: 1541 | ai_native_ingest_live_probe | rows | alter table multi-schema change | none | 1517 | 1539 | 0 | 2026-07-10 16:34:04.659000 | 2026-07-10 16:34:04.659000 | 2026-07-10 16:34:13.609000 | synced | ingest
+2026/07/11 00:35:59 matching ddl history: 1541 | ai_native_ingest_live_probe | rows | add index /* subjob */ | public | 1517 | 1539 | 1600000 | 2026-07-10 16:34:04.659000 | 2026-07-10 16:34:04.659000 | 2026-07-10 16:34:13.609000 | done | thread=1, batch_size=32, max_node_count=3
+2026/07/11 00:35:59 probe finished cleanly

@@ -1,0 +1,4 @@
+2026/07/11 13:34:26 CONFIG ddl_kind=multi-add-index-rich txn_kind=1pc metadata_lock=false hold=1.3s ddl_start_gap=1s expect_schema_changed=false
+2026/07/11 13:34:28 AFTER_HOLD ddl_status=running hold=1.3s
+2026/07/11 13:34:30 TXN_RESULT success
+2026/07/11 13:34:30 GREEN txn_kind=1pc metadata_lock=false

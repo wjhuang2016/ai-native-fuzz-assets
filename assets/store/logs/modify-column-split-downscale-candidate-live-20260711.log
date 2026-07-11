@@ -1,0 +1,63 @@
+[2026-07-12 00:02:26] start DB=ai_native_modcol_split_downscale_20260711
+START_LOG_LINE=23887
+PREFILL_OFFSET=1
+PREFILL_OFFSET=2
+PREFILL_OFFSET=4
+PREFILL_OFFSET=8
+PREFILL_OFFSET=16
+PREFILL_OFFSET=32
+PREFILL_OFFSET=64
+PREFILL_OFFSET=128
+PREFILL_OFFSET=256
+PREFILL_OFFSET=512
+PREFILL_OFFSET=1024
+PREFILL_OFFSET=2048
+PREFILL_OFFSET=4096
+PREFILL_OFFSET=8192
+PREFILL_OFFSET=16384
+PREFILL_OFFSET=32768
+COUNT_BEFORE=65536
+SPLIT_OUT=8	1
+FAILPOINT_CODES err=204 sleep=204
+DDL_PID=34231
+JOB_ID=4597
+STATE_LINE=4597	ai_native_modcol_split_downscale_20260711	t	modify column	write reorganization	4593	4595	0	2026-07-11 16:02:35.009000	2026-07-11 16:02:35.009000	NULL	running	
+INJECTION_NOT_OBSERVED_BEFORE_TIMEOUT
+DDL_RC=1
+DDL_OUT_BEGIN
+ERROR 1105 (HY000) at line 1: mock backfill post-batch error on worker 3
+DDL_OUT_END
+FINAL_JOB=4597	ai_native_modcol_split_downscale_20260711	t	modify column	none	4593	4595	57344	2026-07-11 16:02:35.009000	2026-07-11 16:02:35.009000	2026-07-11 16:02:48.859000	rollback done	
+SHOW_CREATE_BEGIN
+*************************** 1. row ***************************
+t
+CREATE TABLE `t` (
+  `id` int NOT NULL,
+  `val0` int NOT NULL,
+  `val1` int NOT NULL,
+  `padding` varchar(32) DEFAULT NULL,
+  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,
+  KEY `val0_idx` (`val0`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+SHOW_CREATE_END
+ROW_COUNT=65536
+FORMULA_BAD=0
+ADMIN_CHECK_RC=0
+ADMIN_CHECK_OUT=
+SAMPLE_DIFF_BEGIN
+use	4
+ignore	4
+SAMPLE_DIFF_END
+LOG_SNIP_BEGIN
+[2026/07/11 16:02:27.410 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4592] [conn=220201596] [job="ID:4592, Type:drop schema, State:synced, SchemaState:none, SchemaID:4590, TableID:0, RowCount:0, ArgLen:1, start time: 2026-07-11 16:02:27.16 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:02:27.550 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4594] [conn=220201596] [job="ID:4594, Type:create schema, State:synced, SchemaState:public, SchemaID:4593, TableID:0, RowCount:0, ArgLen:0, start time: 2026-07-11 16:02:27.409 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:02:27.804 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4596] [conn=220201596] [job="ID:4596, Type:create table, State:synced, SchemaState:public, SchemaID:4593, TableID:4595, RowCount:0, ArgLen:0, start time: 2026-07-11 16:02:27.659 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:0, Version: v2"]
+[2026/07/11 16:02:47.813 +00:00] [WARN] [backfilling.go:455] ["mock backfill post-batch error injected"] [category=ddl] [workerID=3] [failpointValue=3] [taskID=1]
+[2026/07/11 16:02:47.813 +00:00] [WARN] [backfilling.go:1205] ["backfill worker failed"] [category=ddl] ["job ID"=4597] ["total added count"=57344] ["start key"=7480000000000011f35f728000000000000001] ["result next key"=7480000000000011f35f728000000000002001] [error="mock backfill post-batch error on worker 3"]
+[2026/07/11 16:02:47.813 +00:00] [WARN] [reorg.go:431] ["run reorg job done"] [category=ddl] [jobID=4597] ["handled rows"=57344] [error="mock backfill post-batch error on worker 3"]
+[2026/07/11 16:02:47.819 +00:00] [WARN] [modify_column.go:1399] ["run modify column job failed, convert job to rollback"] [category=ddl] [job="ID:4597, Type:modify column, State:running, SchemaState:write reorganization, SchemaID:4593, TableID:4595, RowCount:57344, ArgLen:1, start time: 2026-07-11 16:02:35.009 +0000 UTC, Err:<nil>, ErrCount:0, SnapshotVersion:467608733681975297, Version: v2, analyze_state:0, stage:1, UniqueWarnings:0"] [error="mock backfill post-batch error on worker 3"]
+[2026/07/11 16:02:48.824 +00:00] [INFO] [job_worker.go:854] ["run one job step"] [category=ddl] [jobID=4597] [conn=220201634] [job="ID:4597, Type:modify column, State:rollingback, SchemaState:write reorganization, SchemaID:4593, TableID:4595, RowCount:57344, ArgLen:0, start time: 2026-07-11 16:02:35.009 +0000 UTC, Err:[ddl:-1]mock backfill post-batch error on worker 3, ErrCount:1, SnapshotVersion:467608733681975297, Version: v2, analyze_state:0, stage:1, UniqueWarnings:0"]
+[2026/07/11 16:02:48.881 +00:00] [INFO] [schema_version.go:397] ["wait schema version synced success"] [category=ddl] [ver=7878] [checkAssumedSvr=false] ["take time"=50.47419ms] [job="ID:4597, Type:modify column, State:rollback done, SchemaState:none, SchemaID:4593, TableID:4595, RowCount:57344, ArgLen:1, start time: 2026-07-11 16:02:35.009 +0000 UTC, Err:[ddl:-1]mock backfill post-batch error on worker 3, ErrCount:1, SnapshotVersion:467608733681975297, Version: v2, analyze_state:0, stage:1, UniqueWarnings:0"] [summary="server count: 2"]
+[2026/07/11 16:02:48.886 +00:00] [INFO] [job_worker.go:447] ["finish DDL job"] [category=ddl] [jobID=4597] [conn=220201634] [job="ID:4597, Type:modify column, State:rollback done, SchemaState:none, SchemaID:4593, TableID:4595, RowCount:57344, ArgLen:1, start time: 2026-07-11 16:02:35.009 +0000 UTC, Err:[ddl:-1]mock backfill post-batch error on worker 3, ErrCount:1, SnapshotVersion:467608733681975297, Version: v2, analyze_state:0, stage:1, UniqueWarnings:0"]
+LOG_SNIP_END
+[2026-07-12 00:03:35] done

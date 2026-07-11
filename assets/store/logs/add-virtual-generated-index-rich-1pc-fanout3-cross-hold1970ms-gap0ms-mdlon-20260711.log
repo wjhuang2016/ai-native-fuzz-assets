@@ -1,0 +1,2 @@
+2026/07/11 14:17:18 probe failed: setup probe: create table `ai_native_async_cross`.`rows` (id int primary key, b int not null, pad varchar(32) not null default '', g int as (b + char_length(pad)) virtual): Error 1050 (42S01): Table 'ai_native_async_cross.rows' already exists
+exit status 1

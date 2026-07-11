@@ -1,0 +1,5 @@
+2026/07/11 12:28:56 setup done, rows=120000
+2026/07/11 12:28:56 ddl start: alter table `ai_native_async_frontier_live1`.`rows` add index idx_b(b)
+2026/07/11 12:28:57 ddl active window observed: job_id=2507 state=running schema_state=write reorganization row_count=0
+2026/07/11 12:29:17 ddl finished successfully in 21.280258083s
+2026/07/11 12:29:23 probe finished cleanly, touched_rows=20

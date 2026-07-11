@@ -1,0 +1,45 @@
+== bridge-proximal live matrix ==
+2026-07-11 01:05:14 +0800
+dsn=mysql -h127.0.0.1 -P14000 -uroot
+
+-- clear failpoints --
+github.com/pingcap/tidb/pkg/ddl/mockDDLIngestClassifierErr=
+github.com/pingcap/tidb/pkg/server/enableTestAPI=return(true)
+
+-- add index bridge RED (t6) --
+prefill_count_t6
+100000
+ERROR 1105 (HY000) at line 1: region has no leader, region '42'
+add_index_bridge_red_rc=1
+JOB_ID	DB_NAME	TABLE_NAME	JOB_TYPE	SCHEMA_STATE	SCHEMA_ID	TABLE_ID	ROW_COUNT	CREATE_TIME	START_TIME	END_TIME	STATE	COMMENTS
+1569	ai_live_fp	t6	add index	none	1542	1567	0	2026-07-10 17:05:16.909000	2026-07-10 17:05:17.259000	2026-07-10 17:05:17.409000	rollback done	ingest, thread=1, batch_size=32, max_node_count=3
+1568	ai_live_fp	t6	create table	public	1542	1567	0	2026-07-10 17:05:15.210000	2026-07-10 17:05:15.210000	2026-07-10 17:05:15.210000	synced	
+
+-- add index bridge GREEN control (t7) --
+prefill_count_t7
+100000
+add_index_bridge_green_rc=0
+JOB_ID	DB_NAME	TABLE_NAME	JOB_TYPE	SCHEMA_STATE	SCHEMA_ID	TABLE_ID	ROW_COUNT	CREATE_TIME	START_TIME	END_TIME	STATE	COMMENTS
+1572	ai_live_fp	t7	add index	public	1542	1570	100000	2026-07-10 17:05:19.159000	2026-07-10 17:05:19.459000	2026-07-10 17:05:20.060000	synced	ingest, thread=1, batch_size=32, max_node_count=3
+1571	ai_live_fp	t7	create table	public	1542	1570	0	2026-07-10 17:05:17.759000	2026-07-10 17:05:17.759000	2026-07-10 17:05:17.809000	synced	
+
+-- add primary key bridge RED (tpk3) --
+prefill_count_tpk3
+100000
+ERROR 1105 (HY000) at line 1: region has no leader, region '42'
+add_pk_bridge_red_rc=1
+JOB_ID	DB_NAME	TABLE_NAME	JOB_TYPE	SCHEMA_STATE	SCHEMA_ID	TABLE_ID	ROW_COUNT	CREATE_TIME	START_TIME	END_TIME	STATE	COMMENTS
+1575	ai_live_fp	tpk3	add primary key	none	1542	1573	0	2026-07-10 17:05:21.409000	2026-07-10 17:05:21.409000	2026-07-10 17:05:21.560000	rollback done	ingest, thread=1, batch_size=32, max_node_count=3
+1574	ai_live_fp	tpk3	create table	public	1542	1573	0	2026-07-10 17:05:20.360000	2026-07-10 17:05:20.360000	2026-07-10 17:05:20.360000	synced	
+
+-- add primary key bridge GREEN control (tpk4) --
+prefill_count_tpk4
+100000
+add_pk_bridge_green_rc=0
+JOB_ID	DB_NAME	TABLE_NAME	JOB_TYPE	SCHEMA_STATE	SCHEMA_ID	TABLE_ID	ROW_COUNT	CREATE_TIME	START_TIME	END_TIME	STATE	COMMENTS
+1578	ai_live_fp	tpk4	add primary key	public	1542	1576	100000	2026-07-10 17:05:22.909000	2026-07-10 17:05:22.909000	2026-07-10 17:05:23.459000	synced	ingest, thread=1, batch_size=32, max_node_count=3
+1577	ai_live_fp	tpk4	create table	public	1542	1576	0	2026-07-10 17:05:21.959000	2026-07-10 17:05:21.959000	2026-07-10 17:05:22.009000	synced	
+
+-- final failpoint list --
+github.com/pingcap/tidb/pkg/ddl/mockDDLIngestClassifierErr=
+github.com/pingcap/tidb/pkg/server/enableTestAPI=return(true)

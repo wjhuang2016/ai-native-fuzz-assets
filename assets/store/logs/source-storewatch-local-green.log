@@ -1,0 +1,10 @@
+=== RUN   TestOnRegister
+--- PASS: TestOnRegister (0.00s)
+=== RUN   TestOnOffline
+--- PASS: TestOnOffline (0.00s)
+=== RUN   TestOnReboot
+--- PASS: TestOnReboot (0.00s)
+=== RUN   TestAINativeOnRebootWhenStoreRestartsWithinSameSecond
+--- PASS: TestAINativeOnRebootWhenStoreRestartsWithinSameSecond (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/br/pkg/utils/storewatch	0.758s

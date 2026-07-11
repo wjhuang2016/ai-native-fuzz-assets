@@ -1,0 +1,4 @@
+=== RUN   TestAINativeOwnerRetirePreservesProcessingIDs
+--- PASS: TestAINativeOwnerRetirePreservesProcessingIDs (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/pkg/ddl	2.113s

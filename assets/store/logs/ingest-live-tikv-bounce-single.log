@@ -1,0 +1,46 @@
+2026/07/11 00:26:51 prefill progress: 800000/800000
+2026/07/11 00:26:51 prefill done, row_count=800000
+2026/07/11 00:26:52 split table requested: regions=256
+2026/07/11 00:26:52 ddl start: alter table ai_native_ingest_live_probe.rows add index idx_c(c)
+2026/07/11 00:26:53 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:53 ddl entered active fault window: job_id=1521 schema_state=write reorganization row_count=0
+2026/07/11 00:26:53 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=0s
+2026/07/11 00:26:53 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:53 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=500ms
+2026/07/11 00:26:54 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:54 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=1s
+2026/07/11 00:26:54 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:54 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=1.5s
+2026/07/11 00:26:55 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:55 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=2s
+2026/07/11 00:26:55 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:55 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=2.5s
+2026/07/11 00:26:56 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:56 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=3s
+2026/07/11 00:26:56 ddl job observed: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:56 ddl active fault window: job_id=1521 schema_state=write reorganization row_count=0 active_for=3.5s
+2026/07/11 00:26:56 observed ddl job: job_id=1521 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:26:56 current tikv pod tc-tikv-0: uid=632915dd-2f86-41d6-b64d-a5114069731d phase=Running ready=true
+2026/07/11 00:26:56 tikv bounce 1/1 start: pod=tc-tikv-0 uid=632915dd-2f86-41d6-b64d-a5114069731d
+2026/07/11 00:26:57 delete tikv pod tc-tikv-0 ok: Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "tc-tikv-0" force deleted
+2026/07/11 00:26:59 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Pending ready=false
+2026/07/11 00:27:01 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:03 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:05 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:07 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:09 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:11 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:13 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:15 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:17 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=false
+2026/07/11 00:27:19 tikv pod tc-tikv-0 status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=true
+2026/07/11 00:27:19 tikv bounce 1/1 done: pod=tc-tikv-0 new_uid=22a95d37-12af-4037-ba79-d21452fda336
+2026/07/11 00:27:20 ddl terminal wait sees: job_id=1521 state=synced schema_state=public row_count=800000
+2026/07/11 00:27:20 observed terminal ddl job: job_id=1521 state=synced schema_state=public row_count=800000
+2026/07/11 00:27:20 ddl session returned success after 6.023175584s
+2026/07/11 00:27:22 tikv pod tc-tikv-0 recovery status: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=true
+2026/07/11 00:27:22 visible indexes after terminal state: [PRIMARY idx_c]
+2026/07/11 00:27:25 final counts: table_count=800000 value_count=800000 d_count=800000
+2026/07/11 00:27:25 matching ddl history: 1521 | ai_native_ingest_live_probe | rows | add index | public | 1517 | 1519 | 800000 | 2026-07-10 16:26:52.909000 | 2026-07-10 16:26:52.909000 | 2026-07-10 16:26:58.709000 | synced | ingest, thread=1, batch_size=32, max_node_count=3
+2026/07/11 00:27:25 probe finished cleanly

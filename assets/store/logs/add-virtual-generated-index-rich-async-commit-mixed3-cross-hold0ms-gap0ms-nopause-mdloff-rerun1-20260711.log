@@ -1,0 +1,5 @@
+2026/07/11 14:59:44 CONFIG ddl_kind=add-virtual-generated-index-rich txn_kind=async-commit txn_shape=mixed3 metadata_lock=false pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 14:59:44 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 14:59:47 TXN_RESULT err=Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+2026/07/11 14:59:47 probe failed: unexpected txn error: Error 8028 (HY000): Information schema is changed during the execution of the statement(for example, table definition may be updated by other DDL ran in parallel). If you see this error often, try increasing `tidb_max_delta_schema_count`. [try again later]
+exit status 1

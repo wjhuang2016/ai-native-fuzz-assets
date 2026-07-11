@@ -1,0 +1,2 @@
+PAUSED job_id=2353 row_count=5000 state=running schema_state=write reorganization dml_ops=69
+GREEN job_id=2353 dml_ops=69 dist_task=true fast_reorg=true

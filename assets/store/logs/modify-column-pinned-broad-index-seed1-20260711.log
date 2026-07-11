@@ -1,0 +1,5 @@
+PREFILL rows=120000 table=`ai_native_issue62531_pinned_broad`.`rows`
+CONFIG seed_base=1 rows_per_op=0 with_index=true workers=16 oracle_workers=0 prefill=120000 max_val0=1000 hold=20s post_release=40s
+PAUSED hold=20s workers=16 prefill=120000 table=`ai_native_issue62531_pinned_broad`.`rows`
+DDL released and finished, post_release=40s
+GREEN workers=16 prefill=120000 hold=20s post_release=40s insert_ops=812 delete_ops=807 insert_errs=0 delete_errs=0 oracle_delete_ops=0 oracle_select_ops=0 oracle_errs=0 final_rows=790

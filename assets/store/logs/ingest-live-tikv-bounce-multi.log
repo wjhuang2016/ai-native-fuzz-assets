@@ -1,0 +1,66 @@
+2026/07/11 00:29:12 prefill progress: 1600000/1600000
+2026/07/11 00:29:13 prefill done, row_count=1600000
+2026/07/11 00:29:14 split table requested: regions=512
+2026/07/11 00:29:14 ddl start: alter table ai_native_ingest_live_probe.rows add unique index uk_c(c), add index idx_d(d)
+2026/07/11 00:29:15 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:15 ddl entered active fault window: job_id=1529 schema_state=write reorganization row_count=0
+2026/07/11 00:29:15 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=0s
+2026/07/11 00:29:16 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:16 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=400ms
+2026/07/11 00:29:16 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:16 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=900ms
+2026/07/11 00:29:17 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:17 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=1.4s
+2026/07/11 00:29:17 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:17 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=1.9s
+2026/07/11 00:29:18 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:18 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=2.4s
+2026/07/11 00:29:18 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:18 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=2.9s
+2026/07/11 00:29:19 ddl job observed: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:19 ddl active fault window: job_id=1529 schema_state=write reorganization row_count=0 active_for=3.4s
+2026/07/11 00:29:19 observed ddl job: job_id=1529 state=running schema_state=write reorganization row_count=0
+2026/07/11 00:29:19 current tikv pod tc-tikv-0: uid=22a95d37-12af-4037-ba79-d21452fda336 phase=Running ready=true
+2026/07/11 00:29:19 tikv bounce 1/1 start: pod=tc-tikv-0 uid=22a95d37-12af-4037-ba79-d21452fda336
+2026/07/11 00:29:19 delete tikv pod tc-tikv-0 ok: Warning: Immediate deletion does not wait for confirmation that the running resource has been terminated. The resource may continue to run on the cluster indefinitely.
+pod "tc-tikv-0" force deleted
+2026/07/11 00:29:21 tikv pod tc-tikv-0 status: uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f phase=Pending ready=false
+2026/07/11 00:29:23 tikv pod tc-tikv-0 status: uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f phase=Running ready=false
+2026/07/11 00:29:25 tikv pod tc-tikv-0 status: uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f phase=Running ready=true
+2026/07/11 00:29:25 tikv bounce 1/1 done: pod=tc-tikv-0 new_uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f
+2026/07/11 00:29:26 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:27 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:28 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:30 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:30 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:31 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:32 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:33 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:34 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:35 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:36 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:37 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:38 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:39 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:40 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:41 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:43 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:43 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:44 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:45 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:46 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:47 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:48 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:49 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:50 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:51 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:53 ddl terminal wait sees: job_id=1529 state=running schema_state=write reorganization row_count=1600000
+2026/07/11 00:29:53 ddl terminal wait sees: job_id=1529 state=done schema_state=public row_count=1600000
+2026/07/11 00:29:53 observed terminal ddl job: job_id=1529 state=done schema_state=public row_count=1600000
+2026/07/11 00:29:53 ddl session returned success after 38.666772708s
+2026/07/11 00:29:56 tikv pod tc-tikv-0 recovery status: uid=bbafff4e-94db-4b4d-ba9f-64b1333d485f phase=Running ready=true
+2026/07/11 00:29:56 visible indexes after terminal state: [PRIMARY idx_d uk_c]
+2026/07/11 00:30:01 final counts: table_count=1600000 value_count=1600000 d_count=1600000
+2026/07/11 00:30:01 matching ddl history: 1529 | ai_native_ingest_live_probe | rows | alter table multi-schema change | none | 1517 | 1527 | 0 | 2026-07-10 16:29:15.159000 | 2026-07-10 16:29:15.159000 | 2026-07-10 16:29:53.809000 | synced | ingest
+2026/07/11 00:30:01 matching ddl history: 1529 | ai_native_ingest_live_probe | rows | add index /* subjob */ | public | 1517 | 1527 | 1600000 | 2026-07-10 16:29:15.159000 | 2026-07-10 16:29:15.159000 | 2026-07-10 16:29:53.809000 | done | thread=1, batch_size=32, max_node_count=3
+2026/07/11 00:30:01 probe finished cleanly

@@ -1,0 +1,4 @@
+=== RUN   TestAINativeOwnerEpochRenewalRejectsSameSecondStaleResult
+--- PASS: TestAINativeOwnerEpochRenewalRejectsSameSecondStaleResult (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/pkg/ddl	1.250s

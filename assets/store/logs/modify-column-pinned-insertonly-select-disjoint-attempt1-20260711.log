@@ -1,0 +1,1 @@
+ai-native-probes/modify_column_pinned_broad_delete_scan_probe.go:20:2: no required module provides package github.com/go-sql-driver/mysql: go.mod file not found in current directory or any parent directory; see 'go help modules'

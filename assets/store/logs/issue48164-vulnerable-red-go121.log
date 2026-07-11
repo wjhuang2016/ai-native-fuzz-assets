@@ -1,0 +1,12 @@
+# github.com/pingcap/tidb/br/pkg/storage.test
+ld: warning: -bind_at_load is deprecated on macOS
+=== RUN   TestMultiUploadErrorNotOverwritten
+[2026/07/10 04:24:00.220 +08:00] [WARN] [s3.go:963] ["upload to s3 failed"] [filename=file] [error="mock error"] [errorVerbose="mock error\ngithub.com/pingcap/tidb/br/pkg/storage_test.TestMultiUploadErrorNotOverwritten\n\t/private/tmp/ai-native-48164-vulnerable/br/pkg/storage/s3_test.go:493\ntesting.tRunner\n\t/Users/bba/.gvm/gos/go1.21.0/src/testing/testing.go:1595\nruntime.goexit\n\t/Users/bba/.gvm/gos/go1.21.0/src/runtime/asm_arm64.s:1197"] []
+    s3_test.go:502: 
+        	Error Trace:	/private/tmp/ai-native-48164-vulnerable/br/pkg/storage/s3_test.go:502
+        	Error:      	Error "io: read/write on closed pipe" does not contain "mock error"
+        	Test:       	TestMultiUploadErrorNotOverwritten
+--- FAIL: TestMultiUploadErrorNotOverwritten (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/br/pkg/storage	1.041s
+FAIL

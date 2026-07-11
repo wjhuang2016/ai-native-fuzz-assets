@@ -1,0 +1,36 @@
+GAP=0ms REP=1 EXIT=0
+2026/07/11 17:49:24 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:24 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:24 TXN_RESULT success
+2026/07/11 17:49:24 GREEN txn_kind=async-commit metadata_lock=true
+
+GAP=0ms REP=2 EXIT=0
+2026/07/11 17:49:26 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:26 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:26 TXN_RESULT success
+2026/07/11 17:49:26 GREEN txn_kind=async-commit metadata_lock=true
+
+GAP=5ms REP=1 EXIT=0
+2026/07/11 17:49:28 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=5ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:28 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:28 TXN_RESULT success
+2026/07/11 17:49:28 GREEN txn_kind=async-commit metadata_lock=true
+
+GAP=5ms REP=2 EXIT=0
+2026/07/11 17:49:30 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=5ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:30 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:30 TXN_RESULT success
+2026/07/11 17:49:30 GREEN txn_kind=async-commit metadata_lock=true
+
+GAP=10ms REP=1 EXIT=0
+2026/07/11 17:49:32 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=10ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:32 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:33 TXN_RESULT success
+2026/07/11 17:49:33 GREEN txn_kind=async-commit metadata_lock=true
+
+GAP=10ms REP=2 EXIT=0
+2026/07/11 17:49:34 CONFIG ddl_kind=add-index txn_kind=async-commit txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=10ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:49:34 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:49:35 TXN_RESULT success
+2026/07/11 17:49:35 GREEN txn_kind=async-commit metadata_lock=true
+

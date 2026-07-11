@@ -1,0 +1,5 @@
+PREFILL rows=120000 table=`ai_native_issue62531_pinned_broad`.`rows`
+PAUSED hold=20s workers=16 prefill=120000 table=`ai_native_issue62531_pinned_broad`.`rows`
+DDL released and finished, post_release=40s
+worker 13 delete path hit issue62531 signature on [756..805]: Error 1105 (HY000): [components/tidb_query_executors/src/table_scan_executor.rs:467]: Data is corrupted, missing data for NOT NULL column (offset = 2)
+exit status 1

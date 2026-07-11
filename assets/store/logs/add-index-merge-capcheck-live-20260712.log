@@ -1,0 +1,7 @@
+[2026-07-12 00:24:30] start
+PAUSE_CODE=204 watermark=4626
+JOB_LINE=4627	add index	write reorganization	running	0
+JOB_LINE=4627	add index	write reorganization	running	32768
+JOB_LINE2=4627	add index	write reorganization	running	32768
+PAUSE_OBSERVED
+DDL_RC=0

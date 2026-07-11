@@ -1,0 +1,54 @@
+=== RUN   TestAINativeRetryClassifierGapProbe
+=== RUN   TestAINativeRetryClassifierGapProbe/pd_tso_retry_timeout
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=PD]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=PD]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=PD]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=PD]
+[2026/07/11 00:16:21.816 +08:00] [INFO] [retry.go:80] ["meet un-retryable error"] [error="[PD:client:ErrClientCreateTSOStream]create TSO stream failed, retry timeout"] [info="type: *errors.withStack, value: [PD:client:ErrClientCreateTSOStream]create TSO stream failed, retry timeout"]
+    ai_native_retry_probe_test.go:135: case=pd_tso_retry_timeout raw=false traced=false stacked=false ddl_synth=false lightning=false err=*errors.withStack [PD:client:ErrClientCreateTSOStream]create TSO stream failed, retry timeout
+=== RUN   TestAINativeRetryClassifierGapProbe/ingest_kv_not_leader
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+    ai_native_retry_probe_test.go:135: case=ingest_kv_not_leader raw=false traced=false stacked=false ddl_synth=false lightning=true err=*ingestcli.IngestAPIError [Ingest:NotLeader]mock ingest not leader
+=== RUN   TestAINativeRetryClassifierGapProbe/ingest_kv_region_not_found
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=Ingest]
+    ai_native_retry_probe_test.go:135: case=ingest_kv_region_not_found raw=false traced=false stacked=false ddl_synth=false lightning=true err=*ingestcli.IngestAPIError [Ingest:RegionNotFound]mock ingest region not found
+=== RUN   TestAINativeRetryClassifierGapProbe/ingest_kv_no_leader
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=KV]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=KV]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=KV]
+[2026/07/11 00:16:21.816 +08:00] [WARN] [terror.go:242] ["Unknown error class"] [class=KV]
+    ai_native_retry_probe_test.go:135: case=ingest_kv_no_leader raw=false traced=false stacked=false ddl_synth=false lightning=true err=*ingestcli.IngestAPIError [KV:ErrNoLeader]region has no leader, region '42'
+=== RUN   TestAINativeRetryClassifierGapProbe/grpc_unavailable
+    ai_native_retry_probe_test.go:135: case=grpc_unavailable raw=true traced=true stacked=true ddl_synth=false lightning=true err=*status.Error rpc error: code = Unavailable desc = transport is closing
+=== RUN   TestAINativeRetryClassifierGapProbe/grpc_dataloss
+    ai_native_retry_probe_test.go:135: case=grpc_dataloss raw=true traced=true stacked=true ddl_synth=false lightning=true err=*status.Error rpc error: code = DataLoss desc = stream terminated
+=== RUN   TestAINativeRetryClassifierGapProbe/mysql_invalid_conn
+    ai_native_retry_probe_test.go:135: case=mysql_invalid_conn raw=true traced=true stacked=true ddl_synth=false lightning=true err=*errors.errorString invalid connection
+=== RUN   TestAINativeRetryClassifierGapProbe/driver_bad_conn
+    ai_native_retry_probe_test.go:135: case=driver_bad_conn raw=true traced=true stacked=true ddl_synth=false lightning=true err=*errors.errorString driver: bad connection
+=== RUN   TestAINativeRetryClassifierGapProbe/net_conn_reset
+    ai_native_retry_probe_test.go:135: case=net_conn_reset raw=true traced=true stacked=true ddl_synth=false lightning=true err=*net.OpError read tcp: read: connection reset by peer
+=== RUN   TestAINativeRetryClassifierGapProbe/net_broken_pipe
+    ai_native_retry_probe_test.go:135: case=net_broken_pipe raw=true traced=true stacked=true ddl_synth=false lightning=true err=*net.OpError write tcp: write: broken pipe
+=== RUN   TestAINativeRetryClassifierGapProbe/net_conn_refused
+    ai_native_retry_probe_test.go:135: case=net_conn_refused raw=true traced=true stacked=true ddl_synth=false lightning=true err=*net.OpError dial tcp: connect: connection refused
+--- PASS: TestAINativeRetryClassifierGapProbe (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/pd_tso_retry_timeout (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/ingest_kv_not_leader (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/ingest_kv_region_not_found (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/ingest_kv_no_leader (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/grpc_unavailable (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/grpc_dataloss (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/mysql_invalid_conn (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/driver_bad_conn (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/net_conn_reset (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/net_broken_pipe (0.00s)
+    --- PASS: TestAINativeRetryClassifierGapProbe/net_conn_refused (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/pkg/ddl	2.118s

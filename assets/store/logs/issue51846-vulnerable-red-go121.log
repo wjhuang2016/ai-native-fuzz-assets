@@ -1,0 +1,9 @@
+=== RUN   TestAINativeOwnerRetirePreservesProcessingIDs
+    ddl_running_jobs_test.go:143: 
+        	Error Trace:	/private/tmp/ai-native-51846-vulnerable/pkg/ddl/ddl_running_jobs_test.go:143
+        	Error:      	Should be false
+        	Test:       	TestAINativeOwnerRetirePreservesProcessingIDs
+--- FAIL: TestAINativeOwnerRetirePreservesProcessingIDs (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/pkg/ddl	1.103s
+FAIL

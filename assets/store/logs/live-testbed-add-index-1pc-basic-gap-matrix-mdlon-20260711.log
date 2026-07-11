@@ -1,0 +1,24 @@
+GAP=0ms REP=1 EXIT=0
+2026/07/11 17:50:04 CONFIG ddl_kind=add-index txn_kind=1pc txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:50:04 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:50:05 TXN_RESULT success
+2026/07/11 17:50:05 GREEN txn_kind=1pc metadata_lock=true
+
+GAP=0ms REP=2 EXIT=0
+2026/07/11 17:50:06 CONFIG ddl_kind=add-index txn_kind=1pc txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=0s ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:50:06 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:50:08 TXN_RESULT success
+2026/07/11 17:50:08 GREEN txn_kind=1pc metadata_lock=true
+
+GAP=10ms REP=1 EXIT=0
+2026/07/11 17:50:10 CONFIG ddl_kind=add-index txn_kind=1pc txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=10ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:50:10 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:50:10 TXN_RESULT success
+2026/07/11 17:50:10 GREEN txn_kind=1pc metadata_lock=true
+
+GAP=10ms REP=2 EXIT=0
+2026/07/11 17:50:12 CONFIG ddl_kind=add-index txn_kind=1pc txn_shape=basic metadata_lock=true pause_prewrite=false hold=0s ddl_start_gap=10ms ddl_lead=0s expect_schema_changed=false
+2026/07/11 17:50:12 AFTER_HOLD ddl_status=running hold=0s
+2026/07/11 17:50:12 TXN_RESULT success
+2026/07/11 17:50:12 GREEN txn_kind=1pc metadata_lock=true
+

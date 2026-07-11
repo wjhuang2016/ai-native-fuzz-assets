@@ -1,0 +1,14 @@
+# github.com/pingcap/tidb/pkg/ddl/ingest.test
+ld: warning: -bind_at_load is deprecated on macOS
+=== RUN   TestAINativeConcurrentUnregisterDoesNotDoubleReleaseMemory
+    ai_native_lifecycle_refill_test.go:56: 
+        	Error Trace:	/private/tmp/ai-native-53843-vulnerable/pkg/ddl/ingest/ai_native_lifecycle_refill_test.go:56
+        	Error:      	Not equal: 
+        	            	expected: 0
+        	            	actual  : -2877
+        	Test:       	TestAINativeConcurrentUnregisterDoesNotDoubleReleaseMemory
+        	Messages:   	attempt 0
+--- FAIL: TestAINativeConcurrentUnregisterDoesNotDoubleReleaseMemory (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/pkg/ddl/ingest	1.135s
+FAIL

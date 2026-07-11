@@ -1,0 +1,4 @@
+2026/07/11 14:11:29 CONFIG ddl_kind=add-virtual-generated-index-rich txn_kind=1pc metadata_lock=false hold=1.95s ddl_start_gap=0s expect_schema_changed=false
+2026/07/11 14:11:31 AFTER_HOLD ddl_status=running hold=1.95s
+2026/07/11 14:11:32 TXN_RESULT success
+2026/07/11 14:11:32 GREEN txn_kind=1pc metadata_lock=false

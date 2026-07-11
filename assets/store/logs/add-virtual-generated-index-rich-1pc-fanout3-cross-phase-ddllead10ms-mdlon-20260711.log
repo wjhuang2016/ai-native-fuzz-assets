@@ -1,0 +1,6 @@
+2026/07/11 14:53:41 CONFIG ddl_kind=add-virtual-generated-index-rich txn_kind=1pc txn_shape=fanout3 metadata_lock=true hold=0s ddl_start_gap=0s ddl_lead=10ms expect_schema_changed=false
+2026/07/11 14:53:42 DDL_JOB_SNAPSHOT tag=before_txn_after_ddl_lead job_id=3063 job_type=add index schema_state=public state=done row_count=3
+2026/07/11 14:53:42 AFTER_HOLD ddl_status=finished hold=0s
+2026/07/11 14:53:42 DDL_JOB_SNAPSHOT tag=after_hold job_id=3063 job_type=add index schema_state=public state=synced row_count=3
+2026/07/11 14:53:42 TXN_RESULT success
+2026/07/11 14:53:42 GREEN txn_kind=1pc metadata_lock=true

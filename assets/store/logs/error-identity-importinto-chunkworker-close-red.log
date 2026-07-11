@@ -1,0 +1,15 @@
+=== RUN   TestAINativeChunkWorkerCloseClosesIndexWriterAfterDataCloseErrorRED
+[2026/07/10 11:54:00.846 +08:00] [WARN] [writer.go:632] ["flush sorted kv failed"] [writer-id=data] [sequence-number=0] [error="ai-native data writer close failed"] [errorVerbose="ai-native data writer close failed\ngithub.com/pingcap/tidb/pkg/dxf/importinto.TestAINativeChunkWorkerCloseClosesIndexWriterAfterDataCloseErrorRED\n\t/Users/bba/pc/tidb/pkg/dxf/importinto/encode_and_sort_operator_test.go:170\ntesting.tRunner\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/testing/testing.go:1934\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"] [retry-count=0]
+[2026/07/10 11:54:00.846 +08:00] [WARN] [writer.go:632] ["flush sorted kv failed"] [writer-id=data] [sequence-number=0] [error="ai-native data writer close failed"] [errorVerbose="ai-native data writer close failed\ngithub.com/pingcap/tidb/pkg/dxf/importinto.TestAINativeChunkWorkerCloseClosesIndexWriterAfterDataCloseErrorRED\n\t/Users/bba/pc/tidb/pkg/dxf/importinto/encode_and_sort_operator_test.go:170\ntesting.tRunner\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/testing/testing.go:1934\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"] [retry-count=1]
+[2026/07/10 11:54:00.846 +08:00] [WARN] [writer.go:632] ["flush sorted kv failed"] [writer-id=data] [sequence-number=0] [error="ai-native data writer close failed"] [errorVerbose="ai-native data writer close failed\ngithub.com/pingcap/tidb/pkg/dxf/importinto.TestAINativeChunkWorkerCloseClosesIndexWriterAfterDataCloseErrorRED\n\t/Users/bba/pc/tidb/pkg/dxf/importinto/encode_and_sort_operator_test.go:170\ntesting.tRunner\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/testing/testing.go:1934\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"] [retry-count=2]
+    encode_and_sort_operator_test.go:211: 
+        	Error Trace:	/Users/bba/pc/tidb/pkg/dxf/importinto/encode_and_sort_operator_test.go:211
+        	Error:      	Not equal: 
+        	            	expected: 1
+        	            	actual  : 0
+        	Test:       	TestAINativeChunkWorkerCloseClosesIndexWriterAfterDataCloseErrorRED
+        	Messages:   	index writer should still reach terminal Close when data writer Close returns the root error
+--- FAIL: TestAINativeChunkWorkerCloseClosesIndexWriterAfterDataCloseErrorRED (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/pkg/dxf/importinto	1.249s
+FAIL

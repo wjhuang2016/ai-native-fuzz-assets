@@ -1,0 +1,3 @@
+2026/07/11 13:37:36 CONFIG ddl_kind=add-generated-index-rich txn_kind=1pc metadata_lock=true hold=1.4s ddl_start_gap=1s expect_schema_changed=false
+2026/07/11 13:37:38 AFTER_HOLD ddl_status=finished hold=1.4s
+signal: interrupt

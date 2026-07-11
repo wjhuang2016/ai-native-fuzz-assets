@@ -1,0 +1,13 @@
+# github.com/pingcap/tidb/pkg/ddl/ingest.test
+ld: warning: -bind_at_load is deprecated on macOS
+=== RUN   TestAINativeUnregisterEnginesExactlyOnce
+    ai_native_lifecycle_test.go:145: 
+        	Error Trace:	/private/tmp/ai-native-53843-vulnerable/pkg/ddl/ingest/ai_native_lifecycle_test.go:145
+        	Error:      	Condition satisfied
+        	Test:       	TestAINativeUnregisterEnginesExactlyOnce
+        	Messages:   	second unregister closed the same engine while the first unregister was still in progress
+    ai_native_lifecycle_test.go:112: close_calls=2 cleanup_calls=1 remaining_engines=0
+--- FAIL: TestAINativeUnregisterEnginesExactlyOnce (0.02s)
+FAIL
+FAIL	github.com/pingcap/tidb/pkg/ddl/ingest	1.141s
+FAIL

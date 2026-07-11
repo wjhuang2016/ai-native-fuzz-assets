@@ -1,0 +1,22 @@
+2026/07/11 14:20:35 CONFIG ddl_kind=add-virtual-generated-index-rich txn_kind=1pc metadata_lock=true hold=1.9s ddl_start_gap=0s expect_schema_changed=false
+2026/07/11 14:20:36 AFTER_HOLD ddl_status=finished hold=1.9s
+fatal error: all goroutines are asleep - deadlock!
+
+goroutine 1 [chan receive]:
+main.runCrossProbe()
+	/Users/bba/pc/ai-native-probes/add_index_async_commit_cross_schema_probe.go:129 +0x9ac
+main.main()
+	/Users/bba/pc/ai-native-probes/add_index_async_commit_cross_schema_probe.go:53 +0x60
+
+goroutine 7 [select]:
+database/sql.(*DB).connectionOpener(0x140001155f0, {0x10111d9c0, 0x1400014a000})
+	/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/database/sql/sql.go:1261 +0x80
+created by database/sql.OpenDB in goroutine 1
+	/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/database/sql/sql.go:841 +0x114
+
+goroutine 9 [select]:
+github.com/go-sql-driver/mysql.(*mysqlConn).startWatcher.func1()
+	/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/github.com/go-sql-driver/mysql@v1.7.1/connection.go:614 +0x74
+created by github.com/go-sql-driver/mysql.(*mysqlConn).startWatcher in goroutine 1
+	/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/github.com/go-sql-driver/mysql@v1.7.1/connection.go:611 +0xe8
+exit status 2
