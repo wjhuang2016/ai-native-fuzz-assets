@@ -55,7 +55,7 @@ cheap, precise, and easy-oracle.
 ## Incremental note (2026-07-11)
 
 The table above is still the 2026-07-09 snapshot. The current remote `found_bug` state after
-today's inserts is:
+the 2026-07-11 inserts was:
 
 ```text
 87 confirmed surfaces  ->  64 distinct root causes
@@ -113,6 +113,24 @@ severity-table refresh for the 126000x / 1290001 / 1320001 / 1350001 / 1350002 /
 1440001 wave is still pending; treat the retroactive map below as the historical 2026-07-09
 baseline plus the incremental notes above.
 
+## Incremental note (2026-07-12)
+
+After inserting `id1470001`, the remote `found_bug` state is:
+
+```text
+88 confirmed surfaces  ->  65 distinct root causes
+```
+
+Newest high-severity root:
+
+- `id1470001 / addindex-downscale-drops-tail-worker-error` (selector `S28`):
+  common-reorg `ADD INDEX` can publish an incomplete public index if a tail backfill worker
+  produces a real post-batch error after `ADMIN ALTER DDL JOBS ... THREAD = 1` has canceled it.
+  The live witness was `job 4452`: DDL reached `synced/public`, `ADMIN CHECK TABLE` reported
+  `ERROR 8223`, and table-scan/index-scan counts split (`IGNORE INDEX=32768`, index/default
+  path `30301`). The control without downscale rolled back on the same injected worker error.
+  This is a high-severity wrong-result/data-consistency root, not a moderate wrong-error.
+
 ## Retroactive root map
 
 ### Consequence 3 — data loss / corruption / bypass / liveness (the high-value lane)
@@ -126,6 +144,7 @@ baseline plus the incremental notes above.
 | distributed ADD INDEX retries runtime fundamental errors forever | S25 | id1350002 | persistent source-native `SetTSBeforeImportEngine` `engine-not-found` leaves the DXF task `running` until fault removal |
 | distributed ADD INDEX has no retry budget for persistent retryable import timeouts | S26 | id1410001 | persistent `SetTSBeforeImportEngine` `context deadline exceeded` leaves the DXF task `running` and reruns it 247 times in 87s until fault removal |
 | MDL-off safe window no longer protects old-schema async commit during online ADD INDEX | S27 | id1440001 | natural same-start `plain ADD INDEX + async commit + insert+update` returns `ErrInfoSchemaChanged` while MDL-on sibling is GREEN with exact-row oracle |
+| common-reorg ADD INDEX downscale drops canceled tail-worker errors | S28 | id1470001 | `THREAD=1` downscale can cancel a busy tail worker; its post-batch error is dropped before result collection, so a partial index is published and `ADMIN CHECK TABLE` fails |
 | NT-DML stale tx_read_ts split range silently misses current rows | S23 | id1230001 | write reports success but derives BATCH ranges from stale snapshot; `1:110,2:20` vs current-rowset control `1:110,2:120` |
 
 ### Consequence 2 — wrong-result / wrong-acceptance / metadata

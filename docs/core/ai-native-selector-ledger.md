@@ -1072,3 +1072,39 @@ stop rule:  do not enumerate every DDL kind or every DML mix once the contract-l
             split is established. Reopen only for another DDL that relies on the same safe-window
             contract, a stronger consequence such as silent mis-amend, or fix validation.
 ```
+
+## New from id1470001 — S28: control-plane worker removal must preserve terminal results
+```text
+selector:   a runtime control-plane action removes or cancels an in-flight worker, but the
+            removed worker still owns a terminal result/error that must be accepted by the parent
+            before the job can publish success
+born from:  id1470001 (common-reorg ADD INDEX downscale drops a canceled tail worker's post-batch
+            error and publishes an incomplete index)
+predictions:
+  - active common-reorg ADD INDEX x busy tail worker x downscale to a smaller prefix worker set
+    -> RED if the removed worker's terminal error/result can be dropped and the DDL still reaches
+    `synced/public`
+  - same injected worker error without downscale -> GREEN control if the job rolls back or retries
+    after collecting the error
+  - sibling DDLs that share the executor but have different result-acceptance/publish behavior may
+    stay GREEN; this is a boundary, not a reason to overgeneralize the root
+status:     active — 1/1 severe hit plus multiple useful negative boundaries.
+            The high-signal move is to treat runtime control-plane actions (`THREAD` downscale,
+            pause/resume, owner handoff, cancel) as first-class matrix dimensions. For this
+            selector, evidence must prove three things at once: the worker was actually removed,
+            its terminal result/error was actually produced, and the parent still published a
+            success state without accepting it.
+oracle gate: require a publish-end-state oracle, not just an injected error. The strong oracle is
+             `ADMIN CHECK TABLE` plus table-scan/index-scan differential and an exact witness row.
+             Owner logs should show the downscale, the injected tail-worker error, and the absence
+             of normal parent-side worker-failed handling.
+negative calibration:
+  - MODIFY COLUMN row-rewrite and merge-temp-index siblings can remain safe even with tail-worker
+    post-batch error plus downscale; record these as boundaries instead of weakening the original
+    hit.
+  - A green run is invalid unless it proves the exact target race landed: workerCnt must be >1,
+    downscale must really adjust worker count, and the tail-worker error must be injected.
+stop rule:  do not enumerate all DDLs that share `txnBackfillExecutor`. Reopen only for another
+            owner where a removed worker's terminal result can be dropped, a stronger publish-time
+            consequence, or fix validation proving result draining/acceptance closes the root.
+```

@@ -1,11 +1,12 @@
--- No pending found_bug inserts as of 2026-07-11.
--- Remote found_bug was re-verified after inserting id1440001:
---   MAX(id)=1440001, COUNT(*)=87, COUNT(DISTINCT root_cause_id)=64
+-- No pending found_bug inserts as of 2026-07-12.
+-- Remote found_bug was re-verified after inserting id1470001:
+--   MAX(id)=1470001, COUNT(*)=88, COUNT(DISTINCT root_cause_id)=65
 --
 -- Bug DB command:
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
+--   id1470001 confirmed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index
 --   id1440001 confirmed/high: MDL-off ADD INDEX lets concurrent async-commit txn fail despite delayForAsyncCommit safe-window protection
 --   id1410001 confirmed/high: Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine context-deadline-exceeded errors
 --   id1350002 confirmed/high: Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine engine-not-found errors

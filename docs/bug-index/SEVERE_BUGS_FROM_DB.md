@@ -1,0 +1,19 @@
+# Severe Bugs From found_bug
+
+Generated at: 2026-07-12 02:00:12 +0800
+
+| ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 30001 | new | high | wrong-result | CREATE/ADD PARTIAL INDEX; SELECT | partial index | `partial-index-implication` | Partial index implication check can choose an unsafe partial index and return wrong SELECT results |  |
+| 30007 | candidate | high | data-integrity | REORGANIZE PARTITION | global index | `reorg-global-index-miss` | REORGANIZE PARTITION can leave replacement global index missing rows from later non-touched partitions |  |
+| 600001 | confirmed | high | data-loss | ALTER TABLE REORGANIZE PARTITION | partition reorg duplicate rowid | `reorg-partition-identity-fastpath` | REORGANIZE PARTITION silently drops duplicate nonclustered rows after EXCHANGE PARTITION |  |
+| 630013 | issue-filed | high | DDL correctness | ALTER TABLE MODIFY COLUMN | check constraint + column type reorg | `modify-reorg-check-bypass` | MODIFY COLUMN can leave rows violating existing CHECK constraints | [https://github.com/pingcap/tidb/issues/69649](https://github.com/pingcap/tidb/issues/69649) |
+| 630014 | issue-filed | high | DDL stale side state | ALTER TABLE EXCHANGE PARTITION | masking policy | `exchange-idswap-orphan` | EXCHANGE PARTITION can orphan masking policies after table ID swap | [https://github.com/pingcap/tidb/issues/69754](https://github.com/pingcap/tidb/issues/69754) |
+| 1230001 | confirmed | high | wrong-result | NULL | non-transactional DML / transaction stale read | `ntdml-tx-read-ts-split-range-stale` | Non-transactional DML silently uses stale tx_read_ts split range and misses current rows |  |
+| 1290001 | confirmed | high | ddl-liveness | ADD INDEX / fast reorg ingest | PD TSO retry classification / ingest checkpoint watermark | `addindex-fastreorg-pd-tso-retry-misclassified-fatal` | Fast reorg ADD INDEX rolls back on transient PD TSO stream retry timeout instead of retrying |  |
+| 1320001 | confirmed | high | ddl-liveness | ADD INDEX / ADD PRIMARY KEY / ingest | ingest retry classification / foreign KV-Ingest error bridge | `ddl-ingest-retryable-kv-family-misclassified-fatal` | Ingest-mode ADD INDEX / ADD PRIMARY KEY roll back on retryable leader-change family instead of retrying |  |
+| 1350001 | confirmed | high | ddl | MODIFY COLUMN / CHANGE COLUMN / reorg | DDL retry classification / foreign transient error bridge | `modify-column-reorg-transient-unknown-fatal` | MODIFY COLUMN rolls back on transient connection-family errors that sibling ADD INDEX retries through |  |
+| 1350002 | confirmed | high | ddl-liveness | ADD INDEX / distributed reorg ingest | DXF runtime retry bridge / source-native import error | `dist-addindex-runtime-fundamental-retry-hang` | Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine engine-not-found errors |  |
+| 1410001 | confirmed | high | ddl-liveness | ADD INDEX / distributed reorg ingest | DXF runtime retry budget / source-native import timeout | `dist-addindex-retryable-timeout-unbounded-loop` | Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine context-deadline-exceeded errors |  |
+| 1440001 | confirmed | high | ddl-availability | ADD INDEX / online schema change | delayForAsyncCommit / MDL-off async-commit safe window | `async-commit-schema-change-safe-window-broken` | MDL-off ADD INDEX lets concurrent async-commit txn fail with Information schema is changed despite delayForAsyncCommit safe-window protection |  |
+| 1470001 | confirmed | high | wrong-result | ADD INDEX / common reorg / ADMIN ALTER DDL JOBS THREAD | txn backfill worker downscale result delivery | `addindex-downscale-drops-tail-worker-error` | common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index |  |
