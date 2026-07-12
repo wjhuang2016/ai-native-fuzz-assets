@@ -2,6 +2,58 @@
 
 ## Bug Report
 
+### Real-world trigger at a glance (no test fault)
+
+The easiest production-shaped trigger is an online uniqueness migration on a table with
+historical duplicate business keys. For example, an `orders` table can contain two rows
+with different auto-increment `id` values but the same `order_no` after an importer
+timeout/retry. The team then adds the missing constraint during a release:
+
+```sql
+-- The duplicate existed before the DDL; it is not a synthetic storage error.
+SELECT order_no, COUNT(*)
+FROM orders
+GROUP BY order_no
+HAVING COUNT(*) > 1;
+
+ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no);
+```
+
+To make the normal race likely, the table should be large enough for a multi-worker
+backfill, the duplicate should be in a later primary-key range, and the job should use
+the transaction backfill path (`tidb_ddl_enable_fast_reorg=OFF`, or ingest unavailable).
+During a daytime latency spike, a DBA or resource-control automation can issue the
+supported operational action:
+
+```sql
+-- Session B, after SHOW DDL JOBS shows write reorganization and a growing row_count.
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+```
+
+The concrete in-flight event is then `batchCheckUniqueKey` seeing the two handles for
+the same `order_no` and returning `kv.ErrKeyExists`, surfaced to the client as:
+
+```text
+ERROR 1062 (23000): Duplicate entry '<order_no>' for key 'orders.uk_order_no'
+```
+
+The canceled tail worker can produce this result after the downscale. A bug hit is not
+the ordinary duplicate-key rollback. It is `synced/public` followed by a table-scan
+versus index-scan mismatch, or `ADMIN CHECK TABLE orders` reporting `8223`:
+
+```sql
+SELECT * FROM orders IGNORE INDEX(uk_order_no)
+WHERE order_no = '<duplicate-order-no>';
+SELECT * FROM orders FORCE INDEX(uk_order_no)
+WHERE order_no = '<duplicate-order-no>';
+ADMIN CHECK TABLE orders;
+```
+
+This is a high-probability production shape, not a deterministic no-failpoint
+reproducer: if the duplicate is detected before the downscale, rollback is the
+correct control. The failpoint reproducer below fixes only this ordering; it does not
+invent a different error class.
+
 ### 1. Minimal reproduce step (Required)
 
 This was reproduced on current master with a test-only failpoint build.

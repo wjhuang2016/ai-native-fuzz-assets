@@ -53,6 +53,7 @@ var (
 	pinnedTimeout       = flag.Duration("timeout", defaultPinnedTimeout, "overall runtime budget")
 	pinnedDMLSleep      = flag.Duration("dml-sleep", defaultPinnedDMLSleep, "pause between insert and delete")
 	pinnedMaxValue0     = flag.Int("max-val0", defaultPinnedMaxValue0, "value domain for val0")
+	pinnedVal0Default   = flag.String("val0-default", "", "optional SQL literal used as an explicit val0 column default")
 	pinnedPrefillBase   = flag.Int("prefill-value-base", 0, "base value added to prefill val0 domain")
 	pinnedWorkerBase    = flag.Int("worker-value-base", 0, "base value added to worker/oracle val0 domain")
 	pinnedBatchSize     = flag.Int("reorg-batch-size", defaultPinnedReorgBatchSize, "tidb_ddl_reorg_batch_size")
@@ -183,9 +184,10 @@ func runPinnedProbe() error {
 		}(oracleID)
 	}
 
-	fmt.Printf("CONFIG seed_base=%d rows_per_op=%d delete_hint=%s delete_session=%s delete_start=%s before_delete_reader=%s worker_mode=%s op_order=%s delete_shift=%d prefill_base=%d worker_base=%d skip_insert=%t skip_delete=%t with_index=%t workers=%d oracle_workers=%d prefill=%d max_val0=%d hold=%s post_release=%s\n",
+	fmt.Printf("CONFIG seed_base=%d rows_per_op=%d val0_default=%s delete_hint=%s delete_session=%s delete_start=%s before_delete_reader=%s worker_mode=%s op_order=%s delete_shift=%d prefill_base=%d worker_base=%d skip_insert=%t skip_delete=%t with_index=%t workers=%d oracle_workers=%d prefill=%d max_val0=%d hold=%s post_release=%s\n",
 		seedBase,
 		*pinnedRowsPerOp,
+		strings.TrimSpace(*pinnedVal0Default),
 		strings.ToLower(strings.TrimSpace(*pinnedDeleteHint)),
 		strings.ToLower(strings.TrimSpace(*pinnedDeleteSession)),
 		strings.ToLower(strings.TrimSpace(*pinnedDeleteStart)),
@@ -273,13 +275,17 @@ func setupPinnedProbe(ctx context.Context, db *sql.DB, tableName string) error {
 	if err := execPinned(ctx, db, "drop table if exists "+tableName); err != nil {
 		return err
 	}
+	val0Default := ""
+	if defaultValue := strings.TrimSpace(*pinnedVal0Default); defaultValue != "" {
+		val0Default = " DEFAULT " + defaultValue
+	}
 	createSQL := fmt.Sprintf(`create table %s (
 		id int not null auto_increment,
-		val0 int not null,
+		val0 int not null%s,
 		val1 int not null,
 		padding varchar(%d) not null default '',
 		primary key (id)
-	)`, tableName, defaultPinnedPaddingSize)
+	)`, tableName, val0Default, defaultPinnedPaddingSize)
 	if err := execPinned(ctx, db, createSQL); err != nil {
 		return err
 	}

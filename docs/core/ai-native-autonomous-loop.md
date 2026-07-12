@@ -163,6 +163,37 @@ Typical bridge-proximal upgrades:
 This keeps the loop from wasting ticks on "bigger hammer" escalation after a meaningful green
 boundary has already been learned.
 
+## Cross-layer information-preservation gate
+
+For a C3 target that crosses a planner, row builder, protocol, coprocessor, or storage boundary,
+the loop adds an information-preservation check before it treats a source hypothesis as a live
+root cause:
+
+```text
+producer row/state shape -> fields carried across the boundary -> consumer reconstruction
+```
+
+The proof obligation is not merely "the consumer can read the row." It is:
+
+```text
+if a value is absent at the consumer,
+the consumer must have enough dependency metadata to reconstruct the semantically correct value.
+```
+
+The controller performs four bounded actions:
+
+1. Capture the producer-side shape, including hidden/changing columns, handles, index layouts, and
+   dependency relationships.
+2. Enumerate the fields the boundary actually carries; a generic default is not equivalent to a
+   dependency-aware cast or state transition.
+3. Run a narrow counterfactual at the loss point and compare the row/image or terminal action.
+4. Lift the same phase and workload to the live system, then run both a window oracle and an
+   aftermath oracle. A transient user-visible error and a durable wrong state are separate verdicts.
+
+This gate is especially important for DDL row-rewrite bugs: a local decoder fix can validate the
+mechanism while saying nothing about the production coprocessor, and a live error can be real while
+still belonging to an existing family rather than a new root.
+
 ## Health / drift metrics (machine-computable each tick)
 
 ```text

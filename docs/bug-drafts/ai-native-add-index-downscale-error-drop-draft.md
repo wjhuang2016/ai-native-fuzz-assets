@@ -16,6 +16,54 @@
 
 这是一条真正的 severe wrong-result / data-consistency bug,不是 moderate wrong-error。
 
+## 更容易在真实环境出现的触发例子
+
+最容易解释、也最接近线上操作的一种形状是: `orders` 表长期被旧 importer 和新
+服务共同写入,旧 importer 在超时后重试,把同一个业务 `order_no` 写到了两个不同的
+自增 `id` 下。发布前团队补唯一约束:
+
+```sql
+SELECT order_no, COUNT(*)
+FROM orders
+GROUP BY order_no
+HAVING COUNT(*) > 1;
+
+ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no);
+```
+
+为了让窗口足够长,表应是百万级并且重复 `order_no` 位于较晚的主键范围;同时要走
+普通 txn backfill,例如关闭 `tidb_ddl_enable_fast_reorg` 或确认 ingest 不可用。DDL
+进入 `write reorganization` 且 `row_count` 还在增长时,白天前台延迟升高,DBA 或资源
+控制自动化执行一次受支持的降级:
+
+```sql
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+```
+
+这里的 “in-flight 操作” 不是抽象的“某个错误”:具体是
+`addIndexTxnWorker.BackfillData` 在一个批次里检查两个相同 `order_no` 时,
+`batchCheckUniqueKey` 返回 `kv.ErrKeyExists`,客户端看到普通的:
+
+```text
+ERROR 1062 (23000): Duplicate entry '<order_no>' for key 'orders.uk_order_no'
+```
+
+如果这个忙 worker 恰好是被缩容取消的 tail worker,该终止结果可能在
+`sendResult` 的 `ctx.Done()` 分支被丢掉。命中后的强判据是 DDL 错误地成为
+`synced/public`,但两条路径看到的订单集合不同:
+
+```sql
+SELECT * FROM orders IGNORE INDEX(uk_order_no)
+WHERE order_no = '<duplicate-order-no>';
+SELECT * FROM orders FORCE INDEX(uk_order_no)
+WHERE order_no = '<duplicate-order-no>';
+ADMIN CHECK TABLE orders;
+```
+
+正常 control 是 `ERROR 1062` 后 rollback;没有 failpoint 的线上形状仍受时序影响,
+不能替代下面的确定性 reproducer。它的价值是把错误来源和真实运维动作都落到
+普通业务数据上,而不是停在 “in-flight 操作返回必须处理的错误或结果”。
+
 ## 用户层表现
 
 命中的 live run:

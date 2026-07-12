@@ -1,0 +1,22 @@
+RUN_DATE=2026-07-12
+TESTBED=8220955
+VERSION=v9.0.0-beta.2.pre-1927-g13282a8bd0-dirty
+
+LOCAL_SOURCE_SHAPE=PASS
+TEST=TestModifyColumnDeletePlanCarriesChangingIndexLayoutInWriteReorg
+COMMAND=go test -tags=intest ./pkg/ddl -run '^TestModifyColumnDeletePlanCarriesChangingIndexLayoutInWriteReorg$' -count=1 -timeout 180s -v
+OBSERVATION=delete child columns [1 2 5], data [1 1 ""], table-scan DefaultVal fallback column 5, counterfactual override [1 1 "1"]
+
+LIVE_RED_SCHEMA=ai_native_issue62531_relift_20260712
+LIVE_RED_JOB=5049
+LIVE_RED_CONFIG=nonpartition MODIFY COLUMN int-to-varchar, secondary index, prefill=120000, workers=16, rows_per_op=200, hold=20s
+LIVE_RED_SIGNATURE=components/tidb_query_executors/src/table_scan_executor.rs:467 Data is corrupted, missing data for NOT NULL column (offset = 2)
+LIVE_RED_TERMINAL=synced/public
+LIVE_RED_AFTERMATH=ADMIN CHECK TABLE pass, table_rows=2082, index_rows=2082, bad_formula=0
+
+DEFAULT_SIBLING_SCHEMA=ai_native_issue62531_default7_singlevalue_20260712
+DEFAULT_SIBLING_CONFIG=val0 INT NOT NULL DEFAULT 7, max_val0=1, prefill=50000, workers=16, rows_per_op=200
+DEFAULT_SIBLING_SIGNATURE=same transient missing-NOT-NULL error
+DEFAULT_SIBLING_AFTERMATH=ADMIN CHECK TABLE pass, table_rows=3000, index_rows=3000, val0_zero table/index both 3000, val0_seven table/index both 0
+
+VERDICT=known-issue62531-family; no new persistent wrong-index root
