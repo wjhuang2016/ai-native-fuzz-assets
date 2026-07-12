@@ -1,0 +1,12 @@
+CURRENT RED
+command: go test ./pkg/resourcegroup/runaway -run 'TestBatchFlusher(RetriesFailedBatch|Flush$)' -count=1 -v
+control: TestBatchFlusherFlush PASS
+red: TestBatchFlusherRetriesFailedBatch FAIL
+expected attempts: 2
+actual attempts: 1
+interpretation: after the first transient flush error, the second flush does not call flushFn because the failed batch was discarded.
+
+ONE-VARIABLE COUNTERFACTUAL GREEN
+change: reset f.buffer only in the err == nil branch
+result: TestBatchFlusherAdd, MergeFn, Flush, FlushEmpty, and RetriesFailedBatch all PASS
+interpretation: retaining the failed batch is sufficient to restore retry ownership.

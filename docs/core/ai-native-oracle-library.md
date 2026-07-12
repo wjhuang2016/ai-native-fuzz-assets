@@ -1364,3 +1364,19 @@ sensitivity: execution-screened on BR GetGCSafePoint pass-through.
 specificity: GOOD; normal and injected paths both exited 1 before artifact publication.
 status:      USED + EXECUTION-CONFIRMED NEGATIVE.
 ```
+
+## O40 failed_publication_fresh_consumer_coherence
+
+```text
+obligation:  after a transient publication error, recovery publishes the original payload and a
+             fresh consumer observes the same policy/state as the producer.
+form:        fail one publication, restore the publisher, wait through retry/sync intervals, then
+             compare producer-local state, durable row/artifact, and fresh-consumer behavior.
+red:         producer enforces locally, durable state is absent, fresh consumer does not enforce.
+green:       no-fault or retain-on-error path publishes the row and both consumers agree.
+catches:     dropped retry buffers, checkpoint advance on error, ack-before-durable publication.
+blind to:    tests that inspect only error logs/metrics or only the producer's cache.
+sensitivity: EXECUTION-CONFIRMED on id1740003 with two TiDB frontends and real PD/TiKV.
+specificity: GOOD; raising the threshold to 24h removed independent re-detection as a confounder.
+status:      USED + EXECUTION-CONFIRMED.
+```

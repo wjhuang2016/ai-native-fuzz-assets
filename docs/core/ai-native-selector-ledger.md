@@ -1318,3 +1318,23 @@ oracle gate:
 status:     execution-screened GREEN for BR: TiKV snapshot rejected with 9006 and no backupmeta.
 stop rule:  do not enumerate primary error codes while the same downstream owner remains dominant.
 ```
+
+## S37: failed publication retains retry ownership
+
+```text
+selector:   a fallible publisher reports error, then resets/acks/closes the only retry payload
+born from:  id1740003 (runaway watch batch is discarded after one SQL flush error)
+prediction:
+  - producer-local state makes the operation appear effective;
+  - durable/shared publication is absent;
+  - a fresh consumer observes stale or missing policy/state;
+  - recovery cannot retry because no owner retains the exact payload.
+oracle gate:
+  - force one failure followed by a healthy publication window;
+  - prove the second attempt receives the original payload;
+  - observe a fresh consumer rather than only producer-local state;
+  - include no-fault and retain-on-error counterfactual controls.
+status:     validated/terminal - local RED/counterfactual GREEN and real-PD/TiKV two-frontend RED;
+            remote id1740003 high.
+stop rule:  one root per destroyed retry owner. Payload types and policy actions are blast radius.
+```

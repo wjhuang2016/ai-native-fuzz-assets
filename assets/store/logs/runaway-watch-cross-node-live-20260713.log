@@ -1,0 +1,24 @@
+Environment: authorized QA testbed 8220955, namespace testbed-tps-8220955-1-213.
+Two current-source TiDB frontends shared the real tc-pd/tc-tikv cluster.
+Frontend A: port 4000 with one injected quarantine-record batch flush error.
+Frontend B: port 4001 with no fault.
+
+RED
+1. CREATE RESOURCE GROUP ai_rg_flush ... EXEC_ELAPSED='100ms' ACTION=KILL WATCH EXACT.
+2. On A execute: SELECT /*+ RESOURCE_GROUP(ai_rg_flush) */ SLEEP(0.3) AS ai_native_watch_probe;
+3. A detects and kills the query; mysql.tidb_runaway_queries contains the detection.
+4. ALTER the threshold to 24h so later executions cannot independently exceed it.
+5. Execute the exact same SQL on A and B after multiple sync intervals.
+
+A: ERROR 8254 Quarantined and interrupted because of being in runaway watch list (exit 1).
+B: ai_native_watch_probe=0, normal completion in 0.44s (exit 0).
+Shared mysql.tidb_runaway_watch: no ai_rg_flush row.
+
+GREEN CONTROL
+Frontend B generated ai_rg_green with the same 100ms -> 24h schedule and no flush fault.
+Shared table row: ai_rg_green / exact SQL / action=3.
+A: ERROR 8254.
+B: ERROR 8254.
+
+Conclusion: detection and local enforcement succeed, but one failed publication loses the only durable batch copy and another TiDB never enforces the watch rule.
+Cleanup: both resource groups and test rows removed; both test TiDB PIDs, port-forward, binary, and pod logs removed.
