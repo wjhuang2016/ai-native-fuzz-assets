@@ -1481,3 +1481,28 @@ NEXT:       Stop partial-index enumeration. Reopen only for proof-input normaliz
 Automation lesson: for planner fast paths, the proof obligation includes the representation and
 normalization of every proof input. A correct-looking implication algorithm fed an under-normalized
 metadata predicate is still an unsound proof system.
+
+## Follow-up C3 host screen: issue61255 mixed-owner merge, EXECUTED (2026-07-12)
+
+The next severity seed was `MULTI_ARTIFACT_OWNER_HOMOGENEITY`, using the existing non-partition
+mixed unique/non-unique `ADD INDEX` probe. The run reached the intended pause and all consequence
+oracles were green, but the target-shape guard rejected the result:
+
+```text
+requested worker count: 4
+merge entry log:        type="merge temporary index" workerCnt=1 regionCnt=2
+terminal state:         synced/public
+ADMIN CHECK TABLE:      green
+rowset differential:    green
+verdict:                GREEN_BOUNDARY / INVALID(target-shape)
+```
+
+This is not evidence that mixed-owner merge is safe in general. The proof obligation specifically
+needs an owner-homogeneity distinction that is live at merge consumption; with one merge worker,
+the planned multi-worker race cannot occur. The asset log and JSONL run are stored under
+`assets/store/logs/issue61255-nonpartition-merge-worker1-green-20260712.log` and
+`assets/store/issue61255-mixed-owner-results.jsonl`.
+
+Method lesson: a strong oracle does not rescue a dead target shape. Before grading a GREEN sibling,
+prove that the target's controlling dimension exists at the exact phase where the obligation is
+claimed. Otherwise the right output is a reusable negative boundary and a host-selection constraint.

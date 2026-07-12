@@ -1,0 +1,27 @@
+AI-native negative boundary: issue61255 mixed-owner merge capability
+Date: 2026-07-12 Asia/Shanghai
+Testbed: 8220955
+Endpoint: 127.0.0.1:14000
+TiDB commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+Probe: add_index_mixed_owner_merge_live_probe.go
+Shape: non-partition ALTER TABLE ADD UNIQUE INDEX idx_b(b), ADD INDEX idx_c(c)
+Settings: rows=20000, regions=8, batch_size=32, requested_workers=4,
+          tidb_enable_dist_task=OFF, tidb_ddl_enable_fast_reorg=ON
+
+Capability evidence:
+  PAUSED job_id=5176 row_count=20000 state=running schema_state=write reorganization dml_ops=189
+  GREEN job_id=5176 dml_ops=189 workers=4 dist_task=false fast_reorg=true partitioned=false
+  ADMIN CHECK TABLE passed.
+  Table and forced-index checks for b=1/c=1 both returned the expected surviving row.
+
+Decisive owner log evidence:
+  start to merge temp index jobID=5176
+  start backfill workers to reorg record type="merge temporary index" workerCnt=1 regionCnt=2
+  backfill-worker 0 processed both merge ranges and exited
+
+Interpretation:
+  This is a valid GREEN control for the concrete probe, but an INVALID target-shape result
+  for MULTI_ARTIFACT_OWNER_HOMOGENEITY: the merge stage collapsed to one worker before the
+  intended multi-worker owner-removal/merge race could exist. Do not treat this as evidence
+  that all mixed-owner merge paths are safe. A future RED/strong GREEN comparison needs
+  merge workerCnt>1 or a different owner-homogeneity dimension that is live on this build.
