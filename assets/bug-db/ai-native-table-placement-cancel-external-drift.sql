@@ -1,4 +1,4 @@
--- Inserted as found_bug.id1800003 on 2026-07-13.
+-- Inserted as found_bug.id1800003 and filed as https://github.com/pingcap/tidb/issues/69784.
 INSERT INTO found_bug
 (id,title,severity,category,ddl_op,feature,symptom,repro,expected,actual,root_cause,fix_hint,oracle,method,root_cause_id,affects,confirmed,status,notes)
 VALUES

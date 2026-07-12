@@ -1660,3 +1660,5 @@ metadata p1/r1,PD p2/r2；正常 ALTER 和 committed-bundle republication 均 GR
 取消成功却静默降低声明的副本冗余。RED 后才做资产/upstream issue 去重,无 exact root。资产新增
 O42、owner-specific obligation/scenario/fault/fixture；S35 本身复用,不新造 selector。方法论增量:
 复用 selector,不复用 finding；每个新 handler 仍须独立重建 P/Q/F、durable owner 和强 oracle。
+已按完整 UT 复现提交 upstream issue #69784,标签 `found-by-ai`,`component/ddl`,`severity/major`；
+远端 `found_bug id1800003` 已同步为 `issue-filed`。

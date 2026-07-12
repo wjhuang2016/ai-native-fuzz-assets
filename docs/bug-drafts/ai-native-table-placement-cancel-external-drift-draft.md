@@ -3,7 +3,7 @@
 ## Status
 
 - Severity: high
-- Status: confirmed
+- Status: issue-filed: https://github.com/pingcap/tidb/issues/69784
 - Root cause ID: `table-placement-pd-bundle-before-ddl-commit`
 - Affected path: nonpartition `ALTER TABLE ... PLACEMENT POLICY`
 

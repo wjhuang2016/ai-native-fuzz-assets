@@ -8,6 +8,7 @@
 -- Latest inserted rows:
 --   id1800003 confirmed/high: cancelled ALTER TABLE PLACEMENT leaves the uncommitted replica rule active in PD
 --     root_cause_id=table-placement-pd-bundle-before-ddl-commit
+--     issue=https://github.com/pingcap/tidb/issues/69784
 --     evidence=assets/store/logs/ddl-table-placement-cancel-real-pd-20260713.log
 --   id1530002 known-duplicate/high: current-master rediscovery of TiDB #65958, where local engine SST loss exits the serving TiDB during ADD INDEX
 --     root_cause_id=dist-addindex-local-engine-db-loss-process-exit

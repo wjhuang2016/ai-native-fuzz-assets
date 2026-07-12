@@ -1,6 +1,6 @@
 # Method case: reuse a validated selector, rebuild the owner-specific oracle
 
-Remote `found_bug`: `id1800003`, confirmed high.
+Remote `found_bug`: `id1800003`, issue-filed high: https://github.com/pingcap/tidb/issues/69784.
 
 ## Why this was fast
 

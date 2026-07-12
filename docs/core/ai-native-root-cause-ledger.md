@@ -266,7 +266,7 @@ surfaces, 75 distinct root causes, 23 high-severity rows.
 
 | root cause | selector | surfaces | consequence | status |
 | --- | --- | --- | --- | --- |
-| PD table-placement bundle commits before cancellable DDL metadata publication | `EXTERNAL_EFFECT_PRECOMMIT_ROLLBACK_COHERENCE` | nonpartition ALTER TABLE PLACEMENT POLICY | cancelled DDL silently weakens the table's declared replica redundancy | confirmed high |
+| PD table-placement bundle commits before cancellable DDL metadata publication | `EXTERNAL_EFFECT_PRECOMMIT_ROLLBACK_COHERENCE` | nonpartition ALTER TABLE PLACEMENT POLICY | cancelled DDL silently weakens the table's declared replica redundancy | issue-filed high, #69784 |
 
 This reuses S35 but is a distinct product root from id1710003: it has a different DDL handler,
 external API, durable object, compensation obligation, and user consequence. Count replica values,
