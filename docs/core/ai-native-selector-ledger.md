@@ -212,7 +212,9 @@ status:     active — 1/1 high-signal validator-backed prediction hit, plus use
             2026-07-12 identity-drift extension: the same FK oracle with a same-name empty parent is
             RED even though future INSERT plans still contain Foreign_Key_Check. The recovered
             existing row is already orphaned, so this is a distinct row-membership/identity proof
-            obligation rather than another missing-parent future-write bypass. Recorded as high
+            obligation rather than another missing-parent future-write bypass. A stronger cascade
+            sibling shows a same-key replacement parent can delete that recovered row through a
+            normal ON DELETE CASCADE operation while ADMIN CHECK remains silent. Recorded as high
             candidate id1500002; same-name/original-row and FLASHBACK DATABASE controls remain GREEN.
 ```
 

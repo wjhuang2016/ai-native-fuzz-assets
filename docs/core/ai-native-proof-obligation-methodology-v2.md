@@ -1511,6 +1511,14 @@ Method rules:
 - Account the result as a new root only when the fix locus or product contract is independent.
   Otherwise record it as a stronger identity-drift surface under the existing recovery selector.
 
+Consequence escalation rule:
+
+- Once an identity-drift RED proves that a recovered reference is rebound, run one normal
+  downstream action owned by the current referenced object. For a foreign key, an
+  `ON DELETE CASCADE` parent delete is a stronger oracle than another `LEFT JOIN`: it distinguishes
+  a visible orphan from direct loss of recovered child data. Keep the action under the same root
+  unless the fix locus changes; consequence escalation improves severity evidence, not root count.
+
 ## Latest Calibration: Cross-Owner Hits Need Root-Cause Accounting
 
 id630007 reuses S11 on expression indexes:
@@ -2557,3 +2565,20 @@ Three practice rules:
    selector wording toward consumer/window/bridge failure rather than stored damage.
 3. Prefer adding aftermath oracle support to the probe itself, so the same red cell can be replayed
    without manual cleanup decisions.
+
+## Historical Replay Shape Gate
+
+A green replay is not evidence of a fix until the replay preserves the historical operation shape.
+Record these dimensions explicitly before compressing an issue into a pinned probe:
+
+```text
+historical shape = repeated DDL transitions + prepared-parameter DML + natural timing
+compressed shape = one held DDL + external DML + synthetic pause
+```
+
+The compressed shape can be a useful phase probe, but it is not an equivalent reproduction. If the
+historical issue uses repeated `MODIFY COLUMN int <-> bigint` and prepared `DELETE`, a one-shot
+`MODIFY COLUMN int -> varchar` GREEN must be classified as a boundary sample, not as a fix. A
+current endpoint/version mismatch must be recorded alongside the result, and the original loop must
+be replayed once before retiring the target. This prevents a harness improvement from silently
+changing the bug's workload class.

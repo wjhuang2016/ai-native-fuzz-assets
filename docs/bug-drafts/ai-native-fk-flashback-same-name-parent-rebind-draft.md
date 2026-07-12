@@ -2,10 +2,10 @@
 
 ## Status
 
-- Status: current testbed candidate; control matrix complete; root accounting now supports an independent high-severity fix-locus candidate
+- Status: current testbed candidate; control matrix complete; direct cascade data-loss consequence now demonstrated; root accounting supports an independent high-severity fix-locus candidate
 - Severity: high candidate / data-integrity
 - Testbed: `8220955`, failpoint owner front via `127.0.0.1:14101`
-- Evidence log: `assets/store/logs/flashback-fk-same-name-parent-rebind-red-20260712.log`
+- Evidence logs: `assets/store/logs/flashback-fk-same-name-parent-rebind-red-20260712.log`, `assets/store/logs/flashback-fk-same-name-cascade-delete-red-20260712.log`
 - Proposed root cause ID: `flashback-fk-rebinds-recreated-parent`
 
 This is a new trigger and user-visible consequence discovered by extending the existing
@@ -18,6 +18,10 @@ missing-parent case until the product/fix boundary is reviewed.
 parent object but are orphaned against a newly created, same-name parent object. The FK metadata
 is present and future invalid inserts are rejected, so a superficial FK check looks healthy. The
 already recovered rows are not revalidated.
+
+The consequence can be direct data loss rather than only an orphan: if the replacement parent has
+the same key value and the recovered FK retains `ON DELETE CASCADE`, deleting that new parent
+successfully deletes the historical child row. `ADMIN CHECK TABLE` still reports success.
 
 ## Minimal Reproduction
 
@@ -87,6 +91,45 @@ existing missing-parent control is also useful: when no parent exists, recovered
 can pass without any FK check at all. This new shape shows that merely recreating the name is not
 enough to restore the old reference semantics.
 
+## Consequence Escalation: `ON DELETE CASCADE`
+
+The same testbed shape shows the user-visible data-loss consequence when the replacement parent
+reuses the historical key:
+
+```sql
+DROP DATABASE IF EXISTS ai_native_fk_flashback_cascade;
+CREATE DATABASE ai_native_fk_flashback_cascade;
+USE ai_native_fk_flashback_cascade;
+
+CREATE TABLE p(id INT PRIMARY KEY);
+CREATE TABLE c(
+  id INT PRIMARY KEY,
+  pid INT NOT NULL,
+  CONSTRAINT fk_c_p FOREIGN KEY(pid) REFERENCES p(id) ON DELETE CASCADE
+);
+INSERT INTO p VALUES (1);
+INSERT INTO c VALUES (10, 1);
+
+DROP TABLE c;
+DROP TABLE p;
+
+-- A new object reuses the old parent name and key, but is not the historical parent.
+CREATE TABLE p(id INT PRIMARY KEY);
+INSERT INTO p VALUES (1);
+
+FLASHBACK TABLE c;
+SELECT COUNT(*) FROM c; -- 1
+
+DELETE FROM p WHERE id = 1;
+SELECT COUNT(*) FROM c; -- 0: the recovered historical row was cascaded away
+
+ADMIN CHECK TABLE c; -- succeeds
+```
+
+The run log shows the recovered row `(10,1)` joining the replacement `p(id=1)`, then disappearing
+after the delete. `SHOW CREATE TABLE c` still exposes the old `ON DELETE CASCADE` FK. This is the
+stronger consequence oracle for the same identity-drift root; it is not a second bug.
+
 ## Matrix Verification
 
 The four-cell follow-up matrix ran on the same testbed:
@@ -134,9 +177,10 @@ R_redflag: old parent is dropped and a different empty/incompatible object reuse
 ## Severity Assessment
 
 This is stronger than a metadata-only stale reference: the operation succeeds while publishing a
-table containing an existing orphan row under `foreign_key_checks=ON`. `ADMIN CHECK TABLE` does not
-report it, and future writes can be correctly rejected, leaving the system with a mixed historical
-state that ordinary FK checks do not repair.
+table containing an existing orphan row under `foreign_key_checks=ON`. When the replacement parent
+reuses the historical key, a normal parent delete can then cascade-delete the recovered historical
+child row. `ADMIN CHECK TABLE` does not report either condition, and future writes can be correctly
+rejected, leaving the system with a mixed historical state that ordinary FK checks do not repair.
 
 Before external filing, the remaining review is root accounting and product semantics. The
 runtime controls are complete:
@@ -145,7 +189,8 @@ runtime controls are complete:
 2. same-name parent recreated with the original row (green);
 3. same-name parent recreated empty (red existing orphan);
 4. `FLASHBACK DATABASE` restoring parent and child together (green);
-5. same-name parent with incompatible type (red invalid-schema publication).
+5. same-name parent with incompatible type (red invalid-schema publication);
+6. same-name parent with the historical key plus `ON DELETE CASCADE` (red direct data-loss consequence).
 
 ## Root Accounting Conclusion
 

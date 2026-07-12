@@ -1,0 +1,145 @@
+--------------
+DROP DATABASE IF EXISTS ai_native_fk_flashback_cascade_20260712
+--------------
+
+Query OK, 0 rows affected (0.498 sec)
+
+--------------
+CREATE DATABASE ai_native_fk_flashback_cascade_20260712
+--------------
+
+Query OK, 0 rows affected (0.141 sec)
+
+--------------
+CREATE TABLE p (id INT PRIMARY KEY)
+--------------
+
+Query OK, 0 rows affected (0.138 sec)
+
+--------------
+CREATE TABLE c (
+  id INT PRIMARY KEY,
+  pid INT NOT NULL,
+  CONSTRAINT fk_c_p FOREIGN KEY (pid) REFERENCES p(id) ON DELETE CASCADE
+)
+--------------
+
+Query OK, 0 rows affected (0.200 sec)
+
+--------------
+INSERT INTO p VALUES (1)
+--------------
+
+Query OK, 1 row affected (0.021 sec)
+
+--------------
+INSERT INTO c VALUES (10, 1)
+--------------
+
+Query OK, 1 row affected (0.020 sec)
+
+--------------
+SELECT 'before_drop' AS phase, COUNT(*) AS child_rows FROM c
+--------------
+
++-------------+------------+
+| phase       | child_rows |
++-------------+------------+
+| before_drop |          1 |
++-------------+------------+
+1 row in set (0.022 sec)
+
+--------------
+DROP TABLE c
+--------------
+
+Query OK, 0 rows affected (0.269 sec)
+
+--------------
+DROP TABLE p
+--------------
+
+Query OK, 0 rows affected (0.259 sec)
+
+--------------
+CREATE TABLE p (id INT PRIMARY KEY)
+--------------
+
+Query OK, 0 rows affected (0.150 sec)
+
+--------------
+INSERT INTO p VALUES (1)
+--------------
+
+Query OK, 1 row affected (0.020 sec)
+
+--------------
+FLASHBACK TABLE c
+--------------
+
+Query OK, 0 rows affected (0.138 sec)
+
+--------------
+SELECT c.id, c.pid, p.id AS current_parent_id
+FROM c LEFT JOIN p ON p.id = c.pid
+--------------
+
++----+-----+-------------------+
+| id | pid | current_parent_id |
++----+-----+-------------------+
+| 10 |   1 |                 1 |
++----+-----+-------------------+
+1 row in set (0.022 sec)
+
+--------------
+SELECT COUNT(*) AS child_rows_before_cascade FROM c
+--------------
+
++---------------------------+
+| child_rows_before_cascade |
++---------------------------+
+|                         1 |
++---------------------------+
+1 row in set (0.020 sec)
+
+--------------
+DELETE FROM p WHERE id = 1
+--------------
+
+Query OK, 1 row affected (0.018 sec)
+
+--------------
+SELECT COUNT(*) AS child_rows_after_cascade FROM c
+--------------
+
++--------------------------+
+| child_rows_after_cascade |
++--------------------------+
+|                        0 |
++--------------------------+
+1 row in set (0.020 sec)
+
+--------------
+ADMIN CHECK TABLE c
+--------------
+
+Query OK, 0 rows affected (0.021 sec)
+
+--------------
+SHOW CREATE TABLE c
+--------------
+
++-------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Table | Create Table                                                                                                                                                                                                                                                                                 |
++-------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| c     | CREATE TABLE `c` (
+  `id` int NOT NULL,
+  `pid` int NOT NULL,
+  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,
+  KEY `fk_c_p` (`pid`),
+  CONSTRAINT `fk_c_p` FOREIGN KEY (`pid`) REFERENCES `p` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin |
++-------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+1 row in set (0.020 sec)
+
+Bye

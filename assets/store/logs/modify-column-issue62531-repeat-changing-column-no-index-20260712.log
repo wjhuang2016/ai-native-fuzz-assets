@@ -1,0 +1,36 @@
+2026/07/12 13:14:39 setup done, schema=ai_native_issue62531_repeat_20260712 table=rows with_index=false
+2026/07/12 13:15:11 prefill done, rows=120000
+2026/07/12 13:15:12 ddl success type=bigint after=179.449ms
+2026/07/12 13:15:16 ddl success type=int after=2.931411166s
+2026/07/12 13:15:17 ddl success type=bigint after=148.72075ms
+2026/07/12 13:15:21 ddl success type=int after=2.789944625s
+2026/07/12 13:15:22 ddl success type=bigint after=149.058ms
+2026/07/12 13:15:26 ddl success type=int after=2.784029292s
+2026/07/12 13:15:27 ddl success type=bigint after=142.495542ms
+2026/07/12 13:15:31 ddl success type=int after=2.787793458s
+2026/07/12 13:15:32 ddl success type=bigint after=150.249791ms
+2026/07/12 13:15:39 ddl success type=int after=5.866168583s
+2026/07/12 13:15:40 ddl success type=bigint after=222.001791ms
+2026/07/12 13:15:44 ddl success type=int after=2.836776584s
+2026/07/12 13:15:45 ddl success type=bigint after=147.891167ms
+2026/07/12 13:15:49 ddl success type=int after=2.796716041s
+2026/07/12 13:15:50 ddl success type=bigint after=151.660916ms
+2026/07/12 13:15:55 ddl success type=int after=3.317641s
+2026/07/12 13:15:56 ddl success type=bigint after=197.868625ms
+2026/07/12 13:15:59 ddl success type=int after=2.758648292s
+2026/07/12 13:16:01 ddl success type=bigint after=141.954375ms
+2026/07/12 13:16:04 ddl success type=int after=2.785164292s
+2026/07/12 13:16:06 ddl success type=bigint after=150.23525ms
+2026/07/12 13:16:09 ddl success type=int after=2.766589875s
+2026/07/12 13:16:10 ddl success type=bigint after=151.09125ms
+2026/07/12 13:16:14 ddl success type=int after=2.829402625s
+2026/07/12 13:16:15 ddl success type=bigint after=147.505625ms
+2026/07/12 13:16:19 ddl success type=int after=2.798706625s
+2026/07/12 13:16:20 ddl success type=bigint after=150.3775ms
+2026/07/12 13:16:24 ddl success type=int after=2.83023625s
+2026/07/12 13:16:25 ddl success type=bigint after=146.892209ms
+2026/07/12 13:16:29 ddl success type=int after=2.799916125s
+2026/07/12 13:16:30 ddl success type=bigint after=158.796333ms
+2026/07/12 13:16:34 ddl success type=int after=2.858748542s
+2026/07/12 13:16:36 ddl success type=bigint after=1.061547958s
+2026/07/12 13:16:39 GREEN after 2m0s, with_index=false, insert_ops=1041 delete_ops=1030 ddl_attempts=34 ddl_successes=33 final_rows=1036
