@@ -125,6 +125,46 @@ SELECT COUNT(*) FROM t WHERE a = 5676;                     -- 0
 
 **downscale 是否会把被移除 worker 的 in-flight 错误静默吞掉。**
 
+## 更具体的真实触发场景
+
+“in-flight 操作返回必须处理的错误”在用户侧可以是普通的历史脏数据,不需要人为制造 TiKV 故障。一个常见场景是:多次导入或应用重试曾经把同一个业务邮箱写入两行,现在运维要补建唯一约束。为了和当前 bug 的 `txn` backfill 路径一致,该集群需要是 fast reorg 关闭或 ingest 不可用的配置。
+
+在当前 testbed `8220955` 的 `127.0.0.1:14101` 上,关闭 fast reorg、关闭 dist task、且不启用任何测试 failpoint,下面的普通 SQL 已经返回真实的 duplicate-key error:
+
+```sql
+SET GLOBAL tidb_enable_dist_task = OFF;
+SET GLOBAL tidb_ddl_enable_fast_reorg = OFF;
+SET GLOBAL tidb_ddl_reorg_worker_cnt = 4;
+
+CREATE DATABASE ai_native_real_duplicate_20260712;
+USE ai_native_real_duplicate_20260712;
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  payload VARCHAR(32)
+);
+INSERT INTO users VALUES
+  (81002344, 'a@example.com', 'import-a'),
+  (81072319, 'a@example.com', 'import-b');
+
+SELECT email, COUNT(*) FROM users
+GROUP BY email HAVING COUNT(*) > 1;
+
+ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
+-- ERROR 1062 (23000): Duplicate entry 'a@example.com' for key 'users.uk_email'
+```
+
+生产中把这两行放在一个大表较晚的主键范围,让 `ADD UNIQUE INDEX` 运行数分钟并启动多个 worker。作业进入 `write reorganization` 后,如果前台延迟或 TiKV 资源压力上升,运维可能执行:
+
+```sql
+ADMIN SHOW DDL JOBS;
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+```
+
+此时具体的 red 条件是:包含重复邮箱的后段范围正在被 worker 处理,该 worker 因 8-to-1 downscale 落入被取消的 tail;它在 cancel 之后返回 `Duplicate entry 'a@example.com'`,但 `sendResult` 选择 `ctx.Done()` 分支,collector 没看到错误,DDL 错误地进入 `synced/public`。正确结果应当是 duplicate-key error + rollback。这段无 failpoint 的 SQL 是真实错误来源的 control,并不能替代时序敏感的 deterministic failpoint reproducer。
+
+证据记录在 `assets/store/logs/add-index-real-duplicate-control-20260712.log`。
+
 ## 关键日志链
 
 来自 owner log `/tmp/fp-4003-dynamic.log` 的关键信号:

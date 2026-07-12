@@ -103,46 +103,57 @@ That control is important: the bug is not "an injected worker error can fail ADD
 
 Realistic non-failpoint trigger example:
 
-A fairly common production shape is a large table that was not originally protected by a UNIQUE index. For example, `users.email` was populated by several historical import jobs or application versions, a cleanup job removed the obvious duplicates, and the operator now adds the real constraint:
+The ordinary error source can be dirty historical data, not a synthetic storage fault. A common production operation is adding a uniqueness constraint after several import jobs or application versions have written a large table. This must use the same transaction backfill path as the reproducer: for example, fast reorg is disabled for operational reasons, or the ingest path is unavailable. On the testbed, the following control used no error-injection failpoint and returned the normal duplicate-key error:
 
 ```sql
+SET GLOBAL tidb_enable_dist_task = OFF;
+SET GLOBAL tidb_ddl_enable_fast_reorg = OFF;
+SET GLOBAL tidb_ddl_reorg_worker_cnt = 4;
+
+CREATE DATABASE ai_native_real_duplicate;
+USE ai_native_real_duplicate;
+
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  payload VARCHAR(32)
+);
+
+-- These rows represent a duplicate left by an old import or retry path.
+INSERT INTO users VALUES
+  (81002344, 'a@example.com', 'import-a'),
+  (81072319, 'a@example.com', 'import-b');
+
+SELECT email, COUNT(*)
+FROM users
+GROUP BY email
+HAVING COUNT(*) > 1;
+
 ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
+-- ERROR 1062 (23000): Duplicate entry 'a@example.com' for key 'users.uk_email'
 ```
 
-The table is large enough that ADD INDEX runs for minutes, not seconds, and the job starts with multiple DDL reorg workers, for example `tidb_ddl_reorg_worker_cnt = 8` or higher. During `write reorganization`, the backfill starts to consume TiKV read/write bandwidth or makes foreground latency visible, so the operator uses the documented online throttle command instead of canceling the DDL:
+For a production-sized table, the same two rows can be far apart in the primary-key order. The index build then runs for minutes with multiple DDL workers, for example `tidb_ddl_reorg_worker_cnt = 8`. The operator sees foreground latency or TiKV resource pressure during `write reorganization` and reduces the online job concurrency instead of canceling the DDL:
 
 ```sql
 ADMIN SHOW DDL JOBS;
 ADMIN ALTER DDL JOBS <add-unique-index-job-id> THREAD = 1;
 ```
 
-Now suppose the remaining unexpected duplicate is in a later primary-key range, for example:
+The concrete race is:
 
-```text
-id=81002344, email='a@example.com'
-id=81072319, email='a@example.com'
-```
-
-That range is exactly the kind of range that may be assigned to one of the tail workers removed by an 8-to-1 downscale. The worker is already inside the real ADD UNIQUE INDEX backfill path. When it reaches the duplicate, `batchCheckUniqueKey(...)` or `index.Create(...)` can produce the normal duplicate-key terminal error that should make the DDL fail, for example:
-
-```text
-Duplicate entry 'a@example.com' for key 'uk_email'
-```
-
-The race is:
-
-1. tail worker is still processing the high-key range that contains the duplicate;
-2. operator downscales the running DDL job from 8 workers to 1;
-3. TiDB cancels the tail worker's context because that worker is no longer part of the active worker prefix;
-4. the in-flight uniqueness check/backfill operation returns its real duplicate-key result after that cancellation;
-5. `sendResult` can choose the canceled-context branch and drop the terminal result;
+1. the worker handling the later primary-key range is still inside the transaction backfill;
+2. that range contains the ordinary duplicate `a@example.com`;
+3. the operator reduces the job from 8 workers to 1, so the busy worker is in the canceled tail;
+4. its in-flight uniqueness check returns `Duplicate entry 'a@example.com'` after cancellation;
+5. `sendResult` can choose the canceled-context branch and drop that terminal result;
 6. the parent collector sees no worker error and can publish the index as if all ranges succeeded.
 
-So the realistic trigger is not "some abstract in-flight operation returned something important". It is specifically: ADD UNIQUE INDEX on a large table with one leftover duplicate in a range owned by a worker that gets removed by online DDL thread downscale. The user-visible correct behavior is that ADD UNIQUE INDEX fails with a duplicate-key error. The buggy behavior is that the duplicate-key failure is lost, and the DDL may continue to public state.
+The correct user-visible result is a duplicate-key error and rollback. The buggy result is `synced/public` with an incomplete index. The exact race is timing-sensitive, so this non-failpoint scenario is a realistic trigger shape, not a deterministic replacement for the failpoint reproducer. It is nevertheless concrete: a large transaction-backfill `ADD UNIQUE INDEX`, a leftover duplicate in a later key range, and an operator thread downscale while that range is being processed.
 
-The same timing can happen with a non-unique ADD INDEX if the removed tail worker returns a real TiKV/storage/transaction error while scanning rows, writing index keys, or committing an index batch. The UNIQUE-index case above is the easiest real-world story because the error source is ordinary dirty historical data, not an artificial storage fault.
+The same result-delivery window can also be entered by a real non-duplicate TiKV/transaction error from a non-unique `ADD INDEX`; the unique-index example is easier to explain because the error source is ordinary application data.
 
-The failpoint reproduction above makes this timing deterministic. It does not invent a fake semantic class of error; it only forces the naturally possible "tail worker returns a load-bearing terminal error just after downscale cancellation" window.
+The failpoint reproduction above makes this timing deterministic. It does not invent a fake semantic class of error; it only holds the real worker at the exact point where a production duplicate-key result can arrive after downscale cancellation.
 
 ### 2. What did you expect to see? (Required)
 

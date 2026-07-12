@@ -1,0 +1,32 @@
+RUN=add-index-real-duplicate-control-20260712
+TESTBED=8220955
+ENDPOINT=127.0.0.1:14101
+FAILPOINTS=disabled
+CONFIG=tidb_enable_dist_task=OFF,tidb_ddl_enable_fast_reorg=OFF,tidb_ddl_reorg_worker_cnt=4
+
+SQL=
+SET GLOBAL tidb_enable_dist_task = OFF;
+SET GLOBAL tidb_ddl_enable_fast_reorg = OFF;
+SET GLOBAL tidb_ddl_reorg_worker_cnt = 4;
+DROP DATABASE IF EXISTS ai_native_real_duplicate_20260712;
+CREATE DATABASE ai_native_real_duplicate_20260712;
+USE ai_native_real_duplicate_20260712;
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  payload VARCHAR(32)
+);
+INSERT INTO users VALUES
+  (1, 'old@example.com', 'old'),
+  (2, 'new@example.com', 'new'),
+  (81002344, 'a@example.com', 'import-a'),
+  (81072319, 'a@example.com', 'import-b');
+SELECT email, COUNT(*) AS duplicate_count FROM users GROUP BY email HAVING COUNT(*) > 1;
+ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
+
+OUTPUT=
+email	duplicate_count
+a@example.com	2
+ERROR 1062 (23000) at line 18: Duplicate entry 'a@example.com' for key 'users.uk_email'
+
+INTERPRETATION=ordinary duplicate-key error is produced by the real transaction-backfill path without the test-only post-batch failpoint; this is a control for the realistic trigger story, not a red reproduction of the downscale race.
