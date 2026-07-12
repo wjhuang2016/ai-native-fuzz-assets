@@ -5,8 +5,8 @@
 - Selector: `REPAIR_INDEX_PHYSICAL_METADATA_RECONCILIATION`
 - Module: DDL recovery / `ADMIN REPAIR TABLE`
 - Candidate root: `repair-table-index-metadata-not-reconciled`
-- Severity: high candidate, because ordinary reads can return wrong rows
-- Status: live RED, pending confirmation of the operator-repair contract
+- Severity: observed high-consequence wrong-result, product-invalid under the documented repair contract
+- Status: screened out; retained as a recovery guardrail, not an upstream bug
 - Not a new surface of `id1470001` or `id1500002`
 
 ## Source proof obligation
@@ -174,5 +174,17 @@ expected to reject or validate an index definition that cannot be proven compati
 with existing physical data. If the contract instead says that the operator is
 fully responsible for supplying an exact physical definition, this should remain a
 methodology asset and a guardrail/documentation gap rather than a filed severe bug.
+
+The official TiDB documentation resolves this gate in the latter direction: the
+repair operation is described as **untrusted**, and the operator must manually ensure
+that the original metadata is covered by the supplied `CREATE TABLE` statement.
+Therefore the mismatched `PrefixLen` and `Unique` cells above are intentionally
+incompatible input, not a confirmed product defect. The observed wrong-result behavior
+is still valuable because it proves that this contract must be an explicit admission
+gate before any future repair candidate is treated as a bug.
+
+Screen verdict: `INVALID(contract-untrusted-repair-definition)`. Do not file upstream
+unless a product-feasible path can supply a definition believed to be exact while the
+physical index still differs.
 
 Evidence: `assets/store/logs/admin-repair-index-metadata-red-20260712.log`.

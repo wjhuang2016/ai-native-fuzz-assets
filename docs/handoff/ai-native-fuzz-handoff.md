@@ -1572,23 +1572,15 @@ ORDER BY id; -- 正确返回 1:a
 - 挖掘抽取:子代理输出 JSON → 脚本(`extract.py`)读 task .output 抽最后一个 ```json 块,不把大输出读进上下文。
 - CTE 造数据默认 `cte_max_recursion_depth=1000`,要 `SET SESSION cte_max_recursion_depth=200000`(或用 doubling)。
 
-**2026-07-12 `ADMIN REPAIR TABLE` index metadata candidate: live RED, contract-gated.**
+**2026-07-12 `ADMIN REPAIR TABLE` index metadata selector 已完成 contract screen: INVALID,不计 bug。**
 这轮没有继续枚举 multi-schema 的 TODO:普通表上 `ADD COLUMN + ADD UNIQUE INDEX` 的自然重复键
-失败正常 rollback,列和索引都没有残留;因此它是 negative evidence。新的 source selector 是
-`REPAIR_INDEX_PHYSICAL_METADATA_RECONCILIATION`: `RepairTable` 复用旧 table/index ID 和物理数据,
-但只校验 index name/column names/type,没有校验 `PrefixLen`、`Unique` 等会改变物理编码、约束和
-planner 假设的属性。
+失败正常 rollback,列和索引都没有残留;因此它是 negative evidence。`REPAIR_INDEX_PHYSICAL_METADATA_RECONCILIATION`
+确实能打出强 wrong-result:物理 `KEY idx_v(v(3))` 修复成 `v(2)` 后 table scan 找到
+`abc-two`,`FORCE INDEX` 找不到;物理普通 KEY 修复成 UNIQUE 后默认 `Point_Get` 只返回 `id=4`,
+table scan 仍返回 `1,3,4`,重复写入也成功,`ADMIN CHECK TABLE` 静默。
 
-在 testbed `8220955` 上,物理 `KEY idx_v(v(3))` 修复成 `KEY idx_v(v(2))` 后,table scan 对
-`v='abc-two'` 返回 `id=2`,`FORCE INDEX` 返回空,而 `ADMIN CHECK TABLE` 静默。更强的 cell 是物理
-普通 `KEY idx_v(v)` 修复成 `UNIQUE KEY idx_v(v)`:已有三条重复值,repair 后继续插入第四条重复值成功,
-默认计划变成 `Point_Get`,只返回新行 `id=4`,table scan 仍返回 `1,3,4`,`ADMIN CHECK TABLE` 仍静默。
-同名同列同 prefix 的 exact repair control 全绿。证据和四个 run 已入资产库:
-`assets/store/logs/admin-repair-index-metadata-red-20260712.log`、
-`assets/store/admin-repair-index-metadata-results.jsonl`、
-`docs/bug-drafts/ai-native-admin-repair-index-metadata-draft.md`。
-
-当前不直接计为 confirmed severe bug: `ADMIN REPAIR TABLE` 是 operator recovery 接口,需要先
-确认契约是“系统必须拒绝/验证不兼容物理定义”,还是“operator 必须提供 exact physical definition”。
-只有前者成立,才以默认 `Point_Get` wrong-result 作为 upstream issue 的核心复现;否则保留为
-高价值 recovery guardrail 和新 oracle,不虚增严重 bug 数量。
+但官方 TiDB ADMIN 文档明确把 repair 定义为 untrusted,要求 operator 手工确保原始 metadata
+被 supplied `CREATE TABLE` 准确覆盖。因此这些 mismatch 是故意违反 contract 的输入,不是可提的
+产品 bug。已将 target 标为 `retired`,运行标为 `INVALID(contract-untrusted-repair-definition)`,
+保留 selector/oracle 作为 recovery guardrail。证据仍在
+`assets/store/logs/admin-repair-index-metadata-red-20260712.log`,资产提交为 `6a770cd`。

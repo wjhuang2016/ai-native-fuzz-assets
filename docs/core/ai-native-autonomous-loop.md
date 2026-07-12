@@ -1435,17 +1435,17 @@ ACT:        Exact physical KEY idx_v(v(3)) repaired as KEY idx_v(v(3)) was GREEN
             Point_Get and return only id=4 from an existing three-row duplicate set; a duplicate
             insert still succeeded and ADMIN CHECK TABLE stayed silent.
 INTEGRATE:  Added the candidate target, source obligation, fault, oracle, four runs, and live log
-            to the asset store. Keep root_cause_id=repair-table-index-metadata-not-reconciled;
-            this is distinct from ADD INDEX downscale and FLASHBACK FK identity drift, while the
-            reverse UNIQUE->KEY result is the same root's constraint sibling.
-HEALTH:     The user consequence is high-quality wrong-result, but upstream filing is gated on the
-            product contract for operator-supplied ADMIN REPAIR definitions: reject/validate an
-            incompatible physical definition versus require the operator to provide an exact one.
-            Do not call this a confirmed ordinary DDL bug until that contract is settled.
-NEXT:       Preserve the exact-definition control and ask whether repair metadata is authoritative
-            enough to justify validation. If yes, file with the default Point_Get differential;
-            if no, retain it as a recovery guardrail/method asset rather than inflating the severe
-            bug count.
+            to the asset store. The official ADMIN documentation says repair is untrusted and the
+            operator must ensure the supplied definition covers the original metadata, so the
+            mismatched cells are reclassified INVALID(contract), not counted as a new bug.
+            Keep the selector/oracle as a guardrail; it remains distinct from ADD INDEX downscale
+            and FLASHBACK FK identity drift.
+HEALTH:     The observed consequence is high-quality wrong-result, but it is caused by intentionally
+            violating the documented recovery contract. This is exactly why contract admission must
+            precede severity admission for repair paths.
+NEXT:       Retain the exact-definition control and reopen only if a product-feasible path can
+            produce a definition believed exact while physical index data still differs; otherwise
+            use this selector only to screen future recovery candidates.
 ```
 
 Automation lesson: a recovery command that reuses physical IDs must be tested as a
