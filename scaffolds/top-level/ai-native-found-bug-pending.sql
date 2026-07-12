@@ -1,11 +1,15 @@
 -- No pending found_bug inserts as of 2026-07-13.
--- Remote found_bug was re-verified after inserting id1800003:
---   MAX(id)=1800003, COUNT(*)=99, COUNT(DISTINCT root_cause_id)=76, high=24
+-- Remote found_bug was re-verified after inserting id1830003:
+--   MAX(id)=1830003, COUNT(*)=100, COUNT(DISTINCT root_cause_id)=77, high=25
 --
 -- Bug DB command:
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
+--   id1830003 issue-filed/high: cancelled TiFlash replica removal deletes the active PD rule and causes query timeout
+--     root_cause_id=tiflash-rule-delete-before-ddl-commit
+--     issue=https://github.com/pingcap/tidb/issues/69785
+--     evidence=assets/store/logs/ddl-tiflash-replica-cancel-real-20260713.log
 --   id1800003 confirmed/high: cancelled ALTER TABLE PLACEMENT leaves the uncommitted replica rule active in PD
 --     root_cause_id=table-placement-pd-bundle-before-ddl-commit
 --     issue=https://github.com/pingcap/tidb/issues/69784

@@ -1662,3 +1662,15 @@ O42、owner-specific obligation/scenario/fault/fixture；S35 本身复用,不新
 复用 selector,不复用 finding；每个新 handler 仍须独立重建 P/Q/F、durable owner 和强 oracle。
 已按完整 UT 复现提交 upstream issue #69784,标签 `found-by-ai`,`component/ddl`,`severity/major`；
 远端 `found_bug id1800003` 已同步为 `issue-filed`。
+
+**2026-07-13 S35 consumer-altitude 命中 id1830003/high,upstream #69785。** 当前源码
+`onSetTableFlashReplica` 在更新 `TiFlashReplicaInfo` 和完成 DDL job 前调用
+`ConfigureTiFlashPDForTable`;count=0 会直接删除 `tiflash/table-<id>-r`。local mock RED:job 120
+cancelled/8214,metadata count=1 available=true,PD rule absent；normal removal 与 committed-metadata
+republication GREEN。为了不靠推断定 severity,testbed 8220955 临时部署了兼容的
+`v9.0.0-beta.2.pre-177` TiFlash。表 5378 的 TiFlash-only query 先 GREEN(5/150)；PD rule 删除后
+ADMIN CANCEL job 5382,metadata 仍 count=1/available=1,PD rule absent,同一 MPP query 返回 9012
+TiFlash server timeout。只恢复 captured committed rule 后 progress=1/query=5/150；正常 job 5383
+删除 metadata/PD 后,TiFlash-only session 立即返回明确 1815。RED 后 exact issue 搜索为空,已入库
+id1830003 并提交 #69785。方法论增量:control-plane drift 必须继续追到 consumer altitude；owner
+split 用来 admission,真实 consumer consequence 用来定 severity。发现过程没有使用 PR review finding。

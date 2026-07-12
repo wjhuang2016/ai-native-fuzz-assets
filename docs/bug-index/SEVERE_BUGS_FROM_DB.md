@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 06:25:50 +0800
+Generated at: 2026-07-13 06:57:37 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -28,3 +28,4 @@ Generated at: 2026-07-13 06:25:50 +0800
 | 1740003 | confirmed | high | resource_control | runaway watch publication | runaway protection | `runaway-watch-flush-error-drops-batch` | Transient runaway-watch flush errors silently disable cross-node quarantine |  |
 | 1770003 | confirmed | high | correctness/data-integrity | IMPORT INTO from file | per-chunk local engine writer finalization | `importinto-processchunk-writer-close-false-success` | IMPORT INTO reports success and leaves a missing secondary index when a chunk writer Close fails |  |
 | 1800003 | issue-filed | high | ddl_control_plane | ALTER TABLE ... PLACEMENT POLICY | placement rules | `table-placement-pd-bundle-before-ddl-commit` | Cancelled ALTER TABLE PLACEMENT silently applies the uncommitted replica rule in PD | [https://github.com/pingcap/tidb/issues/69784](https://github.com/pingcap/tidb/issues/69784) |
+| 1830003 | issue-filed | high | ddl_control_plane | ALTER TABLE ... SET TIFLASH REPLICA | TiFlash placement rules | `tiflash-rule-delete-before-ddl-commit` | Cancelled SET TIFLASH REPLICA 0 removes the active PD rule and causes TiFlash-only query timeout | [https://github.com/pingcap/tidb/issues/69785](https://github.com/pingcap/tidb/issues/69785) |

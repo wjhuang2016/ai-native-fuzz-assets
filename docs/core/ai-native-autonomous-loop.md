@@ -1571,3 +1571,24 @@ Automation lesson: **reuse selectors, not findings**. A validated selector may g
 in other current-source handlers, but each candidate must rebuild P/Q/F, name its own durable owners,
 and earn an independent RED with an owner-specific oracle before history is consulted. This makes the
 asset database genuinely incremental without turning past bugs or review findings into the test set.
+
+## Follow-up consumer-altitude tick: TiFlash replica cancellation, EXECUTED (2026-07-13)
+
+S35 found another precommit external effect in current source: `onSetTableFlashReplica` updates the
+PD rule before local metadata publication. The local owner matrix was RED, but severity remained
+unproven until the loop added a real TiFlash consumer.
+
+```text
+SENSE:      count=0 deletes PD rule before TiFlashReplicaInfo is cleared locally.
+ACT local:  job 120 cancelled; metadata count=1/available=true; mock PD rule absent.
+ACT live:   precondition query 5/150; job 5382 cancelled; metadata available; PD rule absent;
+            mpp[tiflash] query timed out with 9012.
+CONTROL:    restore only the committed rule -> progress 1 and 5/150; normal removal -> metadata/PD
+            absent and immediate 1815.
+INTEGRATE:  id1830003 / #69785, O43, owner profile, real-TiFlash scenario, and reusable fixture.
+```
+
+Automation lesson: control-plane drift severity must be tested at the **consumer altitude**. Extend
+the owner chain until either a downstream layer heals/rejects safely or the proposed user consequence
+is directly observed. Metadata-versus-PD RED admitted the target; query timeout justified high
+severity. This prevents the system from promoting every external-state mismatch on inference alone.

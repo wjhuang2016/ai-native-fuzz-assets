@@ -1,0 +1,20 @@
+target=target.ddl.tiflash-replica-external-effect-survives-cancel.v1
+source=TiDB 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+provenance=current source only; no PR/review/history input
+
+RED:
+  job=120
+  ALTER=[ddl:8214] Cancelled DDL job
+  committed metadata assertions=count 1, available true
+  mock PD rule=absent
+  failure=cancelled DDL must restore the PD rule required by committed metadata
+
+GREEN:
+  normal SET TIFLASH REPLICA 0 => metadata nil, PD rule absent
+  same cancellation plus committed-metadata republication => metadata count 1, PD count 1
+
+commands:
+  make failpoint-enable
+  go test -tags=intest ./pkg/ddl -run TestAINativeSetTiFlashReplicaCancelExternalDriftRED -count=1 -v
+  go test -tags=intest ./pkg/ddl -run 'TestAINativeSetTiFlashReplica(NormalGreen|CompensationGreen)' -count=1
+  make failpoint-disable

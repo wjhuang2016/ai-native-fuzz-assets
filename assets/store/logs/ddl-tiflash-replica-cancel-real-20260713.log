@@ -1,0 +1,33 @@
+testbed=8220955
+namespace=testbed-tps-8220955-1-213
+source=TiDB 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa plus test-only pause hook
+tiflash=v9.0.0-beta.2.pre-177-g044990af5 store=93975
+provenance=independent current-source target; post-RED issue dedup only
+
+Precondition, table_id=5378:
+  metadata=REPLICA_COUNT 1, AVAILABLE 1, PROGRESS 1
+  PD rule=tiflash/table-5378-r count 1
+  plan=mpp[tiflash]
+  TiFlash-only query=count 5, sum 150
+
+RED:
+  pause after ConfigureTiFlashPDForTable deletes the rule
+  PD rules=null before cancellation
+  ADMIN CANCEL DDL JOBS 5382=successful
+  ALTER=ERROR 8214 Cancelled DDL job
+  history=cancelled
+  metadata=REPLICA_COUNT 1, AVAILABLE 1
+  PD rule=absent
+  TiFlash-only plan=mpp[tiflash]
+  TiFlash-only query=ERROR 9012 TiFlash server timeout after max_execution_time 5000
+
+Compensation GREEN:
+  restore only captured table-5378-r count 1 rule
+  metadata=count 1, available 1, progress 1
+  TiFlash-only query=count 5, sum 150
+
+Normal removal GREEN:
+  job 5383=synced
+  metadata row=absent
+  PD rule=absent
+  TiFlash-only query=immediate ERROR 1815 No access path; valid engine tikv

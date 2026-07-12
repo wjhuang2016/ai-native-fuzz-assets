@@ -1419,3 +1419,23 @@ sensitivity: EXECUTION-CONFIRMED on id1800003 with local mock PD and real PD on 
 specificity: GOOD; normal publication and one-variable compensation controls both passed.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O43 tiflash_metadata_pd_query_coherence
+
+```text
+obligation:  committed TiFlash metadata, PD placement rule, physical replica progress, and query
+             terminal behavior must describe one replica lifecycle state.
+form:        prove a TiFlash-only query succeeds; pause after PD rule deletion; cancel the DDL;
+             observe history, TIFLASH_REPLICA, PD rule, EXPLAIN owner, and bounded query result.
+red:         ALTER 8214 and cancelled history; metadata count=1/available=1; PD rule absent;
+             EXPLAIN mpp[tiflash]; TiFlash-only query returns 9012 timeout.
+green:       restoring only the committed rule gives progress=1 and result 5/150; normal removal
+             makes metadata/PD empty and returns immediate 1815 no-access-path.
+catches:     external rule mutation before metadata commit, missing compensation, and stale
+             control-plane truth that reaches the runtime consumer.
+blind to:    metadata/PD comparisons that never prove the replica was queryable, and sessions that
+             silently fall back to TiKV.
+sensitivity: EXECUTION-CONFIRMED on id1830003 with real PD, TiKV, TiFlash, and MPP query.
+specificity: GOOD; same table and query recovered after one-owner compensation.
+status:      USED + EXECUTION-CONFIRMED.
+```

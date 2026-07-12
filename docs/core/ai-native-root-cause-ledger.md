@@ -273,6 +273,17 @@ external API, durable object, compensation obligation, and user consequence. Cou
 policy names, and label constraints as blast radius. Remote state after insert: 99 surfaces, 76
 distinct root causes, 24 high-severity rows.
 
+## 2026-07-13 update: id1830003
+
+| root cause | selector | surfaces | consequence | status |
+| --- | --- | --- | --- | --- |
+| TiFlash PD rule deletion commits before cancellable replica-metadata publication | `EXTERNAL_EFFECT_PRECOMMIT_ROLLBACK_COHERENCE` | nonpartition SET TIFLASH REPLICA 0 | cancelled DDL leaves stale available metadata and TiFlash-only queries time out | issue-filed high, #69785 |
+
+This is distinct from table placement and resource-group drift: the external rule group, metadata
+shape, physical replica lifecycle, and runtime consumer differ. Count replica values, location
+labels, and query shapes as blast radius. Remote state after insert: 100 surfaces, 77 distinct root
+causes, 25 high-severity rows.
+
 1. New hits are logged here by root cause first; a surface only gets its own row after passing
    the Reopen test. Blast-radius siblings append to an existing root as "affects +1 owner".
 2. The target queue is ordered by `consequence` first (see Target Selection Rules). The
