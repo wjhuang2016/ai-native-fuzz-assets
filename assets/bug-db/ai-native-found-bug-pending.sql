@@ -1,11 +1,11 @@
--- No pending found_bug inserts as of 2026-07-12.
--- Remote found_bug was re-verified after inserting id1470001:
---   MAX(id)=1470001, COUNT(*)=88, COUNT(DISTINCT root_cause_id)=65
+-- Remote found_bug was re-verified after inserting id1500002:
+--   MAX(id)=1500002, COUNT(*)=89, COUNT(DISTINCT root_cause_id)=66
 --
 -- Bug DB command:
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
+--   id1500002 candidate/high: FLASHBACK TABLE can publish existing orphan rows after same-name parent recreation
 --   id1470001 issue-filed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index
 --     https://github.com/pingcap/tidb/issues/69776
 --   id1440001 confirmed/high: MDL-off ADD INDEX lets concurrent async-commit txn fail despite delayForAsyncCommit safe-window protection

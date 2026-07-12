@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-12
 
-- Remote `found_bug`: `MAX(id)=1470001`, `COUNT(*)=88`, `COUNT(DISTINCT root_cause_id)=65`
-- High-severity entries: 13
+- Remote `found_bug`: `MAX(id)=1500002`, `COUNT(*)=89`, `COUNT(DISTINCT root_cause_id)=66`
+- High-severity entries: 14
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -33,6 +33,7 @@ These rows are `severity=high` in `found_bug`, but still need stronger confirmat
 | --- | --- | --- | --- | --- |
 | 30001 | new | `partial-index-implication` | High impact if current, but status is still `new`; needs current-master confirmation and owner-facing issue quality. | [draft](../bug-drafts/ai-native-partial-index-id30001-draft.md) |
 | 30007 | candidate | `reorg-global-index-miss` | Candidate row; needs fresh reproduction and end-state oracle refresh before being treated as confirmed severe. | [draft](../bug-drafts/ai-native-reorg-global-index-reference-draft.md) |
+| 1500002 | candidate | `flashback-fk-rebinds-recreated-parent` | Current parent exists but recovered historical child rows are not revalidated against its rowset; distinct from id30016's missing-parent bypass. | [draft](../bug-drafts/ai-native-fk-flashback-same-name-parent-rebind-draft.md) |
 
 ## Reusable Lessons
 

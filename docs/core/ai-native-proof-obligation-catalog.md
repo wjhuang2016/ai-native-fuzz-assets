@@ -2343,6 +2343,8 @@ Selector update:
 - Negative selector calibration: `/Users/bba/pc/ai_native_ddl_sequence_recover_boundary_probe.py` shows that sequence-default recover is not a clean S6 validator gap. `FLASHBACK TABLE` can restore a default pointing at a missing sequence, but ordinary `CREATE TABLE ... DEFAULT NEXT VALUE FOR missing_seq` also succeeds and fails only at insert time. That behavior belongs to the existing sequence-default lazy-name-resolution family, not a new recover-only proof violation.
 - 2026-07-03 calibration: broad ordinary DDL owner matrices are green on the current testbed (28 column/reference cells, 17 object/reference cells). Do not widen rename/drop/partition happy paths blindly. Masking-policy recover is static-asymmetric but lacks a behavior oracle because masking policy is DDL-consumed only; TTL×FK is symmetric because later TTL parent creation over a dangling child FK still fails with `8152`.
 
+- 2026-07-12 identity-drift extension: `FLASHBACK TABLE` with a same-name empty parent is a new high candidate (`id1500002`), not just another missing-parent row. The current parent exists and future plans contain `Foreign_Key_Check`, but the recovered existing row is orphaned. The smallest id30016 fix (reject absent parent) would not catch this cell; the new proof obligation is current-parent row membership or historical referenced-object identity.
+
 ## P0: DDL Side-State ID-Swap Ownership
 Source anchors:
 - `/Users/bba/pc/tidb/pkg/executor/lockstats/lock_stats_executor.go`: `LOCK STATS` resolves current table/partition IDs.

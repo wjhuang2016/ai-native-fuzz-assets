@@ -2,7 +2,7 @@
 
 ## Status
 
-- Status: current testbed candidate; control matrix complete; no remote `found_bug` row yet
+- Status: current testbed candidate; control matrix complete; root accounting now supports an independent high-severity fix-locus candidate
 - Severity: high candidate / data-integrity
 - Testbed: `8220955`, failpoint owner front via `127.0.0.1:14101`
 - Evidence log: `assets/store/logs/flashback-fk-same-name-parent-rebind-red-20260712.log`
@@ -147,9 +147,21 @@ runtime controls are complete:
 4. `FLASHBACK DATABASE` restoring parent and child together (green);
 5. same-name parent with incompatible type (red invalid-schema publication).
 
-The accounting rule is deliberate: if the final fix is one shared recovery FK-validation/data
-reconciliation fix, record this as a high-severity surface under the existing recovery selector;
-only create a new root-cause entry if the fix/contract is independently different.
+## Root Accounting Conclusion
+
+This is related to id30016 through the broad S6 recovery-validator selector, but it is not merely
+the same missing-parent surface:
+
+| Surface | What is missing | Why the other fix is insufficient |
+| --- | --- | --- |
+| id30016 | Current referenced parent existence/structural validation | A current-parent existence check rejects the absent-parent case, but an empty same-name parent passes it |
+| this candidate | Current-parent identity/row-membership validation for already recovered child rows | The recovered child has a visible FK and future `Foreign_Key_Check`, yet the existing row is already orphaned |
+
+The smallest fix that closes id30016 is therefore not enough to close this case. The new case needs
+either historical parent identity preservation or a row-level reconciliation proof before publishing
+the recovered child. The two cases may share a broader implementation function, but they have
+different load-bearing predicates and different user-visible failure modes, so this candidate uses
+`root_cause_id=flashback-fk-rebinds-recreated-parent` pending upstream product/fix review.
 
 ## Method Asset
 

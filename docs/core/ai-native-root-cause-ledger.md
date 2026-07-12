@@ -131,6 +131,21 @@ Newest high-severity root:
   path `30301`). The control without downscale rolled back on the same injected worker error.
   This is a high-severity wrong-result/data-consistency root, not a moderate wrong-error.
 
+After inserting `id1500002`, the remote `found_bug` state is:
+
+```text
+89 surfaces  ->  66 distinct root causes
+```
+
+New high-severity candidate:
+
+- `id1500002 / flashback-fk-rebinds-recreated-parent` (selector `S6`): `FLASHBACK TABLE`
+  restores a historical child row against an empty same-name parent. The current parent exists,
+  so a missing-parent fix would pass, and future DML still performs `Foreign_Key_Check`; however
+  the already recovered row is an orphan and `ADMIN CHECK TABLE` is silent. The source and matrix
+  support an independent fix locus: current-parent row membership or historical parent identity,
+  not only current parent existence. Keep status `candidate` pending product/fix review.
+
 ## Retroactive root map
 
 ### Consequence 3 — data loss / corruption / bypass / liveness (the high-value lane)
@@ -145,6 +160,7 @@ Newest high-severity root:
 | distributed ADD INDEX has no retry budget for persistent retryable import timeouts | S26 | id1410001 | persistent `SetTSBeforeImportEngine` `context deadline exceeded` leaves the DXF task `running` and reruns it 247 times in 87s until fault removal |
 | MDL-off safe window no longer protects old-schema async commit during online ADD INDEX | S27 | id1440001 | natural same-start `plain ADD INDEX + async commit + insert+update` returns `ErrInfoSchemaChanged` while MDL-on sibling is GREEN with exact-row oracle |
 | common-reorg ADD INDEX downscale drops canceled tail-worker errors | S28 | id1470001 | `THREAD=1` downscale can cancel a busy tail worker; its post-batch error is dropped before result collection, so a partial index is published and `ADMIN CHECK TABLE` fails |
+| FLASHBACK TABLE rebinds recovered FK rows to a recreated same-name parent | S6 | id1500002 (candidate) | current parent existence passes, but recovered child row membership is not revalidated; empty same-name parent leaves an existing orphan while future FK checks remain active |
 | NT-DML stale tx_read_ts split range silently misses current rows | S23 | id1230001 | write reports success but derives BATCH ranges from stale snapshot; `1:110,2:20` vs current-rowset control `1:110,2:120` |
 
 ### Consequence 2 — wrong-result / wrong-acceptance / metadata

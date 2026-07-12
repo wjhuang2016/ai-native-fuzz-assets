@@ -1,0 +1,35 @@
+RUN=flashback-fk-same-name-parent-rebind-red-current-20260712
+TESTBED=8220955
+ENDPOINT=127.0.0.1:14101
+FAILPOINTS=none
+
+SQL=
+DROP DATABASE IF EXISTS ai_native_fk_rebind_current;
+CREATE DATABASE ai_native_fk_rebind_current;
+USE ai_native_fk_rebind_current;
+SET SESSION foreign_key_checks=1;
+CREATE TABLE p(id INT PRIMARY KEY);
+CREATE TABLE c(id INT PRIMARY KEY,pid INT,KEY(pid),CONSTRAINT fk_pid FOREIGN KEY(pid) REFERENCES p(id));
+INSERT INTO p VALUES (1);
+INSERT INTO c VALUES (1,1);
+DROP TABLE c;
+DROP TABLE p;
+CREATE TABLE p(id INT PRIMARY KEY);
+FLASHBACK TABLE c;
+SELECT c.id,c.pid,p.id AS parent_id FROM c LEFT JOIN p ON c.pid=p.id;
+SELECT COUNT(*) AS orphan_rows FROM c LEFT JOIN p ON c.pid=p.id WHERE p.id IS NULL;
+EXPLAIN FORMAT='brief' INSERT INTO c VALUES (2,999);
+ADMIN CHECK TABLE c;
+
+OUTPUT=
+version
+8.0.11-TiDB-v8.4.0-this-is-a-placeholder
+id	pid	parent_id
+1	1	NULL
+orphan_rows
+1
+EXPLAIN contains Foreign_Key_Check against table:p
+ADMIN CHECK TABLE c -> no error
+
+VERDICT=RED
+INTERPRETATION=FLASHBACK TABLE publishes the historical child row against an empty current same-name parent; future inserts are checked, but the existing orphan is not repaired or rejected.

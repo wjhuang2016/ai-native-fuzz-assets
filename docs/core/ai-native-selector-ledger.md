@@ -209,6 +209,11 @@ status:     active — 1/1 high-signal validator-backed prediction hit, plus use
             missing reference. New calibration from masking/TTL-FK: static metadata asymmetry is
             insufficient without a user-facing behavior oracle, and an explicit validator is not a
             gap if a sibling entrypoint has the symmetric guard.
+            2026-07-12 identity-drift extension: the same FK oracle with a same-name empty parent is
+            RED even though future INSERT plans still contain Foreign_Key_Check. The recovered
+            existing row is already orphaned, so this is a distinct row-membership/identity proof
+            obligation rather than another missing-parent future-write bypass. Recorded as high
+            candidate id1500002; same-name/original-row and FLASHBACK DATABASE controls remain GREEN.
 ```
 
 ## New from id30020 — S7: cache payload purity
