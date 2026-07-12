@@ -335,6 +335,18 @@ SELECT COUNT(*) FROM users FORCE INDEX(uk_email)
 
 证据记录在 `assets/store/logs/add-index-real-duplicate-control-20260712.log`。
 
+### 给复现条件的具体值班剧本
+
+把“in-flight 操作返回必须处理的错误”展开成一条真实值班链路就是:
+
+1. `orders` 没有唯一约束。旧 importer 写入 `SO-20260712-0042` 后,客户端在收到响应前超时;新连接重试,于是两个不同 `id` 下都有这个 `order_no`。
+2. 发布前在线执行 `ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no)`,表是百万级且重复值在较晚主键范围,所以 txn backfill 会持续几分钟。
+3. 前台延迟上升,DBA 执行受支持的 `ADMIN ALTER DDL JOBS <job_id> THREAD = 1` 来降低后台压力。
+4. 正在处理后段范围的 worker 被 cancel,但它的当前 batch 仍在执行;`batchCheckUniqueKey` 发现两个相同 `order_no`,返回普通 `kv.ErrKeyExists`,也就是用户熟悉的 `ERROR 1062 Duplicate entry ...`。
+5. 正常结果应该是 rollback。只有当这份 `ERROR 1062` 跟着被取消 worker 的 terminal result 一起丢失,DDL 仍进入 `synced/public`,并出现 `IGNORE INDEX` 与 `FORCE INDEX` 行集不一致或 `ADMIN CHECK TABLE` 的 `8223`,才是本 bug。
+
+这条剧本不依赖 TiKV 故障、panic 或测试专用错误;failpoint 只负责把“重复键已经发生,但发生在 downscale 之后”这个时序固定下来。重复键若在缩容前被发现并 rollback,是 control,不能算命中。
+
 ## 关键日志链
 
 来自 owner log `/tmp/fp-4003-dynamic.log` 的关键信号:

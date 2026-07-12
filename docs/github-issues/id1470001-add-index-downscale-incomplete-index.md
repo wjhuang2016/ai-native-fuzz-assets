@@ -113,6 +113,32 @@ this is a realistic and relatively common source of the required in-flight termi
 error, and it uses only normal application retry behavior plus a supported DDL
 concurrency change.
 
+### Short operator timeline for the same trigger
+
+This is the concrete production story behind the abstract phrase "an in-flight operation
+returns a result that must be handled":
+
+1. An importer writes `SO-20260712-0042` to `orders`; the transaction commits, but the
+   client loses the response and retries on a new connection. Because the table has no
+   unique constraint yet, two different `id` values now contain the same `order_no`.
+2. A release migration starts `ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no)`
+   on the normal transaction-backfill path. The table is large and the duplicate is in a
+   later primary-key range, so the job remains in `write reorganization` for minutes.
+3. Foreground latency rises. The DBA reduces background DDL work with the supported
+   operation `ADMIN ALTER DDL JOBS <job_id> THREAD = 1`.
+4. The worker handling that later range is canceled while its batch is still running.
+   `batchCheckUniqueKey` then compares the two `order_no` rows and returns the ordinary
+   `kv.ErrKeyExists`, which is the user-visible `ERROR 1062 Duplicate entry ...`.
+5. The correct outcome is rollback. The bug outcome is that the canceled worker's
+   `ERROR 1062` is lost, the job reports `synced/public`, and `uk_order_no` is published
+   without all rows. A table scan still sees both orders, while a query using
+   `uk_order_no` can see only one; `ADMIN CHECK TABLE orders` can report `8223`.
+
+This scenario needs no TiKV outage, panic, malformed row, or test-only error. The failpoint
+reproducer below only holds the same ordinary duplicate-key result until after the
+downscale, making the ordering deterministic. If the duplicate is detected before the
+downscale and the DDL rolls back, that is the expected control.
+
 ### 1. Minimal reproduce step (Required)
 
 This was reproduced on current master with a test-only failpoint build.
