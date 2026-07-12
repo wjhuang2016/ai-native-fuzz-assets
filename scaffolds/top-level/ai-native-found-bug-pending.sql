@@ -1,11 +1,15 @@
 -- No pending found_bug inserts as of 2026-07-12.
--- Remote found_bug was re-verified after inserting id1470001:
---   MAX(id)=1470001, COUNT(*)=88, COUNT(DISTINCT root_cause_id)=65
+-- Remote found_bug was re-verified after reclassifying id1530002 as a known duplicate:
+--   MAX(id)=1530002, COUNT(*)=90, COUNT(DISTINCT root_cause_id)=67
 --
 -- Bug DB command:
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
+--   id1530002 known-duplicate/high: current-master rediscovery of TiDB #65958, where local engine SST loss exits the serving TiDB during ADD INDEX
+--     root_cause_id=dist-addindex-local-engine-db-loss-process-exit
+--     issue=https://github.com/pingcap/tidb/issues/65958
+--     evidence=assets/store/logs/add-index-local-engine-db-loss-red-20260712.log
 --   id1470001 issue-filed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index
 --     https://github.com/pingcap/tidb/issues/69776
 --   id1440001 confirmed/high: MDL-off ADD INDEX lets concurrent async-commit txn fail despite delayForAsyncCommit safe-window protection

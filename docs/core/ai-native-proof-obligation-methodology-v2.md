@@ -248,6 +248,44 @@ and delayed completion are separate observables. A green final table does not er
 the availability RED, but it does keep it distinct from wrong-result or permanent
 liveness roots.
 
+### Strong REDs need an upstream history/issue dedup gate
+
+A strong live RED is evidence of a behavior, not automatically evidence of a new
+root. Before filing or incrementing the severe-bug count, normalize the finding into
+an exact tuple:
+
+```text
+operation + lifecycle action + phase + asset/consumer edge + fatal log signature
+```
+
+Then search, in order:
+
+1. upstream issues using the exact log and user action;
+2. upstream PRs and regression tests using the asset path and cleanup/ownership terms;
+3. local history and existing bug roots using the same failure boundary and fix locus.
+
+Classify it as a known-root rediscovery when the existing report has the same trigger,
+the same user-visible failure boundary, and the same intended repair location. Keep the
+new run as an asset when it adds a smaller deterministic trigger, an adjacent GREEN
+control, a stronger process oracle, or a fix-validation matrix. Do not file a second
+issue or count a second root merely because the new harness reached the same fatal
+library path through a different fault injection.
+
+```text
+strong RED
+-> normalize exact tuple
+-> issue / PR / history dedup
+-> same trigger + boundary + fix locus?
+   yes -> known-duplicate rediscovery asset
+   no  -> contract review, then new-root accounting
+```
+
+The `id1530002` calibration is the model: the current-master probe deleted an
+internal Pebble engine SST and proved process exit, while upstream #65958 already
+covered the natural `ADMIN CANCEL DDL JOBS -> tmp_ddl cleanup -> missing SST` race.
+The probe remains valuable because raw-input SST loss was a GREEN retry control and
+the process/owner/task oracle was made executable.
+
 ### Performance obligations are a sibling loop, not the same loop
 
 The card structure transfers. Optimizers, caches, and pruners constantly make cost claims: "this predicate prunes the scan", "this cached plan is still optimal", "this path reads O(k) rows". Those are proof obligations too, and `R_redflag` thinking applies directly: stale statistics, data skew, parameter drift, and cardinality boundaries are the inputs that let a cost proof pass while the cost claim fails.

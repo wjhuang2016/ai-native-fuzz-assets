@@ -1,12 +1,13 @@
--- Remote found_bug was re-verified after inserting id1530002:
+-- Remote found_bug was re-verified after reclassifying id1530002 as a known duplicate:
 --   MAX(id)=1530002, COUNT(*)=90, COUNT(DISTINCT root_cause_id)=67
 --
 -- Bug DB command:
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
---   id1530002 candidate/high: distributed ADD INDEX can exit the serving TiDB when an internal Pebble local engine DB SST disappears
+--   id1530002 known-duplicate/high: current-master rediscovery of TiDB #65958, where local engine SST loss exits the serving TiDB during ADD INDEX
 --     root_cause_id=dist-addindex-local-engine-db-loss-process-exit
+--     issue=https://github.com/pingcap/tidb/issues/65958
 --     evidence=assets/store/logs/add-index-local-engine-db-loss-red-20260712.log
 --   id1500002 candidate/high: FLASHBACK TABLE can publish existing orphan rows after same-name parent recreation
 --   id1470001 issue-filed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index

@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-12 19:22:48 +0800
+Generated at: 2026-07-12 19:36:46 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -18,4 +18,4 @@ Generated at: 2026-07-12 19:22:48 +0800
 | 1440001 | confirmed | high | ddl-availability | ADD INDEX / online schema change | delayForAsyncCommit / MDL-off async-commit safe window | `async-commit-schema-change-safe-window-broken` | MDL-off ADD INDEX lets concurrent async-commit txn fail with Information schema is changed despite delayForAsyncCommit safe-window protection |  |
 | 1470001 | issue-filed | high | wrong-result | ADD INDEX / common reorg / ADMIN ALTER DDL JOBS THREAD | txn backfill worker downscale result delivery | `addindex-downscale-drops-tail-worker-error` | common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index | [https://github.com/pingcap/tidb/issues/69776](https://github.com/pingcap/tidb/issues/69776) |
 | 1500002 | issue-filed | high | data-integrity | FLASHBACK TABLE | foreign-key-recovery | `flashback-fk-rebinds-recreated-parent` | FLASHBACK TABLE can publish existing orphan rows after same-name parent recreation | [https://github.com/pingcap/tidb/issues/69777](https://github.com/pingcap/tidb/issues/69777) |
-| 1530002 | candidate | high | ddl-availability | ADD INDEX / distributed reorg ingest | local Pebble engine asset lifetime and DXF failover | `dist-addindex-local-engine-db-loss-process-exit` | Distributed ADD INDEX can exit the serving TiDB when its temporary local engine DB disappears |  |
+| 1530002 | known-duplicate | high | ddl-availability | ADD INDEX / distributed reorg ingest | local Pebble engine asset lifetime and DXF failover | `dist-addindex-local-engine-db-loss-process-exit` | Distributed ADD INDEX can exit the serving TiDB when its temporary local engine DB disappears | [https://github.com/pingcap/tidb/issues/65958](https://github.com/pingcap/tidb/issues/65958) |

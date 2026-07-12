@@ -68,10 +68,9 @@ local engine DB 内部单 SST 文件级 runtime asset loss
 而是把 subtask 标成 retryable,从空目录重新扫描并完成。这个对照很重要:不能把“输入文件丢失”
 和“已打开 Pebble DB 引用的内部 SST 丢失”混成同一个资产。
 
-当前远端 bug 库记录为 `id1530002` (`candidate/high`,
-`root_cause_id=dist-addindex-local-engine-db-loss-process-exit`),但仍保留产品契约门:
-需要确认临时 DDL engine 的损坏是否允许 fail-fast,以及是否应该由 Pebble logger/DDL 边界把它
-转换为 subtask error,而不是杀掉 serving TiDB。证据:
+实验最初把远端 bug 库记录为 `id1530002` (`candidate/high`,
+`root_cause_id=dist-addindex-local-engine-db-loss-process-exit`);经过上游去重后,
+现在状态是 `known-duplicate/high`,对应 TiDB #65958,不再作为独立 root 计数。证据:
 `assets/store/logs/add-index-local-engine-db-loss-red-20260712.log`。
 
 ## 实验卫生补充
@@ -216,12 +215,40 @@ ERROR 2013 (HY000): Lost connection to MySQL server at 'reading initial communic
 2. 在 pause 点做最小资产扰动
 3. 用强 oracle 同时看前台症状、owner 生死、task 演化和最终 end-state
 
+## Update 2026-07-12: 上游去重结论
+
+这条 live RED 不应继续作为一个新的 root 计数。上游已有客户报告
+[#65958](https://github.com/pingcap/tidb/issues/65958),其生产触发链是:
+
+```text
+ADMIN CANCEL DDL JOBS
+-> mysql.tidb_ddl_job 中的 job 行消失
+-> 约 1 分钟后的 tmp_ddl cleanup 把仍被 local Pebble engine 使用的 job 目录删除
+-> MustExist 读取内部 SST 失败
+-> TiDB 进程退出
+```
+
+上游 PR [#66187](https://github.com/pingcap/tidb/pull/66187) 已加入
+`LitDiskRoot.Has(jobID)` 保护和 issue regression test,但当前仍是 OPEN,所以当前源码
+的自然风险仍然存在。我们的 `id1530002` 实验没有复现完整的 cancel/cleanup 时序,
+而是用 `SetTSBeforeImportEngine` 后删除同一个内部 Pebble DB 资产,把 #65958 的
+最后一跳稳定重放出来;因此它是 **known-root rediscovery / reproduction asset**,
+不是新的独立 bug。
+
+这次重发现仍有两点增量价值:
+
+1. 把上游报告中的“缺 SST”精确归因到已打开 engine DB 的内部
+   `<engine_uuid>/000004.sst`,而不是 raw ingest input SST。
+2. 用相邻资产类型做了 GREEN control:raw input SST 丢失会进入 bounded retry/rebuild,
+   不会杀掉 TiDB;因此后续同类实验必须先做 asset-to-consumer 定位。
+
 ## 当前判断
 
-- 质量:高价值 availability bug candidate,已两次 live 命中 engine-DB-loss -> process-exit
-- 远端资产:`id1530002`, `candidate/high`;尚未按 confirmed root 计数
-- 形态:local engine runtime loss -> import path fatal -> TiDB process exit -> owner failover -> delayed self-heal
-- 还需要的下一步:
-  - 评估这是“合理的致命保护”还是“应该返回错误而不该打掉进程”
-  - 对照不同 Pebble logger/engine boundary 的修复位置,决定是否升级成正式 severe root
-  - 若要对外提 issue,复现里要明确说明这是一条 runtime fault-injection / asset-loss 场景,不是纯 SQL 场景
+- 质量:两次 current-master live 命中 engine-DB-loss -> process-exit,但 root 已被上游
+  #65958 覆盖
+- 远端资产:`id1530002`, `known-duplicate/high`, `issue_url=#65958`
+- 形态:local engine runtime loss -> import path fatal -> TiDB process exit -> owner failover
+  -> delayed self-heal
+- 计数:不新增 severe root,保留为已知严重 bug 的重放、资产边界和 oracle 校准样本
+- 后续:继续挖新的 root;若验证 #66187 的 fix,应复用本资产做 fix-validation,不再为它
+  重复提 issue
