@@ -333,3 +333,14 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   lineage identity on a successfully loaded persistent token.
 - Counting rule: one root only. Task names, bucket schemes, checkpoint values, and cluster-replacement
   mechanisms are blast radius.
+
+## 2026-07-13 update: id1890003
+
+- Remote `found_bug`: 102 surfaces, 79 distinct root causes, 27 high-severity rows.
+- New root: `lightning-importinto-finished-checkpoint-unbound-input`.
+- Consequence: C3 direct silent lost import; public orchestration succeeds for nonempty current input
+  while no IMPORT job is submitted.
+- Distinctness: S39 is reused, but the owner and consumer differ from CRR: input file lineage and
+  table-level job submission rather than upstream checkpoint and PITR restore boundary.
+- Counting rule: one root only. File names, checkpoint drivers, keep modes, and table counts are
+  blast radius.

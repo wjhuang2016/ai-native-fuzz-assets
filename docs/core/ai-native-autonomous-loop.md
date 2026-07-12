@@ -1611,3 +1611,20 @@ Automation lesson: a persisted state format needs **semantic lineage binding**, 
 compatibility. For every token that enables a skip, generate a same-name/same-path two-lineage
 matrix and follow the token to its highest consumer. This adds a new high-yield selector that is
 independent of PR review findings.
+
+## Follow-up lineage-binding tick: Lightning importinto, EXECUTED (2026-07-13)
+
+S39 was reused against a different owner. The first idea compared GroupKey values, but source tracing
+showed the importer restores the old key; the matrix was corrected to change the hidden input-file
+lineage while keeping table name, checkpoint path, and group equal.
+
+```text
+RED:       Finished checkpoint + new-lineage.csv -> SubmitAndWait nil, submissions 0.
+CONTROL:   no checkpoint + same current input -> submissions 1.
+BASELINE:  finished resume path remains GREEN.
+INTEGRATE: id1890003 high; input-owner module, obligation, oracle, scenario, and scaffold.
+```
+
+Automation lesson: when a weak identity token is actively copied into the new run, comparing that
+token cannot expose drift. The LOOP must identify and mutate the semantic owner that the token is
+supposed to represent. This correction is part of selector execution, not an after-the-fact fix.

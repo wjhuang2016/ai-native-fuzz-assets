@@ -1,0 +1,6 @@
+TestAINativeFinishedCheckpointMustNotSkipDifferentInputLineageRED
+current input: new-lineage.csv, size=100
+SubmitAndWait: nil
+expected submissions: 1
+actual submissions: 0
+verdict: RED

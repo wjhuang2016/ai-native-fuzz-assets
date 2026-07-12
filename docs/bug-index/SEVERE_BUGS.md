@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-13
 
-- Remote `found_bug`: `MAX(id)=1860003`, `COUNT(*)=101`, `COUNT(DISTINCT root_cause_id)=78`
-- High-severity entries: 26 total; 24 confirmed/issue-filed; 1 candidate; 1 known-root rediscovery
+- Remote `found_bug`: `MAX(id)=1890003`, `COUNT(*)=102`, `COUNT(DISTINCT root_cause_id)=79`
+- High-severity entries: 27 total; 25 confirmed/issue-filed; 1 candidate; 1 known-root rediscovery
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -37,6 +37,7 @@ Last verified: 2026-07-13
 | 1800003 | issue-filed | DDL control plane | `table-placement-pd-bundle-before-ddl-commit` | Cancelled table placement DDL can silently reduce the table's declared replica redundancy in PD. | [issue](https://github.com/pingcap/tidb/issues/69784), [draft](../bug-drafts/ai-native-table-placement-cancel-external-drift-draft.md) | [case](../method-cases/ai-native-id1800003-selector-reuse-method-case.md) |
 | 1830003 | issue-filed | DDL availability | `tiflash-rule-delete-before-ddl-commit` | Cancelled TiFlash replica removal can leave stale available metadata and make TiFlash-only queries time out. | [issue](https://github.com/pingcap/tidb/issues/69785), [draft](../bug-drafts/ai-native-tiflash-replica-cancel-external-drift-draft.md) | [case](../method-cases/ai-native-id1830003-owner-consumer-oracle-method-case.md) |
 | 1860003 | confirmed | disaster recovery | `crr-resume-state-unbound-lineage` | Reusing a CRR downstream bucket can make PITR trust a checkpoint from another upstream/task lineage. | [draft](../bug-drafts/ai-native-crr-resume-state-cross-lineage-draft.md) | [case](../method-cases/ai-native-id1860003-persisted-lineage-method-case.md) |
+| 1890003 | confirmed | data loss | `lightning-importinto-finished-checkpoint-unbound-input` | A retained finished checkpoint can make a new nonempty Lightning input return success with no IMPORT job. | [draft](../bug-drafts/ai-native-lightning-importinto-finished-checkpoint-lineage-draft.md) | [case](../method-cases/ai-native-id1890003-input-lineage-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

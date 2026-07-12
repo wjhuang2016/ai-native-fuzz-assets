@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 07:23:55 +0800
+Generated at: 2026-07-13 07:30:56 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -30,3 +30,4 @@ Generated at: 2026-07-13 07:23:55 +0800
 | 1800003 | issue-filed | high | ddl_control_plane | ALTER TABLE ... PLACEMENT POLICY | placement rules | `table-placement-pd-bundle-before-ddl-commit` | Cancelled ALTER TABLE PLACEMENT silently applies the uncommitted replica rule in PD | [https://github.com/pingcap/tidb/issues/69784](https://github.com/pingcap/tidb/issues/69784) |
 | 1830003 | issue-filed | high | ddl_control_plane | ALTER TABLE ... SET TIFLASH REPLICA | TiFlash placement rules | `tiflash-rule-delete-before-ddl-commit` | Cancelled SET TIFLASH REPLICA 0 removes the active PD rule and causes TiFlash-only query timeout | [https://github.com/pingcap/tidb/issues/69785](https://github.com/pingcap/tidb/issues/69785) |
 | 1860003 | confirmed | high | disaster_recovery | BR operator crr-checkpoint / log restore | CRR persisted resume state | `crr-resume-state-unbound-lineage` | CRR reuses an unbound resume checkpoint across replication lineages |  |
+| 1890003 | confirmed | high | data_loss | TiDB Lightning importinto backend | finished table checkpoint | `lightning-importinto-finished-checkpoint-unbound-input` | Lightning importinto can skip new input because of a finished checkpoint from an older run |  |

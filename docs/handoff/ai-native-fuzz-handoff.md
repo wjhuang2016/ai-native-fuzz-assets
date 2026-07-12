@@ -1684,3 +1684,13 @@ checkpoint 10；未显式指定 restore-ts 时还会把 100 设成默认目标�
 current=10 均 GREEN。RED 后四组 GitHub issue 搜索无 exact root。远端 `found_bug id1860003`,当前
 101 rows/78 roots/26 high。新 selector S39 `PERSISTED_STATE_MUST_BIND_LINEAGE`,oracle O44。发现
 过程没有使用 PR review finding,testbed 未使用。
+
+**2026-07-13 S39 第二个 current-source-only 命中 id1890003/high:Lightning importinto 会用旧
+Finished checkpoint 静默跳过新输入。** TableCheckpoint 按 table name 查找,虽保存 JobID/Status/
+GroupKey,但没有 input/config/target fingerprint；Finished 分支直接 return。完整 importer 还会把旧
+GroupKey 复制进新运行,所以最初的 cross-group 矩阵被源码否决,改为保持 table/path/group 不变、只把
+输入换成非空 `new-lineage.csv`。RED:`SubmitAndWait=nil,SubmitTable=0`；no-checkpoint control
+`SubmitTable=1`,finished-resume baseline GREEN。`keep-after-success=rename` 是支持配置,但该 backend
+成功后只实现 remove,保留状态仍在原查找位置。RED 后四组 GitHub issue 搜索无 exact root。远端
+`found_bug id1890003`,当前 102 rows/79 roots/27 high；资产 231 revisions,RED=46/GREEN=43,
+C3_DIRECT=18,next=null。发现过程没有使用 PR review finding,testbed 未使用。

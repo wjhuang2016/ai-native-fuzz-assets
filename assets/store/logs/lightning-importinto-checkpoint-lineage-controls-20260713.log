@@ -1,0 +1,2 @@
+TestAINativeNoCheckpointSubmitsCurrentInputGREEN: submissions=1 PASS
+TestJobOrchestratorSubmitAndWait/one_table,_already_finished: PASS
