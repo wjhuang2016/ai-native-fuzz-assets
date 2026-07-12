@@ -1,5 +1,5 @@
 # AI-Native Bug Hunting Methodology v2
-> Last updated: 2026-07-11. This document records the improved proof-obligation methodology for using AI to find bugs efficiently. It is intentionally separate from per-bug method-case notes.
+> Last updated: 2026-07-12. This document records the improved proof-obligation methodology for using AI to find bugs efficiently. It is intentionally separate from per-bug method-case notes.
 
 ## One-Sentence Version
 
@@ -1471,6 +1471,45 @@ Method improvement:
   recovery publishes them, the proof gap is real.
 - Stop after one namespace owner plus controls. More flashback fields are lower value than finding
   another create/add validator that recovery skips.
+
+### Identity drift is a separate recovery dimension
+
+The next recovery probe reused the `FLASHBACK TABLE` foreign-key oracle but changed only one hidden
+input: the referenced parent went from **absent** to **a different empty object with the same name**.
+That produced a stronger consequence than the missing-parent case: the recovered child already
+contained a row that was valid in the old snapshot but was orphaned against the current parent.
+
+The reusable matrix is:
+
+```text
+old child + parent absent                 -> future FK check may be skipped
+old child + same-name parent, same row    -> GREEN reference continuity control
+old child + same-name parent, empty       -> RED existing orphan after recovery
+old child + same-name parent, bad schema  -> RED invalid target schema publication
+FLASHBACK DATABASE with both objects       -> GREEN container-level control
+```
+
+This adds an explicit identity-drift gate to the recovery selector:
+
+```text
+P_check:  historical object A referenced object B
+Q_claim:  restoring A against current name B preserves the old reference contract
+D_dims:   current object identity, schema, columns, indexes, and current rowset
+F_effect: old metadata and rows are published after only name/ID availability checks
+O_oracle: existing-row reference differential + future-DML control + ADMIN CHECK
+```
+
+Method rules:
+
+- Reuse a strong prior oracle, then mutate one semantic identity dimension at a time; this is
+  asset reuse, not restarting a broad FK fuzz campaign.
+- Check existing recovered rows before checking only future writes. A future-DML green result can
+  coexist with a historical orphan already published by recovery.
+- Treat `same name` as a candidate identity collision, not proof of object continuity. If the
+  metadata model stores names but not referenced object identity, require either an explicit
+  revalidation/reconciliation step or a recovery refusal.
+- Account the result as a new root only when the fix locus or product contract is independent.
+  Otherwise record it as a stronger identity-drift surface under the existing recovery selector.
 
 ## Latest Calibration: Cross-Owner Hits Need Root-Cause Accounting
 

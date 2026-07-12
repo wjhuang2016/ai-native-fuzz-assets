@@ -1,0 +1,13 @@
+version
+8.0.11-TiDB-v8.4.0-this-is-a-placeholder
+Table	Create Table
+c	CREATE TABLE `c` (\n  `id` int NOT NULL,\n  `pid` int DEFAULT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `pid` (`pid`),\n  CONSTRAINT `fk_pid` FOREIGN KEY (`pid`) REFERENCES `p` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+id	pid
+1	1
+orphan_rows
+1
+id	pid	parent_id
+1	1	NULL
+id	estRows	task	access object	operator info
+Insert_1	N/A	root		N/A
+└─Foreign_Key_Check_3	0.00	root	table:p	foreign_key:fk_pid, check_exist
