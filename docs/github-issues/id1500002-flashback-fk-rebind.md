@@ -56,6 +56,21 @@ ADMIN CHECK TABLE c                       -> succeeds
 
 `SHOW CREATE TABLE c` still contains the historical `ON DELETE CASCADE` foreign key.
 
+The same identity drift is also observable with `ON UPDATE CASCADE`. After recovering a child
+whose historical parent was replaced by a same-name object:
+
+```sql
+-- c currently contains the recovered historical row (10,1), and replacement p contains (1).
+UPDATE p SET id = 2 WHERE id = 1;
+SELECT id, pid FROM c;
+ADMIN CHECK TABLE c;
+```
+
+On the same testbed this returns `(10,2)` and `ADMIN CHECK TABLE c` succeeds. Thus a normal update
+against the replacement parent can rewrite historical child data even though the recovery never
+proved that the parent object was the historical one. This is a consequence sibling of the delete
+case, not a separate root.
+
 The same-name empty-parent variant demonstrates the underlying orphan directly:
 
 ```sql

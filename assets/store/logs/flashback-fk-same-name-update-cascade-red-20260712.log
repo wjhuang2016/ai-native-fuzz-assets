@@ -1,0 +1,22 @@
+RUN=flashback-fk-same-name-update-cascade-red-20260712
+TESTBED=8220955
+ENDPOINT=127.0.0.1:14101
+BINARY=8.0.11-TiDB-v9.0.0-beta.2.pre-1927-g13282a8bd0-dirty
+FAILPOINTS=none
+
+SCHEMA=ai_native_fk_update_20260712
+HISTORICAL_PARENT=created p(id=1), child c(id=10,pid=1), FK ON UPDATE CASCADE
+HISTORICAL_ACTION=drop c; drop p
+REPLACEMENT_PARENT=create p(id INT PRIMARY KEY); insert p values (1)
+RECOVERY=FLASHBACK TABLE c succeeded
+
+BEFORE_UPDATE=child(id=10,pid=1), current_parent_id=1
+ACTION=UPDATE p SET id=2 WHERE id=1
+UPDATE_RESULT=success
+AFTER_UPDATE=child(id=10,pid=2), current_parent_id=2
+ADMIN_CHECK_TABLE=PASS
+SHOW_CREATE=historical FK still contains ON UPDATE CASCADE
+
+INTERPRETATION=The recovered historical row was rebound to a different same-name parent object.
+INTERPRETATION=Updating the replacement parent normally cascaded into the recovered child row.
+INTERPRETATION=This is the same flashback-fk-rebinds-recreated-parent root as the delete-cascade run, not a new root.

@@ -130,6 +130,46 @@ The run log shows the recovered row `(10,1)` joining the replacement `p(id=1)`, 
 after the delete. `SHOW CREATE TABLE c` still exposes the old `ON DELETE CASCADE` FK. This is the
 stronger consequence oracle for the same identity-drift root; it is not a second bug.
 
+### Consequence sibling: `ON UPDATE CASCADE` rewrites the recovered row
+
+The same rebound reference also permits a normal update on the replacement parent to mutate the
+historical child row:
+
+```sql
+DROP DATABASE IF EXISTS ai_native_fk_update_20260712;
+CREATE DATABASE ai_native_fk_update_20260712;
+USE ai_native_fk_update_20260712;
+
+CREATE TABLE p(id INT PRIMARY KEY);
+CREATE TABLE c(
+  id INT PRIMARY KEY,
+  pid INT NOT NULL,
+  CONSTRAINT fk_c_p FOREIGN KEY(pid) REFERENCES p(id) ON UPDATE CASCADE
+);
+INSERT INTO p VALUES (1);
+INSERT INTO c VALUES (10, 1);
+
+DROP TABLE c;
+DROP TABLE p;
+
+-- A different parent object reuses the historical name and key.
+CREATE TABLE p(id INT PRIMARY KEY);
+INSERT INTO p VALUES (1);
+
+FLASHBACK TABLE c;
+SELECT id, pid FROM c; -- 10, 1
+
+UPDATE p SET id = 2 WHERE id = 1;
+SELECT id, pid FROM c; -- 10, 2
+ADMIN CHECK TABLE c;
+```
+
+On testbed `8220955`, the update succeeded and changed the recovered child from `(10,1)` to
+`(10,2)`, while `ADMIN CHECK TABLE c` remained green. This is the same root as the
+`ON DELETE CASCADE` sibling, not a new root: the missing proof is still the identity and row
+membership of the referenced parent at recovery time. It does, however, strengthen the user
+impact from possible deletion to an ordinary parent update rewriting historical child data.
+
 ## Matrix Verification
 
 The four-cell follow-up matrix ran on the same testbed:
