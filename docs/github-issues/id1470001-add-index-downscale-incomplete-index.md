@@ -101,6 +101,25 @@ ERROR 1105 (HY000): mock backfill post-batch error on worker 0
 
 That control is important: the bug is not "an injected worker error can fail ADD INDEX". The bug is that dynamic downscale can make a removed worker's real error disappear, allowing the DDL job to publish success.
 
+Realistic non-failpoint trigger example:
+
+A production cluster is adding a UNIQUE index to a large table after historical data cleanup, and the target column still contains an unexpected duplicate in a later key range.
+
+```sql
+ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
+```
+
+The job starts with multiple DDL reorg workers, for example `tidb_ddl_reorg_worker_cnt = 8` or higher. While the backfill is in `write reorganization`, the cluster load becomes visible, so an operator reduces the running DDL job's thread count:
+
+```sql
+ADMIN SHOW DDL JOBS;
+ADMIN ALTER DDL JOBS <add-unique-index-job-id> THREAD = 1;
+```
+
+If one of the removed tail workers is processing the range that contains the duplicate value, `batchCheckUniqueKey(...)` or `index.Create(...)` can return the real duplicate-key error after that worker has already been canceled by the downscale. That error is load-bearing: the ADD UNIQUE INDEX job should fail or roll back. In the buggy path, the canceled worker's result can be dropped, and the parent may continue as if all workers succeeded.
+
+The same race can also be hit by non-unique ADD INDEX if the removed tail worker returns a real storage/transaction error during scan, lock, write, or commit. The failpoint reproduction above makes this timing deterministic; it is not relying on a fake semantic class of error.
+
 ### 2. What did you expect to see? (Required)
 
 The DDL job must not publish a partial index after any in-flight backfill worker returns a real error.
