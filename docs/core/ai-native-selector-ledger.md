@@ -1115,3 +1115,33 @@ stop rule:  do not enumerate all DDLs that share `txnBackfillExecutor`. Reopen o
             owner where a removed worker's terminal result can be dropped, a stronger publish-time
             consequence, or fix validation proving result draining/acceptance closes the root.
 ```
+
+## Promoted from id30001 — S29: semantic proof gate with normalization asymmetry
+```text
+selector:   a planner fast-path checker claims that an access path is safe by proving a semantic
+            implication, but metadata predicates enter through a different normalization path
+            than query predicates
+born from:  id30001 (partial-index implication check keeps pi for a>=0 although pi contains a<3)
+predictions:
+  - partial predicate and query predicate overlap without implication -> RED under USE/FORCE
+    versus IGNORE/table-scan rowset differential
+  - fast path naturally satisfies ORDER BY/LIMIT under pseudo or incomplete stats -> RED without
+    a hint; changing statistics may alter plan selection but cannot make an unsafe path correct
+  - exact implication, point predicates, and lower-bound controls -> GREEN
+  - nullable, OR, excluded-point, cast, and collation variants are separate semantic families,
+    not automatic new roots
+status:     active — 1/1 high-impact hit, issue filed, with negative boundaries recorded.
+            The important refinement is that normalization of the proof input is itself part of
+            Q_claim. Textually equal predicates can have different range semantics if metadata
+            and query expressions took different preparation paths.
+oracle gate: require a stable reference rowset, forced or natural fast-path evidence, and a
+             blocked-path differential. `ADMIN CHECK TABLE` is only a storage-consistency control;
+             it cannot prove planner applicability.
+negative calibration:
+  - do not count USE/FORCE, default no-hint, or different predicate shapes as separate bugs when
+    the same proof checker and fix locus explain them
+  - do not treat ANALYZE changing the plan as a fix; it is a selection-state control
+  - do not promote a source-level range anomaly without a user-visible rowset mismatch
+stop rule:  do not enumerate all partial-index syntax. Reopen only for proof-input normalization
+            fix validation, another proof owner, or a stronger consequence.
+```

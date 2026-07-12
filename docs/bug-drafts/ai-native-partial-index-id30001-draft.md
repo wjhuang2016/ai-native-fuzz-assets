@@ -1,5 +1,9 @@
 # Partial Index Wrong Result Draft (found_bug id30001)
 
+Status: confirmed on current master and filed upstream as [TiDB #69779](https://github.com/pingcap/tidb/issues/69779).
+
+Environment: authorized testbed `8220955`, TiDB commit `13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa`.
+
 ## Summary
 TiDB can treat a partial index as usable even when the query predicate does not imply the partial-index predicate. When that unsafe partial index is used, `SELECT` silently misses rows outside the partial subset.
 
@@ -13,20 +17,21 @@ USE ai_native_pi_bug;
 
 CREATE TABLE t(
   id INT PRIMARY KEY,
-  a INT NULL,
-  b INT,
+  a INT NOT NULL,
+  b INT NOT NULL,
   INDEX pi(b) WHERE a < 3
 );
 
 INSERT INTO t VALUES
-  (1,1,1),
-  (2,2,2),
-  (3,3,3),
-  (4,10,4),
-  (5,NULL,5);
+  (1,0,1),
+  (2,1,2),
+  (3,2,3),
+  (4,3,4),
+  (5,10,5);
 
 SELECT id,a,b FROM t IGNORE INDEX(pi) WHERE a >= 0 ORDER BY b;
-SELECT id,a,b FROM t USE INDEX(pi)    WHERE a >= 0 ORDER BY b;
+SELECT id,a,b FROM t FORCE INDEX(pi)   WHERE a >= 0 ORDER BY b;
+SELECT id,a,b FROM t                  WHERE a >= 0 ORDER BY b LIMIT 5;
 ADMIN CHECK TABLE t;
 ```
 
@@ -36,13 +41,36 @@ Expected:
 2  2   2
 3  3   3
 4  10  4
+5  10  5
 ```
 
-Actual with `USE INDEX(pi)`:
+Actual with the default plan and `FORCE INDEX(pi)`:
 ```text
-1  1  1
-2  2  2
+1  0  1
+2  1  2
+3  2  3
 ```
+
+`IGNORE INDEX(pi)` returns all five rows. The default plan and `FORCE INDEX(pi)` return
+only the three rows covered by `a < 3`. `ADMIN CHECK TABLE t` is silent.
+
+## Current-master verification
+
+The minimal five-row case was rerun without failpoints on the current-master front at
+`127.0.0.1:14000`:
+
+```text
+EXPLAIN: IndexLookUp -> IndexFullScan(Build: pi(b)) -> Selection(Probe: a >= 0)
+IGNORE:  ids 1,2,3,4,5
+DEFAULT: ids 1,2,3
+FORCE:   ids 1,2,3
+ADMIN CHECK TABLE: no error
+```
+
+The `NOT NULL` definition is intentional. It removes nullable-value and three-valued
+logic as a confounder: the wrong result still occurs when every row has a concrete `a`
+value. A larger ten-row case also reproduced the no-hint path under pseudo statistics;
+`ANALYZE TABLE` changing the chosen plan is not a correctness control.
 
 ## Optional No-Hint Blast Radius
 The no-hint path can also choose `pi(b)` and miss rows. This was reproduced under the default session with fresh pseudo stats and no `ANALYZE TABLE`.
@@ -122,6 +150,16 @@ partial: a < 3
 
 `a >= 0` does not imply `a < 3`, so `pi` must not be used. The current range-based implication proof appears to accept some non-subset range combinations.
 
+The current source boundary is narrower and more actionable: `DataSource.CheckPartialIndexes`
+parses the stored metadata string at `logical_datasource.go:814-817` and immediately sends it
+to `partidx.CheckConstraints`. The query predicates have already gone through the normal
+predicate normalization path in `stats.go:122-131`. A temporary planner probe observed the
+first range build for raw metadata `a < 3` as `[-inf,+inf]`, while the same expression after
+normal predicate handling produced `[-inf,3)`. The implication checker then unions the query
+range `[0,+inf]` with the widened metadata range and incorrectly accepts the partial path.
+This makes input normalization part of the proof obligation; textual equality of two
+predicates is not enough.
+
 ## Known Boundary Evidence
 Confirmed bad:
 - `INDEX pi(b) WHERE a < 3` with query `a >= 0`
@@ -131,6 +169,7 @@ Confirmed bad:
 Observed negative so far:
 - Symmetric `a > 3` / `a >= 3` with upper-bound query filters did not reproduce in the quick checks.
 - `ADMIN CHECK TABLE` passes, so storage consistency or index maintenance is not the issue.
+- The five-row `a INT NOT NULL` case reproduces on current master without fault injection.
 
 ## Discovery Methodology Review
 This hit is useful as a bug, but more useful as proof that the AI-native search loop is pointing at the right layer.
@@ -211,3 +250,17 @@ partial condition shape
 
 Important workflow rule after this hit:
 After finding a new bug, pause before continuing. First extract the oracle, root-cause model, boundary evidence, and next generator dimensions. This prevents turning a high-signal hit into another blind fuzz loop.
+
+The reusable selector is now explicit:
+
+```text
+proof checker accepts an access path
+× metadata predicate enters the checker through a different normalization path
+× a fast path is forced or naturally selected
+× blocking the fast path gives a complete row-set reference
+=> differential wrong-result oracle
+```
+
+No formal TiDB regression test was added in this round. The product evidence is the live SQL
+counterexample plus a temporary, removed planner observation probe; the durable asset is the
+proof obligation, semantic counterexample family, and access-path differential oracle.

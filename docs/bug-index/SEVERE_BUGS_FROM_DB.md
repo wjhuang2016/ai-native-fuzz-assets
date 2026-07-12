@@ -1,10 +1,10 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-12 19:36:46 +0800
+Generated at: 2026-07-12 20:32:10 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 30001 | new | high | wrong-result | CREATE/ADD PARTIAL INDEX; SELECT | partial index | `partial-index-implication` | Partial index implication check can choose an unsafe partial index and return wrong SELECT results |  |
+| 30001 | issue-filed | high | wrong-result | CREATE/ADD PARTIAL INDEX; SELECT | partial index | `partial-index-implication` | Partial index implication check can choose an unsafe partial index and return wrong SELECT results | [https://github.com/pingcap/tidb/issues/69779](https://github.com/pingcap/tidb/issues/69779) |
 | 30007 | candidate | high | data-integrity | REORGANIZE PARTITION | global index | `reorg-global-index-miss` | REORGANIZE PARTITION can leave replacement global index missing rows from later non-touched partitions |  |
 | 600001 | confirmed | high | data-loss | ALTER TABLE REORGANIZE PARTITION | partition reorg duplicate rowid | `reorg-partition-identity-fastpath` | REORGANIZE PARTITION silently drops duplicate nonclustered rows after EXCHANGE PARTITION |  |
 | 630013 | issue-filed | high | DDL correctness | ALTER TABLE MODIFY COLUMN | check constraint + column type reorg | `modify-reorg-check-bypass` | MODIFY COLUMN can leave rows violating existing CHECK constraints | [https://github.com/pingcap/tidb/issues/69649](https://github.com/pingcap/tidb/issues/69649) |

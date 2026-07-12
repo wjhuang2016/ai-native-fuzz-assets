@@ -7,7 +7,7 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 Last verified: 2026-07-12
 
 - Remote `found_bug`: `MAX(id)=1530002`, `COUNT(*)=90`, `COUNT(DISTINCT root_cause_id)=67`
-- High-severity entries: 15; new-root candidates: 3; known-root rediscoveries: 1
+- High-severity entries: 15; new-root candidates: 1; known-root rediscoveries: 1
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -24,6 +24,8 @@ Last verified: 2026-07-12
 | 1410001 | confirmed | DDL liveness | `dist-addindex-retryable-timeout-unbounded-loop` | Distributed `ADD INDEX` has no terminal retry budget for persistent `SetTSBeforeImportEngine` context-deadline-exceeded errors. | [catalog](../core/ai-native-proof-obligation-catalog.md) | [selector](../core/ai-native-selector-ledger.md) |
 | 1440001 | confirmed | DDL availability | `async-commit-schema-change-safe-window-broken` | MDL-off `ADD INDEX` lets concurrent async-commit transaction fail despite `delayForAsyncCommit` safe-window protection. | [catalog](../core/ai-native-proof-obligation-catalog.md) | [selector](../core/ai-native-selector-ledger.md) |
 | 1470001 | issue-filed | wrong-result | `addindex-downscale-drops-tail-worker-error` | common reorg `ADD INDEX` downscale can drop a removed tail worker error and publish an incomplete index. | [issue](https://github.com/pingcap/tidb/issues/69776), [draft](../bug-drafts/ai-native-add-index-downscale-error-drop-draft.md) | [root-cause ledger](../core/ai-native-root-cause-ledger.md) |
+| 30001 | issue-filed | wrong-result | `partial-index-implication` | Planner can retain a partial index when the query predicate does not imply its predicate, silently omitting rows while `ADMIN CHECK TABLE` stays green. | [issue](https://github.com/pingcap/tidb/issues/69779), [draft](../bug-drafts/ai-native-partial-index-id30001-draft.md) | [method case](../method-cases/ai-native-id30001-method-case.md) |
+| 1500002 | issue-filed | data-integrity | `flashback-fk-rebinds-recreated-parent` | `FLASHBACK TABLE` can publish existing orphan rows after same-name parent recreation. | [issue](https://github.com/pingcap/tidb/issues/69777), [draft](../bug-drafts/ai-native-fk-flashback-same-name-parent-rebind-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
 
 ## High-Severity Candidates / Legacy Queue
 
@@ -31,9 +33,7 @@ These rows are `severity=high` in `found_bug`, but still need stronger confirmat
 
 | ID | Status | Root cause ID | Why not mainline yet | Primary asset |
 | --- | --- | --- | --- | --- |
-| 30001 | new | `partial-index-implication` | High impact if current, but status is still `new`; needs current-master confirmation and owner-facing issue quality. | [draft](../bug-drafts/ai-native-partial-index-id30001-draft.md) |
 | 30007 | candidate | `reorg-global-index-miss` | Candidate row; needs fresh reproduction and end-state oracle refresh before being treated as confirmed severe. | [draft](../bug-drafts/ai-native-reorg-global-index-reference-draft.md) |
-| 1500002 | candidate | `flashback-fk-rebinds-recreated-parent` | Current parent exists but recovered historical child rows are not revalidated; a same-key replacement with `ON DELETE CASCADE` can directly delete a recovered child row, distinct from id30016's missing-parent bypass. | [draft](../bug-drafts/ai-native-fk-flashback-same-name-parent-rebind-draft.md) |
 
 ## Known-Root Rediscoveries / Reusable Calibration
 

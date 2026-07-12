@@ -1,5 +1,5 @@
 -- No pending found_bug inserts as of 2026-07-12.
--- Remote found_bug was re-verified after reclassifying id1530002 as a known duplicate:
+-- Remote found_bug was re-verified after promoting id30001 to issue-filed:
 --   MAX(id)=1530002, COUNT(*)=90, COUNT(DISTINCT root_cause_id)=67
 --
 -- Bug DB command:
@@ -10,6 +10,8 @@
 --     root_cause_id=dist-addindex-local-engine-db-loss-process-exit
 --     issue=https://github.com/pingcap/tidb/issues/65958
 --     evidence=assets/store/logs/add-index-local-engine-db-loss-red-20260712.log
+--   id30001 issue-filed/high: partial-index implication check can choose an unsafe partial index and return wrong SELECT results
+--     issue=https://github.com/pingcap/tidb/issues/69779
 --   id1470001 issue-filed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index
 --     https://github.com/pingcap/tidb/issues/69776
 --   id1440001 confirmed/high: MDL-off ADD INDEX lets concurrent async-commit txn fail despite delayForAsyncCommit safe-window protection

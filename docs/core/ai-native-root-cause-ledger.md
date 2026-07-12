@@ -2,6 +2,12 @@
 > Started 2026-07-03. The headline metric for this method is **distinct root causes**, not
 > `COUNT(found_bug)`. This ledger is the corrected scoreboard and the counting convention.
 
+## Current remote snapshot (2026-07-12)
+
+`found_bug`: 90 surfaces, 67 distinct root causes, 15 high-severity rows, 65 confirmed rows,
+and 9 issue-filed rows. `id30001` is now `issue-filed/high` with upstream issue #69779; its
+hint and no-hint observations remain one root, `partial-index-implication`.
+
 ## Counting convention
 
 - A **surface** is one `found_bug` row / one draft / one repro. A **root cause** is one defect

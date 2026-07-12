@@ -1,0 +1,39 @@
+AI-native live evidence: partial-index implication wrong-result
+Date: 2026-07-12 Asia/Shanghai
+Testbed: 8220955
+Endpoint: 127.0.0.1:14000
+TiDB: 8.0.11-TiDB-v9.0.0-beta.2.pre-1927-g13282a8bd0-dirty
+Commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+Fault injection: none
+
+Schema:
+  CREATE TABLE t(id INT PRIMARY KEY, a INT NOT NULL, b INT NOT NULL,
+                 INDEX pi(b) WHERE a < 3);
+  INSERT INTO t VALUES (1,0,1),(2,1,2),(3,2,3),(4,3,4),(5,10,5);
+
+Query:
+  SELECT id,a,b FROM t WHERE a >= 0 ORDER BY b LIMIT 5;
+
+Observed:
+  EXPLAIN chose IndexLookUp with IndexFullScan(Build) pi(b) and Probe Selection a >= 0.
+  IGNORE INDEX(pi): ids 1,2,3,4,5
+  default:          ids 1,2,3
+  FORCE INDEX(pi):  ids 1,2,3
+  ADMIN CHECK TABLE t: no error/output
+
+Interpretation:
+  The partial index is internally consistent; the planner used it even though a >= 0 does
+  not imply a < 3. Rows with a=3 and a=10 were never visited by the index path. This is a
+  silent wrong-result bug, not storage corruption.
+
+Source evidence:
+  pkg/planner/core/operator/logicalop/logical_datasource.go:814-817 parses the raw metadata
+    predicate and calls partidx.CheckConstraints.
+  pkg/planner/core/partidx/check_constraint.go:26-43,92-128 implements the implication gate
+    with range construction and union equality.
+  pkg/planner/core/stats.go:122-131 normalizes query predicates before the partial-index gate.
+  A temporary removed planner probe observed raw a<3 as [-inf,+inf] on its first range build,
+  while the same expression after normal predicate handling produced [-inf,3). The proof
+  input-normalization boundary is therefore part of the bug hypothesis.
+
+Upstream: https://github.com/pingcap/tidb/issues/69779

@@ -1452,3 +1452,32 @@ Automation lesson: a recovery command that reuses physical IDs must be tested as
 **metadata-to-physical reconciliation** problem. `SHOW CREATE` and `ADMIN CHECK TABLE` are weak
 oracles here; the decisive cell is a differential between a reference table scan, a forced index
 scan, the default planner choice, and a future write under the published constraint.
+
+## Follow-up S29 partial-index proof-input tick, EXECUTED (2026-07-12)
+
+This tick revisited the existing partial-index root only to complete current-master verification
+and convert the earlier candidate into an owner-facing severe asset. It did not expand the
+predicate matrix.
+
+```text
+SENSE:      The source gate claims query predicate => stored partial-index predicate. Query
+            predicates pass normal range preparation, while CheckPartialIndexes parses the raw
+            metadata condition immediately before CheckConstraints.
+SCHEDULE:   P4 allowed because the old candidate had a live rowset mismatch and an upstream issue
+            draft. The decisive cell was reduced to NOT NULL values to remove NULL semantics.
+ACT:        Five rows, pi(b) WHERE a < 3, query a >= 0 ORDER BY b LIMIT 5. IGNORE returned
+            ids 1..5; default and FORCE returned ids 1..3; EXPLAIN used pi; ADMIN CHECK was green.
+            A temporary planner observation showed raw metadata range [-inf,+inf] on first use,
+            versus [-inf,3) after normal predicate handling.
+INTEGRATE:  found_bug id30001 is now issue-filed/high with #69779. Added S29, method case,
+            structured run record, and current-master evidence log. No formal product test was
+            added and no TiDB product source was changed.
+HEALTH:     High-quality silent wrong-result: planner visits an incomplete physical subset while
+            storage remains internally consistent. Hint and no-hint observations are one root.
+NEXT:       Stop partial-index enumeration. Reopen only for proof-input normalization fix
+            validation or a genuinely different proof owner/consequence.
+```
+
+Automation lesson: for planner fast paths, the proof obligation includes the representation and
+normalization of every proof input. A correct-looking implication algorithm fed an under-normalized
+metadata predicate is still an unsound proof system.
