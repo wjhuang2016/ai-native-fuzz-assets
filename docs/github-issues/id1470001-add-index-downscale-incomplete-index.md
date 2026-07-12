@@ -133,23 +133,87 @@ ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
 -- ERROR 1062 (23000): Duplicate entry 'a@example.com' for key 'users.uk_email'
 ```
 
-For a production-sized table, the same two rows can be far apart in the primary-key order. The index build then runs for minutes with multiple DDL workers, for example `tidb_ddl_reorg_worker_cnt = 8`. The operator sees foreground latency or TiKV resource pressure during `write reorganization` and reduces the online job concurrency instead of canceling the DDL:
+### More realistic non-failpoint trigger
+
+The four-row table above only proves that a normal `ERROR 1062` can come from the transaction backfill path. It is too small: the job can finish before an operator has a chance to downscale it. The production-shaped trigger is a million-row table with a duplicate left by an import/application retry, with the duplicate in a later primary-key range. The backfill then runs long enough to have multiple workers, and an operator reduces the concurrency while the job is still active.
+
+The following SQL constructs that shape. In production, the first million rows would normally already exist:
+
+```sql
+SET GLOBAL tidb_enable_dist_task = OFF;
+SET GLOBAL tidb_ddl_enable_fast_reorg = OFF;
+SET GLOBAL tidb_ddl_reorg_worker_cnt = 8;
+
+CREATE DATABASE ai_native_realistic_trigger_20260712;
+USE ai_native_realistic_trigger_20260712;
+
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  payload VARCHAR(128)
+);
+
+CREATE TEMPORARY TABLE digit(n INT PRIMARY KEY);
+INSERT INTO digit VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+
+-- One million historical rows: long enough for multiple regions/tasks.
+INSERT INTO users
+SELECT
+  d0.n + d1.n * 10 + d2.n * 100 + d3.n * 1000 +
+  d4.n * 10000 + d5.n * 100000 + 1 AS id,
+  CONCAT('user-', d0.n + d1.n * 10 + d2.n * 100 + d3.n * 1000 +
+         d4.n * 10000 + d5.n * 100000 + 1, '@example.com') AS email,
+  REPEAT('x', 128)
+FROM digit d0, digit d1, digit d2, digit d3, digit d4, digit d5;
+
+-- A duplicate left by an old import or retry, deliberately in a late PK range.
+INSERT INTO users VALUES
+  (900000001, 'dupe@example.com', REPEAT('x', 128)),
+  (900100001, 'dupe@example.com', REPEAT('x', 128));
+
+SPLIT TABLE users BETWEEN (0) AND (1000000000) REGIONS 32;
+```
+
+Session A starts the ordinary online operation:
+
+```sql
+USE ai_native_realistic_trigger_20260712;
+ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
+```
+
+In Session B, poll `ADMIN SHOW DDL JOBS`. While the job is still in `write reorganization` and `row_count` is increasing, reduce the job concurrency once:
 
 ```sql
 ADMIN SHOW DDL JOBS;
-ADMIN ALTER DDL JOBS <add-unique-index-job-id> THREAD = 1;
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
 ```
 
-The concrete race is:
+The required timing is concrete:
 
 1. the worker handling the later primary-key range is still inside the transaction backfill;
-2. that range contains the ordinary duplicate `a@example.com`;
+2. that range contains the ordinary duplicate `dupe@example.com`;
 3. the operator reduces the job from 8 workers to 1, so the busy worker is in the canceled tail;
-4. its in-flight uniqueness check returns `Duplicate entry 'a@example.com'` after cancellation;
+4. its in-flight uniqueness check returns `Duplicate entry 'dupe@example.com'` after cancellation;
 5. `sendResult` can choose the canceled-context branch and drop that terminal result;
 6. the parent collector sees no worker error and can publish the index as if all ranges succeeded.
 
-The correct user-visible result is a duplicate-key error and rollback. The buggy result is `synced/public` with an incomplete index. The exact race is timing-sensitive, so this non-failpoint scenario is a realistic trigger shape, not a deterministic replacement for the failpoint reproducer. It is nevertheless concrete: a large transaction-backfill `ADD UNIQUE INDEX`, a leftover duplicate in a later key range, and an operator thread downscale while that range is being processed.
+After the job finishes, do not validate only the `ALTER TABLE` return. Run:
+
+```sql
+ADMIN SHOW DDL JOBS;
+ADMIN CHECK TABLE users;
+
+SELECT COUNT(*) FROM users IGNORE INDEX(uk_email);
+SELECT COUNT(*) FROM users FORCE INDEX(uk_email);
+SELECT COUNT(*) FROM users IGNORE INDEX(uk_email)
+  WHERE email = 'dupe@example.com';
+SELECT COUNT(*) FROM users FORCE INDEX(uk_email)
+  WHERE email = 'dupe@example.com';
+```
+
+The correct result is `ERROR 1062` followed by rollback, with no published `uk_email`. A bug hit is a `synced/public` job followed by inconsistent table-scan versus `FORCE INDEX(uk_email)` results, or `ADMIN CHECK TABLE` reporting `8223`. This needs no TiKV failure and no test-only failpoint; it only combines dirty historical data, an online unique-index build, and a normal operator thread-downscale during resource pressure. If the job detects the duplicate before the downscale and rolls back, that is the expected control, not a bug; the large table and late duplicate are what widen the race window.
+
+This non-failpoint scenario remains timing-sensitive and is not a deterministic replacement for the failpoint reproducer. The failpoint fixes the same ordering without inventing a new error class: it holds the worker so the real terminal error arrives after downscale cancellation.
 
 The same result-delivery window can also be entered by a real non-duplicate TiKV/transaction error from a non-unique `ADD INDEX`; the unique-index example is easier to explain because the error source is ordinary application data.
 

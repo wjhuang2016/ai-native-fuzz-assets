@@ -154,14 +154,80 @@ ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
 -- ERROR 1062 (23000): Duplicate entry 'a@example.com' for key 'users.uk_email'
 ```
 
-生产中把这两行放在一个大表较晚的主键范围,让 `ADD UNIQUE INDEX` 运行数分钟并启动多个 worker。作业进入 `write reorganization` 后,如果前台延迟或 TiKV 资源压力上升,运维可能执行:
+### 更接近生产的无 failpoint 触发例子
+
+上面的四行表只是确认真实 `ERROR 1062` 会从 txn backfill 返回,它太小,作业会在运维来得及缩容前结束。真正容易把 race 窗口拉出来的线上形状是:表已经有百万级历史数据,重复值来自一次导入/应用重试,重复值位于较晚的主键范围,而运维在回填期间为了降低延迟把并发线程降下来。
+
+可以用下面的 SQL 构造同样的形状。生产中前面的百万行通常已经存在,不需要重新生成:
+
+```sql
+SET GLOBAL tidb_enable_dist_task = OFF;
+SET GLOBAL tidb_ddl_enable_fast_reorg = OFF;
+SET GLOBAL tidb_ddl_reorg_worker_cnt = 8;
+
+CREATE DATABASE ai_native_realistic_trigger_20260712;
+USE ai_native_realistic_trigger_20260712;
+
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  payload VARCHAR(128)
+);
+
+CREATE TEMPORARY TABLE digit(n INT PRIMARY KEY);
+INSERT INTO digit VALUES (0),(1),(2),(3),(4),(5),(6),(7),(8),(9);
+
+-- 1,000,000 条正常历史数据,让回填持续足够久并形成多个 region/task。
+INSERT INTO users
+SELECT
+  d0.n + d1.n * 10 + d2.n * 100 + d3.n * 1000 +
+  d4.n * 10000 + d5.n * 100000 + 1 AS id,
+  CONCAT('user-', d0.n + d1.n * 10 + d2.n * 100 + d3.n * 1000 +
+         d4.n * 10000 + d5.n * 100000 + 1, '@example.com') AS email,
+  REPEAT('x', 128)
+FROM digit d0, digit d1, digit d2, digit d3, digit d4, digit d5;
+
+-- 模拟历史导入/重试留下的重复值,并故意放在较晚的主键范围。
+INSERT INTO users VALUES
+  (900000001, 'dupe@example.com', REPEAT('x', 128)),
+  (900100001, 'dupe@example.com', REPEAT('x', 128));
+
+SPLIT TABLE users BETWEEN (0) AND (1000000000) REGIONS 32;
+```
+
+然后从两个 session 操作。Session A 启动线上常见的“补唯一约束”操作:
+
+```sql
+USE ai_native_realistic_trigger_20260712;
+ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
+```
+
+Session B 每隔几秒观察一次 `ADMIN SHOW DDL JOBS`。看到该 job 仍是 `write reorganization`,`row_count` 还在增长时,执行一次降级:
 
 ```sql
 ADMIN SHOW DDL JOBS;
 ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
 ```
 
-此时具体的 red 条件是:包含重复邮箱的后段范围正在被 worker 处理,该 worker 因 8-to-1 downscale 落入被取消的 tail;它在 cancel 之后返回 `Duplicate entry 'a@example.com'`,但 `sendResult` 选择 `ctx.Done()` 分支,collector 没看到错误,DDL 错误地进入 `synced/public`。正确结果应当是 duplicate-key error + rollback。这段无 failpoint 的 SQL 是真实错误来源的 control,并不能替代时序敏感的 deterministic failpoint reproducer。
+命中的必要时序是:包含 `dupe@example.com` 的后段 region 正在由一个非前缀 worker 处理;8-to-1 缩容把它放进 canceled tail;该 worker 的唯一性检查随后返回普通的 `Duplicate entry 'dupe@example.com'`;此时 `sendResult` 的 `ctx.Done()` 分支赢过结果发送,collector 没看到错误,DDL 错误地进入 `synced/public`。如果作业在缩容前已经发现重复值并 rollback,那是正常的 control,不是 bug;因此要用足够大的表和较晚范围来扩大这个窗口。
+
+作业结束后用下面的 SQL 判断是否命中,而不是只看 `ALTER TABLE` 是否返回:
+
+```sql
+ADMIN SHOW DDL JOBS;
+ADMIN CHECK TABLE users;
+
+SELECT COUNT(*) FROM users IGNORE INDEX(uk_email);
+SELECT COUNT(*) FROM users FORCE INDEX(uk_email);
+SELECT COUNT(*) FROM users IGNORE INDEX(uk_email)
+  WHERE email = 'dupe@example.com';
+SELECT COUNT(*) FROM users FORCE INDEX(uk_email)
+  WHERE email = 'dupe@example.com';
+```
+
+正常结果是 `ERROR 1062` 加 rollback,不会发布 `uk_email`;可疑结果是 job `synced/public`,但 table scan 与 `FORCE INDEX(uk_email)` 的行数/重复值结果不一致,或者 `ADMIN CHECK TABLE` 报 `8223`。这就是一个不需要 TiKV 故障、不需要测试 failpoint、只依赖“历史脏数据 + 在线建唯一索引 + 运维动态降并发”的真实环境触发例子。
+
+这个无 failpoint 场景仍然是 timing-sensitive,不是 deterministic replacement。确定性 reproducer 继续使用上面的 failpoint,但它固定的不是虚构错误类型,而是把真实 `Duplicate entry` 发生在 downscale 之后的窗口固定住。
 
 证据记录在 `assets/store/logs/add-index-real-duplicate-control-20260712.log`。
 
