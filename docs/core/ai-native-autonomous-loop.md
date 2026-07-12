@@ -1416,3 +1416,39 @@ complete oracle. After recovery, exercise the current referenced object and comp
 rowset. This turns an identity claim into a behavioral proof and catches silent cascade effects that
 `ADMIN CHECK TABLE` cannot see. The queue must also treat a screened-out low-consequence source
 candidate as negative evidence, not as permission to widen the matrix blindly.
+
+## Follow-up S6 repair-index metadata tick, EXECUTED (2026-07-12)
+
+This tick kept the DDL/recovery boundary and selected a source TODO with a direct wrong-result
+oracle instead of expanding the already-covered multi-schema or backfill families.
+
+```text
+SENSE:      RepairTable preserves the old table/index IDs and accepts a new CREATE TABLE after
+            checking only index name, column names, and index type. The source TODO says the new
+            TableInfo should be verified against actual data; PrefixLen and Unique are not checked.
+SCHEDULE:   P4 allowed because the candidate has a precise P/Q/F card and a C3-style rowset oracle.
+            A natural multi-schema rollback control was also run first and stayed GREEN, so the
+            explicit multi_schema_change TODO was negative evidence rather than a new target.
+ACT:        Exact physical KEY idx_v(v(3)) repaired as KEY idx_v(v(3)) was GREEN. Repairing the
+            same physical index as v(2) made table scan find abc-two while FORCE INDEX returned no
+            row. More strongly, physical KEY repaired as UNIQUE caused the default plan to become
+            Point_Get and return only id=4 from an existing three-row duplicate set; a duplicate
+            insert still succeeded and ADMIN CHECK TABLE stayed silent.
+INTEGRATE:  Added the candidate target, source obligation, fault, oracle, four runs, and live log
+            to the asset store. Keep root_cause_id=repair-table-index-metadata-not-reconciled;
+            this is distinct from ADD INDEX downscale and FLASHBACK FK identity drift, while the
+            reverse UNIQUE->KEY result is the same root's constraint sibling.
+HEALTH:     The user consequence is high-quality wrong-result, but upstream filing is gated on the
+            product contract for operator-supplied ADMIN REPAIR definitions: reject/validate an
+            incompatible physical definition versus require the operator to provide an exact one.
+            Do not call this a confirmed ordinary DDL bug until that contract is settled.
+NEXT:       Preserve the exact-definition control and ask whether repair metadata is authoritative
+            enough to justify validation. If yes, file with the default Point_Get differential;
+            if no, retain it as a recovery guardrail/method asset rather than inflating the severe
+            bug count.
+```
+
+Automation lesson: a recovery command that reuses physical IDs must be tested as a
+**metadata-to-physical reconciliation** problem. `SHOW CREATE` and `ADMIN CHECK TABLE` are weak
+oracles here; the decisive cell is a differential between a reference table scan, a forced index
+scan, the default planner choice, and a future write under the published constraint.

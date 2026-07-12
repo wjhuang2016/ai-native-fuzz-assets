@@ -1,0 +1,57 @@
+RUN=admin-repair-index-metadata-red-20260712
+TESTBED=8220955
+NAMESPACE=testbed-tps-8220955-1-213
+ENDPOINT=127.0.0.1:14003
+BINARY=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa dirty test build
+FAILPOINTS=enableTestAPI,repairFetchCreateTable (harness only; no fault injected into index data)
+
+SOURCE_PROOF:
+  pkg/ddl/executor.go:5971-6060 RepairTable builds a new TableInfo from user CREATE TABLE,
+    preserves old table/index IDs, and has a TODO that the new TableInfo should be verified
+    with actual data.
+  pkg/ddl/executor.go:6023-6041 compares columns by name/type and indexes by name/columns/type.
+    It does not compare index PrefixLen, Unique, Invisible, or other physical encoding options.
+  pkg/ddl/index.go:3645-3668 getIndexInfoByNameAndColumn/indexColumnSliceEqual matches only
+    index name and column names; index prefix length is ignored.
+
+CONTROL_EXACT_REPAIR:
+  Physical table t_exact was created with KEY idx_v(v(3)) and rows
+    (1,'abc-one'),(2,'abc-two'),(3,'def-three').
+  ADMIN REPAIR TABLE t_exact CREATE TABLE t_exact (... KEY idx_v(v(3))) succeeded.
+  IGNORE INDEX and FORCE INDEX both returned id=2 for v='abc-two'.
+  ADMIN CHECK TABLE t_exact was silent.
+
+RED_PREFIX_MISMATCH:
+  Physical table t was created with KEY idx_v(v(3)) and the same three rows.
+  ADMIN REPAIR TABLE t CREATE TABLE t (... KEY idx_v(v(2))) succeeded and published:
+    SHOW CREATE TABLE reports KEY idx_v(v(2)).
+  IGNORE INDEX(idx_v) WHERE v='abc-two' returned id=2.
+  FORCE INDEX(idx_v) WHERE v='abc-two' returned no rows.
+  FORCE INDEX prefix LIKE 'abc%' still returned ids 1 and 2, so the failure is an equality
+    lookup mismatch rather than a missing table row.
+  COUNT(*) table scan and index scan were both 3; ADMIN CHECK TABLE t was silent.
+
+RED_NONUNIQUE_TO_UNIQUE:
+  Physical table t_nonunique was created with KEY idx_v(v) and rows
+    (1,'abc-one'),(2,'abc-two'),(3,'abc-one').
+  ADMIN REPAIR TABLE t_nonunique CREATE TABLE t_nonunique (... UNIQUE KEY idx_v(v))
+    succeeded and published UNIQUE KEY idx_v(v).
+  INSERT (4,'abc-one') succeeded even though the published metadata says UNIQUE.
+  Table scan for v='abc-one' returned ids 1,3,4.
+  FORCE INDEX(idx_v) returned only id=4.
+  The default plan was Point_Get on idx_v and returned only id=4.
+  ADMIN CHECK TABLE t_nonunique was silent.
+
+RED_UNIQUE_TO_NONUNIQUE:
+  Physical table t_unique was created with UNIQUE KEY uk_v(v), rows (1,'abc-one'),(2,'abc-two').
+  ADMIN REPAIR TABLE t_unique CREATE TABLE t_unique (... KEY uk_v(v)) succeeded.
+  Duplicate abc-one rows could then be inserted; table and index paths diverged from the
+  original uniqueness contract while ADMIN CHECK TABLE remained silent.
+
+INTERPRETATION:
+  The system reuses an existing physical index ID/data while publishing a different logical
+  index definition. A normal query can therefore select an index whose physical encoding or
+  uniqueness semantics do not match TableInfo. This is a high-consequence candidate, but the
+  product contract for operator-supplied ADMIN REPAIR definitions must be stated before filing
+  upstream: the system should reject an unverified mismatch or clearly require an exact physical
+  definition. It is distinct from ADD INDEX downscale and FLASHBACK FK identity drift.
