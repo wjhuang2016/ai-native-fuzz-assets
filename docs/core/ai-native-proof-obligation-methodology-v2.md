@@ -2643,3 +2643,34 @@ historical issue uses repeated `MODIFY COLUMN int <-> bigint` and prepared `DELE
 current endpoint/version mismatch must be recorded alongside the result, and the original loop must
 be replayed once before retiring the target. This prevents a harness improvement from silently
 changing the bug's workload class.
+
+## Cross-phase semantic-context proof
+
+When phase A carries a token into phase B, do not stop after proving token equality. Ask what context
+is required to interpret that token:
+
+```text
+token_A == token_B
+does not imply
+meaning(token_A, context_A) == meaning(token_B, context_B)
+```
+
+For every scan -> action, prepare -> commit, cache -> replay, or checkpoint -> resume handoff:
+
+1. list the carried token fields;
+2. list all semantic context owners used to decode them: time zone, locale, collation, SQL mode,
+   schema version, policy version, feature flags, or session variables;
+3. identify whether each owner is pinned, versioned, revalidated, or independently reloaded;
+4. mutate one unpinned context after phase A has materially completed and before phase B's first
+   irreversible action;
+5. move current state into the disagreement window `safe(context_A) && actionable(context_B)`;
+6. require an actual-action C3 oracle and a no-context-drift control.
+
+This extends the existing `P -> Q -> fast path` loop. The AI should now distinguish **value proof**
+from **meaning proof**. id1620002 demonstrates the difference: TTL carried the same expiration epoch
+but reinterpreted it under two global time zones, so a delete recheck existed yet failed its only
+safety purpose.
+
+History remains post-hit calibration. In this case #41043 was found only after worker RED; replaying
+its old schedule as a GREEN control proved that the new target was a mid-job context-stability gap,
+not rediscovery used as a selector seed.

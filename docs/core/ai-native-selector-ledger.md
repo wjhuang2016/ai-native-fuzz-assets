@@ -1209,3 +1209,30 @@ status:     selector validated; held-out target retired as known review finding,
 stop rule:  do not enumerate expressions or batch sizes; reopen for a different stateful operator
             or a distinct missing functional-dominance proof
 ```
+
+## S32: scan/delete context stability
+
+```text
+selector:   a scan phase materializes candidate identities under predicate R(x, token, C0), while
+            a later irreversible phase rebuilds the safety recheck from the same token but reloads
+            semantic context as C1
+born from:  id1620002 (DATETIME TTL carries expire epoch E, but scan/delete independently reset to
+            global time_zone before evaluating FROM_UNIXTIME(E))
+prediction:
+  - mutate only the context between phases and move current state into the C0-safe/C1-action window;
+  - the irreversible phase acts even though the state is safe under the selecting phase's meaning;
+  - keeping context stable is GREEN under the same pause/update schedule.
+oracle gate:
+  - prove scan handoff happened;
+  - prove the current state is safe under C0 before release;
+  - observe real irreversible state after phase B completes;
+  - include a no-context-drift control.
+negative calibration:
+  - token equality is not semantic equality when time zone, locale, collation, SQL mode, schema, or
+    policy participates in decoding;
+  - generated SQL alone is insufficient; lift to the real worker/action owner;
+  - history may be used only after RED to distinguish old context-initialization bugs.
+status:     validated/terminal - actual TTL worker RED plus no-drift GREEN; remote id1620002 high.
+stop rule:  do not enumerate offsets, batch sizes, or DATE variants. Reopen only for a different
+            context owner or fix validation.
+```

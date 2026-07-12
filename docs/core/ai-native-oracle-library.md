@@ -1279,3 +1279,23 @@ panic                     no_panic_probe         (HYPOTHESIS)
 The remaining HYPOTHESIS rows are where the method is still blind-by-assumption: it believes it
 has an oracle, but held-out has never proven it fires. `metadata_sync_check` graduated from this
 list in run #3 — the same path every hypothesis oracle must take before being trusted.
+
+## O35 ttl_refreshed_row_survival
+
+```text
+obligation:  an irreversible delete-time recheck must preserve a row that is current under the
+             semantic cutoff used by the scan that selected its identity.
+form:        capture the scan/job token and context C0; pause after scan handoff; refresh the row
+             into a C0-safe value; optionally mutate one context component; release the real delete
+             worker; observe job terminal state and final row existence.
+red:         predicate under C0 is false, job completes successfully, and the row is absent.
+green:       identical pause/refresh schedule with stable context completes and preserves the row.
+catches:     scan/delete context drift where a stable token is reinterpreted under mutable time
+             zone, locale, collation, SQL mode, schema, or policy state.
+blind to:    rows still expired under C0, scans that never selected the handle, and generated-SQL
+             mismatches that do not reach the actual action owner.
+sensitivity: EXECUTION-CONFIRMED on id1620002; UTC->+08 deleted a refreshed DATETIME row.
+specificity: GOOD; same worker schedule under UTC->UTC preserved the row, and old #41043's pre-job
+             scenario stayed GREEN.
+status:      USED + EXECUTION-CONFIRMED.
+```

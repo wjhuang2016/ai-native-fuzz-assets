@@ -3266,3 +3266,24 @@ if any new unexpected cell appears:
 ```
 
 Default boundary remains DDL-owner focused: executor/query rowsets are allowed as consequence oracles after DDL has changed metadata. A deliberate non-DDL pivot is acceptable only under the id30010-style shortcut/extractor protocol above.
+
+## id1620002 - TTL scan/delete time-zone context drift
+
+- Target: `target.ttl.datetime-global-timezone-drift-deletes-refreshed-row.v1`.
+- Selector: `SCAN_DELETE_CONTEXT_STABILITY`.
+- **P**: scan and delete carry the same expiration epoch `E`.
+- **Q**: both phases therefore enforce the same `DATETIME` wall-clock cutoff.
+- **F**: every TTL statement independently resets to current global `time_zone`, then evaluates
+  `FROM_UNIXTIME(E)`; validation does not pin or compare time zone.
+- C3 oracle: after scan under UTC, refresh the selected row to cutoff plus four hours, switch global
+  time zone to `+08:00`, and release the actual delete worker. The row is current under scan
+  semantics but is silently deleted, and the job completes successfully.
+- Controls: unchanged UTC context preserves the row; #41043's pre-job time-zone-change regression
+  remains GREEN on current source.
+- Status: **CONFIRMED**, remote `found_bug id1620002`, high severity. Remote state after insert:
+  `COUNT(*)=93`, `COUNT(DISTINCT root_cause_id)=70`.
+- Assets: `docs/bug-drafts/ai-native-ttl-midjob-timezone-drift-refreshed-row-draft.md`,
+  `docs/method-cases/ai-native-ttl-context-stability-method-case.md`, and
+  `assets/store/ttl-midjob-timezone-drift-results.jsonl`.
+- Pause gate: do not enumerate offsets, TTL intervals, or DATE variants. Reopen only for fix
+  validation or another cross-phase context owner.

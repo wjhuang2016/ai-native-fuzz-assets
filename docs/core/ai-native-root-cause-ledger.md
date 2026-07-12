@@ -237,3 +237,15 @@ New high-severity candidate:
 These are enforced by the loop, not just documented here: `root_cause_id` assignment via the
 Reopen test is in the INTEGRATE contract, and consequence-first ordering + the wrong-error cap +
 the high-consequence lane are in P4 of the scheduler — both in `ai-native-autonomous-loop.md`.
+
+## 2026-07-13 update: id1620002
+
+- Remote `found_bug`: 93 surfaces, 70 distinct root causes.
+- New root: `ttl-midjob-timezone-context-drift`.
+- Consequence: C3 direct silent data loss; a refreshed `DATETIME` row is deleted while the TTL job
+  reports successful completion.
+- Distinctness: #41043/#41044 covers time-zone change before job start and is GREEN on current
+  source. id1620002 changes context between scan and delete inside one job; the missing owner is
+  cross-phase interpretation context, not initial cutoff rendering.
+- Counting rule: one root only. Offset direction, interval length, batch size, and DATE variants are
+  blast radius, not additional bugs.
