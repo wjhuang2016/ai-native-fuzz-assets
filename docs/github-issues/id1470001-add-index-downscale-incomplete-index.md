@@ -421,6 +421,41 @@ The same result-delivery window can also be entered by a real non-duplicate TiKV
 
 The failpoint reproduction above makes this timing deterministic. It does not invent a fake semantic class of error; it only holds the real worker at the exact point where a production duplicate-key result can arrive after downscale cancellation.
 
+### A practical operator recipe that widens the real race window
+
+Do not try this with a four-row table: the job can finish before the control-plane
+change takes effect. The production-shaped setup that is most likely to expose the
+ordering is:
+
+1. Use a large, write-active table (roughly millions of rows) and the transaction
+   backfill path: `tidb_ddl_enable_fast_reorg=OFF`, or an environment where ingest is
+   unavailable. Set a small reorg batch size such as `tidb_ddl_reorg_batch_size=32` to
+   create many ordinary batches.
+2. Let an import retry or an ambiguous client timeout leave two rows with the same
+   business key but different primary keys. Put that duplicate in a late primary-key
+   range, for example around 90% of the table, so earlier ranges have already been
+   processed when the operator acts.
+3. Start `ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no)` and wait until
+   `ADMIN SHOW DDL JOBS` reports `write reorganization` with a moving `row_count`.
+4. During a real foreground-latency event, run the supported throttle operation once:
+
+   ```sql
+   ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+   ```
+
+The required ordering is now explicit: the late-range worker is in
+`batchCheckUniqueKey`, the duplicate check returns the ordinary `ERROR 1062`, and
+the worker has already become a canceled tail before `sendResult` tries to deliver
+that terminal result. If the duplicate is discovered before cancellation, the job
+must return `ERROR 1062` and roll back; that is the green control. A red hit is that
+the client sees no duplicate error, the job reaches `synced/public`, and only then
+the following two queries disagree or `ADMIN CHECK TABLE orders` reports `8223`.
+
+This recipe is intentionally a high-probability production shape, not a deterministic
+claim: the failpoint reproducer is still needed to lock the last scheduling edge. It
+does, however, make the error source, the ordinary operator action, and the user-visible
+wrong-result oracle concrete without inventing a TiKV outage or an internal fake error.
+
 ### 2. What did you expect to see? (Required)
 
 The DDL job must not publish a partial index after any in-flight backfill worker returns a real error.

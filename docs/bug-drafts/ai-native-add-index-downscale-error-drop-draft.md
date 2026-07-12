@@ -195,6 +195,32 @@ ADMIN CHECK TABLE orders;
 这段例子补的是“错误从哪里来、谁触发缩容、用户最后看到什么”，不是把概率性窗口
 包装成确定性复现。
 
+## 值班时最容易尝试的窗口放大方式
+
+不要用四行小表验证这个时序: job 很可能在 `THREAD = 1` 生效前就结束。比较接近
+真实线上操作的最小形状是:
+
+1. 百万级、持续写入的业务表,关闭 fast reorg 或让 ingest 不可用,走 txn backfill;
+   可以把 `tidb_ddl_reorg_batch_size` 调到 `32`,增加普通 batch 的数量。
+2. 让导入超时重试留下两个不同主键但相同业务键的行,并把重复键放在约 90% 的主键
+   范围,确保前面的范围已经处理,后面的范围仍在跑。
+3. 启动 `ADD UNIQUE INDEX`,等 `ADMIN SHOW DDL JOBS` 显示 `write reorganization`
+   且 `row_count` 持续变化。
+4. 前台延迟升高时执行一次受支持的运维动作:
+
+   ```sql
+   ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+   ```
+
+必要时序必须写清楚:后段 worker 正在 `batchCheckUniqueKey` 中检查重复值,自然返回
+普通 `ERROR 1062`;它已经是被缩容取消的 tail,随后 `sendResult` 才投递终止结果。如果
+缩容前就发现重复并 rollback,是正常 control。只有客户端没有收到 `1062`,job 却进入
+`synced/public`,随后 `IGNORE INDEX` 与 `FORCE INDEX` 的订单集合分裂或
+`ADMIN CHECK TABLE` 报 `8223`,才算命中。
+
+这会扩大真实时序的概率,但不把概率性场景冒充 deterministic reproducer;最后的
+failpoint 仍然只负责固定调度顺序,不负责伪造错误类型。
+
 ## live 复现摘要
 
 环境:
