@@ -1,0 +1,8 @@
+source_commit=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+cluster=local TiUP playground, 1 PD, 1 TiKV
+fault=PdController.RemoveSchedulers returns ai-native injected scheduler removal error
+counterfactual=RunBackupTxn returns errors.Trace(e)
+exit_code=1
+error=ai-native injected scheduler removal error
+backupmeta=absent
+verdict=GREEN

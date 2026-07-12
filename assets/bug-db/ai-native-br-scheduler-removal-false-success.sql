@@ -1,0 +1,5 @@
+-- Already inserted as found_bug.id1680003 on 2026-07-13.
+INSERT INTO found_bug
+(title,severity,category,feature,symptom,repro,expected,actual,root_cause,fix_hint,oracle,method,root_cause_id,affects,confirmed,status,notes)
+VALUES
+('BR can report backup success when PD scheduler removal fails','high','backup_restore','BR scheduler removal','BR exits with status 0 before backup starts and writes no backupmeta.','Run BR backup txn with --remove-schedulers against real TiKV and inject an error from PdController.RemoveSchedulers.','The checked scheduler-removal error must produce a nonzero command exit.','BR returns stale outer err, exits 0, and leaves the backup directory empty.','Five BR top-level paths check e but return an earlier err that is normally nil.','Return errors.Trace(e) in all affected branches and assert terminal-status/artifact coherence.','process-artifact-coherence','current-source-PQF-fault-injection','br-scheduler-removal-stale-error-false-success','master 13282a8bd06b',1,'confirmed','Current-source discovery only; RED/GREEN/counterfactual verified on local real TiKV.');

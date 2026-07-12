@@ -2723,3 +2723,32 @@ waiting for a heartbeat written to that row by another session. Real TiKV proved
 post-lock write conflict, stale classification, and live-row deletion 3/3; a no-heartbeat stale
 control deleted correctly 3/3. PR and issue history were excluded from discovery and searched only
 after the RED.
+
+## Terminal error identity and success-artifact coherence
+
+An error check does not prove failure propagation. After finding `if E != nil`, trace the exact
+identity of `E` through the branch to the owner that publishes return status, acknowledgement,
+commit, or success. Then name the irreversible action and artifact that successful completion
+requires.
+
+```text
+producer -> checked value E -> failure branch -> public terminal value
+                                 |              -> required action/artifact
+                                 +-- may publish stale sibling S
+```
+
+Admit a C3 target only when a compact matrix can jointly observe both sides:
+
+1. injected boundary failure: public success plus absent action/artifact is RED;
+2. no-fault control: public success plus present action/artifact is GREEN;
+3. one-variable counterfactual: publish `E` instead of `S`; the same fault must become failure.
+
+This pass is stronger than missing-error-check scanning because the check may be syntactically
+present and dynamically taken. The proof obligation is that the checked identity dominates the
+terminal owner. Count repeated syntax as blast radius after one command-level proof.
+
+id1680003 is the calibration case. Five BR task paths check scheduler-removal error `e` but return
+earlier setup error `err`. A local real-TiKV command exited 0 with a failed summary and no
+`backupmeta`; the no-fault command wrote the artifact, and changing only the returned identity made
+the same fault exit 1. PR/review/history were excluded from target generation and used only for
+post-hit dedup.

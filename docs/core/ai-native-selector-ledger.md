@@ -1258,3 +1258,23 @@ status:     validated/terminal - local real-TiKV live-owner RED 3/3 and stale GR
 stop rule:  do not enumerate heartbeat intervals, statuses, or restore filters. Reopen only for fix
             validation or a different observer/signal resource cycle.
 ```
+
+## S34: checked error must dominate terminal result
+
+```text
+selector:   a branch checks fresh failure E, but returns/acks/commits a stale sibling value S
+born from:  id1680003 (BR checks scheduler-removal error e but returns earlier nil err)
+prediction:
+  - the failure branch is taken;
+  - the required action/artifact is skipped;
+  - the public terminal owner still reports success.
+oracle gate:
+  - trace exact error identity from producer to public terminal result;
+  - name the skipped irreversible action and success artifact;
+  - jointly observe terminal status and action/artifact;
+  - include no-fault and one-variable counterfactual controls.
+status:     validated/terminal - local real-TiKV command RED, action GREEN, identity-counterfactual
+            GREEN; remote id1680003 high.
+stop rule:  one representative surface per root. Keep syntactic siblings as blast radius rather
+            than counting or executing each one.
+```

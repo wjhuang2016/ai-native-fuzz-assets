@@ -223,6 +223,16 @@ New high-severity candidate:
 
 ## What this changes going forward
 
+## 2026-07-13 update: id1680003
+
+| root cause | selector | surfaces | consequence | status |
+| --- | --- | --- | --- | --- |
+| checked scheduler-removal error is replaced by stale setup error at terminal return | `CHECKED_ERROR_MUST_DOMINATE_TERMINAL_RESULT` | full/raw/txn/EBS backup and resolve KV data | external backup success with no backup artifact | confirmed high |
+
+This is one root across five sibling sites. Count it once. The reusable boundary is not a missing
+error check: the check exists, but the checked value does not dominate the public terminal owner.
+Command status and required artifact must be observed together.
+
 1. New hits are logged here by root cause first; a surface only gets its own row after passing
    the Reopen test. Blast-radius siblings append to an existing root as "affects +1 owner".
 2. The target queue is ordered by `consequence` first (see Target Selection Rules). The

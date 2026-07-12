@@ -1,0 +1,9 @@
+source_commit=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+cluster=local TiUP playground, 1 PD, 1 TiKV
+fault=PdController.RemoveSchedulers returns ai-native injected scheduler removal error
+command=br backup txn --remove-schedulers
+exit_code=0
+summary=Txn Backup failed summary
+backup_directory_files=0
+backupmeta=absent
+verdict=RED

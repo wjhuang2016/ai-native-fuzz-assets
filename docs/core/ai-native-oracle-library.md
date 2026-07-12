@@ -1316,3 +1316,19 @@ sensitivity: EXECUTION-CONFIRMED on id1650002; live-owner RED 3/3 on real TiKV.
 specificity: GOOD; truly stale control deleted correctly 3/3 under the same compressed clock.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O37 br_terminal_status_artifact_coherence
+
+```text
+obligation:  a successful BR terminal result requires the operation's irreversible action and
+             success artifact to exist.
+form:        inject failure at a checked pre-action boundary; capture process exit, internal summary,
+             action observer, and storage artifact; rerun no-fault and one-variable counterfactual.
+red:         exit 0 while summary says failed and backupmeta is absent.
+green:       no-fault exits 0 with backupmeta; checked-error counterfactual exits nonzero without it.
+catches:     stale error identity, swallowed terminal result, false-success acknowledgement.
+blind to:    tests that inspect only logs/errors, or artifacts that pre-existed the operation.
+sensitivity: EXECUTION-CONFIRMED on id1680003.
+specificity: GOOD; same real-TiKV command without fault produced a 285-byte backupmeta.
+status:      USED + EXECUTION-CONFIRMED.
+```

@@ -3306,3 +3306,18 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   `docs/method-cases/ai-native-br-observation-lock-liveness-method-case.md`, and
   `assets/store/br-abort-live-heartbeat-results.jsonl`.
 - Pause gate: do not enumerate restore filters, running/resetting status, or heartbeat intervals.
+
+## id1680003 - BR scheduler-removal failure can publish false backup success
+
+- Target: `target.br.scheduler-removal-error-false-success.v1`.
+- Selector: `CHECKED_ERROR_MUST_DOMINATE_TERMINAL_RESULT`.
+- **P**: scheduler-removal error `e` is explicitly checked.
+- **Q**: taking that branch guarantees a nonzero BR terminal result.
+- **F**: five top-level paths return stale outer `err`, normally nil, before backup/restore action.
+- C3 oracle: process exits 0, internal summary says failed, and no `backupmeta` exists.
+- Controls: no-fault command writes a 285-byte `backupmeta`; returning `e` under the same fault exits 1.
+- Status: **CONFIRMED**, remote `found_bug id1680003`, high severity.
+- Assets: `ai-native-br-scheduler-removal-false-success-draft.md`,
+  `ai-native-id1680003-br-terminal-success-method-case.md`, and
+  `assets/store/br-scheduler-removal-false-success-results.jsonl`.
+- Pause gate: five source sites are one root. Do not execute each sibling.
