@@ -114,6 +114,18 @@ Scoring dimensions:
     `/Users/bba/pc/ai-native-assets/logs/source-state-ingress-indexadvisor-txreadts-red.log`
   - Local-fix GREEN log:
     `/Users/bba/pc/ai-native-assets/logs/source-state-ingress-indexadvisor-txreadts-local-green.log`
+- Live testbed lift (2026-07-12, no failpoints):
+  - Testbed `8220955`, explicit endpoint `127.0.0.1:14000`, commit
+    `13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa`.
+  - Direct `SET TRANSACTION ... AS OF` control returned `[1,10]`.
+  - The same stale setup followed by a successful `RECOMMEND INDEX RUN` made the next
+    user `SELECT` return `[1,10],[2,20]`.
+  - The no-pending-state wrapper control returned `[1,10],[2,20]`, ruling out a general
+    `RECOMMEND INDEX RUN` failure.
+  - Raw record:
+    `assets/store/logs/txn-index-advisor-txreadts-testbed8220955-20260712.log`;
+    structured run:
+    `assets/store/txn-index-advisor-txreadts-testbed-results.jsonl`.
 - Method lesson:
   - This is the second positive sibling for `STATE_INGRESS_INTERNAL_SQL`, so the selector is no
     longer just a post-hoc explanation for binding-history.
@@ -121,6 +133,11 @@ Scoring dimensions:
     may consume and clean up the pending state after the call returns. The stronger fix-probe model is
     ingress isolation: internal SQL should not see user pending one-shot state unless intentionally
     opted in.
+- Product-quality gate:
+  - The live RED proves a user-visible wrong-snapshot result, but the asset remains
+    `contract-needed` until the phrase "next interactive transaction or query statement" is
+    resolved for helper SQL executed inside a user-facing management statement. This is a
+    severity gate, not a weakness in the live oracle.
 
 ## P0 Candidate Queue: Dynamic State-Ingress Source Targets
 

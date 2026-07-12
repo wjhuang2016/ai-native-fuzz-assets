@@ -1,0 +1,68 @@
+AI-native live validation: RECOMMEND INDEX RUN and pending SET TRANSACTION stale-read state
+date: 2026-07-12 (Asia/Shanghai)
+testbed: 8220955
+namespace: testbed-tps-8220955-1-213
+endpoint: 127.0.0.1:14000 -> fp-tidb:4000
+status endpoint: 127.0.0.1:18080 -> fp-tidb:10080
+failpoints: none
+server: 8.0.11-TiDB-v9.0.0-beta.2.pre-1927-g13282a8bd0-dirty
+git commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+
+The mysql client was invoked with explicit -h 127.0.0.1 -P 14000. The
+tidbbug login path points to a different TiDB and was not used for this run.
+
+Setup:
+  CREATE DATABASE ai_native_txn_advisor_live_20260712;
+  CREATE TABLE t_direct(id INT PRIMARY KEY, v INT);
+  CREATE TABLE t_red(id INT PRIMARY KEY, v INT);
+  CREATE TABLE t_control(id INT PRIMARY KEY, v INT);
+  INSERT INTO each table VALUES (1,10);
+  stale_ts = 2026-07-12 12:58:03.379233
+  wait 2 seconds
+  INSERT INTO each table VALUES (2,20);
+
+Current-rowset control:
+  SELECT id,v FROM t_red ORDER BY id;
+  -> 1 10
+  -> 2 20
+
+Direct stale-read control, in a fresh connection:
+  SET TRANSACTION READ ONLY AS OF TIMESTAMP '2026-07-12 12:58:03.379233';
+  SELECT 'DIRECT_STALE_READ', id, v FROM t_direct ORDER BY id;
+  -> DIRECT_STALE_READ  1  10
+
+RED, in a fresh connection:
+  SET TRANSACTION READ ONLY AS OF TIMESTAMP '2026-07-12 12:58:03.379233';
+  RECOMMEND INDEX RUN FOR
+    'SELECT * FROM ai_native_txn_advisor_live_20260712.t_red WHERE id >= 1';
+  SELECT 'AFTER_ADVISOR', id, v FROM t_red ORDER BY id;
+  -> AFTER_ADVISOR  1  10
+  -> AFTER_ADVISOR  2  20
+
+No-pending-state control, in a fresh connection:
+  RECOMMEND INDEX RUN FOR
+    'SELECT * FROM ai_native_txn_advisor_live_20260712.t_control WHERE id >= 1';
+  SELECT 'CONTROL_NO_PENDING_STATE', id, v FROM t_control ORDER BY id;
+  -> CONTROL_NO_PENDING_STATE  1  10
+  -> CONTROL_NO_PENDING_STATE  2  20
+
+Interpretation:
+  The direct AS OF oracle proves that the timestamp falls between the two
+  committed row versions. RECOMMEND INDEX RUN itself succeeds, but its
+  current-session ExecuteInternal helper SQL consumes the pending one-shot
+  TxnReadTS. The following user SELECT therefore reads the current rowset.
+  The no-pending control rules out a general failure of RECOMMEND INDEX RUN.
+
+Source anchors:
+  pkg/executor/recommend_index.go:75
+  pkg/planner/indexadvisor/utils.go:533-549
+  pkg/session/session.go:1875-1901
+  pkg/sessiontxn/staleread/processor.go:233-257
+
+Contract gate:
+  docs/design/2021-09-22-stale-read.md:68-80 and :100-112 describe SET
+  TRANSACTION stale read as applying to the next interactive transaction or
+  query statement. Final product escalation still requires the owner to confirm
+  that helper SQL executed inside a user management statement is not itself the
+  user's intended next query. The live RED is nevertheless user-visible and
+  independent of the internal TxnReadTS counter.

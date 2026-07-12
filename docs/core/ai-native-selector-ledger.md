@@ -1145,3 +1145,13 @@ negative calibration:
 stop rule:  do not enumerate all partial-index syntax. Reopen only for proof-input normalization
             fix validation, another proof owner, or a stronger consequence.
 ```
+
+### S23 live lift: index-advisor state ingress
+
+2026-07-12:
+  - Testbed `8220955`, no failpoints, explicit endpoint `127.0.0.1:14000`.
+  - Direct AS OF control returned `[1,10]`; `RECOMMEND INDEX RUN` followed by the next
+    user SELECT returned `[1,10],[2,20]`; no-pending control returned `[1,10],[2,20]`.
+  - This upgrades the index-advisor sibling from local RED/GREEN method evidence to a
+    current-master user-visible RED. It does not close the product-contract gate.
+  - Asset: `assets/store/txn-index-advisor-txreadts-testbed-results.jsonl`.
