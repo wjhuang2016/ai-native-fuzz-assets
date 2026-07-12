@@ -1266,6 +1266,8 @@ metadata / dangling ref   O7, O8                 (USED)
 metadata staleness        O9 REFUTED -> O9' stats_value_differential (LLM-VERIFIED + partial exec)
 restore special-object state O33 sequence_no_reuse_after_flashback_db
                          (USED + EXECUTION-CONFIRMED via id1500003)
+parameterized state split O34 cross_task_stateful_differential
+                         (USED + HELD-OUT RED via PR #66217 review P1; not a new bug)
 ddl-hang / stuck DDL      O28 ddl_job_liveness   (TRUSTED via id30038 + id1350002)
 ddl transient-fault availability O31 ddl_retryable_fault_terminal_oracle
                          (USED + EXECUTION-CONFIRMED via id1290001 single-hit rollback)

@@ -1193,3 +1193,19 @@ negative calibration:
   - do not enumerate options within the same object kind before the root is fixed.
 status:     validated/terminal — 1/1 current-master C3 hit; remote id1500003 confirmed.
 ```
+
+## S31: parameter key dominates stateful grouping
+
+```text
+selector:   a stateful operator is moved below a parameterized executor, while admission checks
+            only that the parameter key occurs syntactically inside the state/group expression
+P/Q/F:      key a occurs in GROUP BY a+b -> guard assumes per-a execution is safe -> different a
+            values can share one a+b group and different lookup tasks publish partial groups
+oracle:     prove forced parameterized/global-reference plans; compare one-task GREEN against
+            cross-task RED and require runtime task-count evidence
+validated:  PR #66217 review P1 held-out: IndexJoin task:33 returned sums 10/20 while HashJoin
+            returned global sum 30
+status:     selector validated; held-out target retired as known review finding, not a new bug
+stop rule:  do not enumerate expressions or batch sizes; reopen for a different stateful operator
+            or a distinct missing functional-dominance proof
+```

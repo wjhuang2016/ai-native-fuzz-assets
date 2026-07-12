@@ -1,6 +1,6 @@
 # FLASHBACK DATABASE can reset recovered sequence values and reuse existing IDs
 
-Status: confirmed as remote `found_bug` id1500003 after current-master RED/GREEN on authorized testbed `8220955`; upstream issue is pending.
+Status: remote `found_bug` id1500003; upstream [TiDB #69781](https://github.com/pingcap/tidb/issues/69781) filed with `found-by-ai` and `severity/major` after current-master RED/GREEN on authorized testbed `8220955`.
 
 ## User-visible symptom
 
