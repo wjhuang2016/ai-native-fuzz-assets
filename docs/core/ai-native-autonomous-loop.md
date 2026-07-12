@@ -1549,3 +1549,25 @@ a weaker sibling, record the result as `GREEN_BOUNDARY`, normalize it to `INVALI
 schema when necessary, and block the target until the missing fault ingress or survivor topology is
 available. This prevents the loop from converting repeated reachable GREEN runs into false evidence
 of family-wide safety.
+
+## Follow-up selector-reuse tick: table placement external effect, EXECUTED (2026-07-13)
+
+This tick deliberately excluded PR review findings. It reused validated selector S35 against current
+source and found a second durable owner in `onAlterTablePlacement`: the new PD bundle is published
+while the DDL metadata transaction is still abortable.
+
+```text
+SENSE:      stage table policy locally, publish PD bundle externally, then finish the DDL job.
+SCHEDULE:   pause only after PD success; use supported ADMIN CANCEL; compare both owners.
+ACT local:  ALTER 8214, metadata p1/r1, mock PD p2/r2. Normal and compensation controls GREEN.
+ACT live:   job 5369 cancelled, SHOW CREATE p1/three voters, real PD p2/two voters. Normal job
+            5372 aligned metadata and PD on p2/two voters.
+INTEGRATE:  id1800003 high; reuse S35; add owner-specific O42, obligation, scenario, and fixture.
+HEALTH:     high-quality control-plane correctness failure with a direct replica-redundancy impact.
+NEXT:       do not enumerate policy values. Return to current-source discovery after cleanup.
+```
+
+Automation lesson: **reuse selectors, not findings**. A validated selector may generate candidates
+in other current-source handlers, but each candidate must rebuild P/Q/F, name its own durable owners,
+and earn an independent RED with an owner-specific oracle before history is consulted. This makes the
+asset database genuinely incremental without turning past bugs or review findings into the test set.

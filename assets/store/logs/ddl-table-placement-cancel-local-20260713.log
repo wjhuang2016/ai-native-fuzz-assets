@@ -1,0 +1,19 @@
+target=target.ddl.table-placement-external-effect-survives-cancel.v1
+source=TiDB 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+provenance=current source only; no PR/review/history input
+
+RED:
+  ALTER error=[ddl:8214] Cancelled DDL job
+  SHOW CREATE policy=ai_p1
+  InfoSchema bundle=region r1
+  mock PD bundle=region r2
+
+GREEN controls:
+  normal ALTER: InfoSchema=PD=region r2
+  same cancel plus committed-bundle republication: InfoSchema=PD=region r1
+
+commands:
+  make failpoint-enable
+  go test -tags=intest ./pkg/ddl -run TestAINativeAlterTablePlacementCancelExternalDriftRED -count=1 -v
+  go test -tags=intest ./pkg/ddl -run 'TestAINativeAlterTablePlacement(NormalGreen|CompensationGreen)' -count=1
+  make failpoint-disable

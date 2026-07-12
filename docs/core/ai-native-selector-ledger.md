@@ -1284,6 +1284,7 @@ stop rule:  one representative surface per root. Keep syntactic siblings as blas
 ```text
 selector:   local transactional state remains abortable after an external owner commits a mutation
 born from:  id1710003 (cancelled ALTER RESOURCE GROUP leaves the new definition active in PD)
+reused by:  id1800003 (cancelled ALTER TABLE PLACEMENT leaves an uncommitted replica rule in PD)
 prediction:
   - external state changes before local durable publication;
   - a supported cancel/conflict/owner-loss aborts local state;
@@ -1295,9 +1296,10 @@ oracle gate:
   - use a supported local abort;
   - compare terminal result, history, metadata view, and runtime view;
   - include normal publication and counterfactual controls.
-status:     validated/terminal - mock scheduler and real PD RED, real PD normal ALTER GREEN;
-            remote id1710003 high.
-stop rule:  one root per external/local ordering. Values and policy options are blast radius.
+status:     validated/terminal - two independent DDL handlers produced local and real-PD RED;
+            remote id1710003 and id1800003 high.
+stop rule:  reuse the selector across durable owners, but require a new handler-specific obligation
+            and owner-coherence oracle. Values and policy options are blast radius.
 ```
 
 ## S36: GC protection acknowledgement dominates historical read

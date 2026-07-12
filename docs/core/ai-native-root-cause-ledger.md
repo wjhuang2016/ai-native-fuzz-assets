@@ -262,6 +262,17 @@ from id1260008, where an already-visible data-writer error skips a sibling Close
 where a later engine error is visible after data publication. Remote state after insert: 98
 surfaces, 75 distinct root causes, 23 high-severity rows.
 
+## 2026-07-13 update: id1800003
+
+| root cause | selector | surfaces | consequence | status |
+| --- | --- | --- | --- | --- |
+| PD table-placement bundle commits before cancellable DDL metadata publication | `EXTERNAL_EFFECT_PRECOMMIT_ROLLBACK_COHERENCE` | nonpartition ALTER TABLE PLACEMENT POLICY | cancelled DDL silently weakens the table's declared replica redundancy | confirmed high |
+
+This reuses S35 but is a distinct product root from id1710003: it has a different DDL handler,
+external API, durable object, compensation obligation, and user consequence. Count replica values,
+policy names, and label constraints as blast radius. Remote state after insert: 99 surfaces, 76
+distinct root causes, 24 high-severity rows.
+
 1. New hits are logged here by root cause first; a surface only gets its own row after passing
    the Reopen test. Blast-radius siblings append to an existing root as "affects +1 owner".
 2. The target queue is ordered by `consequence` first (see Target Selection Rules). The

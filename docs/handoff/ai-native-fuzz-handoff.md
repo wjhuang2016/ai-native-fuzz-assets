@@ -1648,3 +1648,15 @@ id1260008 是 visible data-close error 后跳过 sibling Close,id1590002 是 vis
 23 high。新 selector `DEFERRED_TERMINAL_ERROR_DOMINATES_SUCCESS`,oracle O41。资产库 212
 revisions,C3_DIRECT=14,RED=39/GREEN=34,next=null。暂停门:不枚举 writer/error 类型;只在不同
 public terminal owner 或 fix validation 时重开。
+
+**2026-07-13 selector 复用命中 id1800003/high:取消 ALTER TABLE PLACEMENT 后 PD 保留未提交的
+副本规则。** 本轮明确不使用 PR review finding。候选由当前源码和已验证 S35 直接生成:
+`onAlterTablePlacement` 先在 DDL txn 中 stage 新 policy ref,再通过 `context.TODO()` 把 bundle
+发布给 PD,最后才完成 job/txn；generic cancel 没有 compensation。local mock-PD RED:ALTER 8214,
+metadata p1/r1,PD p2/r2；正常 ALTER 和 committed-bundle republication 均 GREEN。授权 testbed
+8220955 的 real-PD RED 使用合法副本数而非不存在的 region label:p1 `FOLLOWERS=2`(3 voters),p2
+`FOLLOWERS=1`(2 voters)。job 5369 被 ADMIN CANCEL 后 history=cancelled、SHOW CREATE 仍是 p1,
+但 PD `TiDB_DDL_5367` 保留 count=2；正常 job 5372 的 metadata/PD 都是 p2/count=2。用户后果是
+取消成功却静默降低声明的副本冗余。RED 后才做资产/upstream issue 去重,无 exact root。资产新增
+O42、owner-specific obligation/scenario/fault/fixture；S35 本身复用,不新造 selector。方法论增量:
+复用 selector,不复用 finding；每个新 handler 仍须独立重建 P/Q/F、durable owner 和强 oracle。

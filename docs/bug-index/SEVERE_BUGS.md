@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-13
 
-- Remote `found_bug`: `MAX(id)=1530002`, `COUNT(*)=91`, `COUNT(DISTINCT root_cause_id)=68`
-- High-severity entries: 16; new-root candidates: 1; known-root rediscoveries: 1
+- Remote `found_bug`: `MAX(id)=1800003`, `COUNT(*)=99`, `COUNT(DISTINCT root_cause_id)=76`
+- High-severity entries: 24 total; 22 confirmed/issue-filed; 1 candidate; 1 known-root rediscovery
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -27,6 +27,14 @@ Last verified: 2026-07-13
 | 30001 | issue-filed | wrong-result | `partial-index-implication` | Planner can retain a partial index when the query predicate does not imply its predicate, silently omitting rows while `ADMIN CHECK TABLE` stays green. | [issue](https://github.com/pingcap/tidb/issues/69779), [draft](../bug-drafts/ai-native-partial-index-id30001-draft.md) | [method case](../method-cases/ai-native-id30001-method-case.md) |
 | 1500002 | issue-filed | data-integrity | `flashback-fk-rebinds-recreated-parent` | `FLASHBACK TABLE` can publish existing orphan rows after same-name parent recreation. | [issue](https://github.com/pingcap/tidb/issues/69777), [draft](../bug-drafts/ai-native-fk-flashback-same-name-parent-rebind-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
 | 1500003 | issue-filed | data-integrity | `flashback-db-sequence-runtime-state-lost` | `FLASHBACK DATABASE` can move a recovered sequence backward and reuse IDs already present in recovered rows. | [issue](https://github.com/pingcap/tidb/issues/69781), [draft](../bug-drafts/ai-native-flashback-db-sequence-reset-draft.md) | [case](../method-cases/ai-native-flashback-db-sequence-reset-method-case.md) |
+| 1590002 | confirmed | data-integrity | `importinto-data-before-index-finalization` | `IMPORT INTO ... FROM SELECT` can leave durable rows without secondary-index entries after index-engine finalization fails. | [draft](../bug-drafts/ai-native-import-into-partial-data-before-index-finalization-draft.md) | [root-cause ledger](../core/ai-native-root-cause-ledger.md) |
+| 1620002 | confirmed | data-loss | `ttl-midjob-timezone-context-drift` | TTL can silently delete a refreshed `DATETIME` row when global `time_zone` changes during one job. | [draft](../bug-drafts/ai-native-ttl-midjob-timezone-drift-refreshed-row-draft.md) | [oracle](../core/ai-native-oracle-library.md) |
+| 1650002 | confirmed | restore-safety | `br-abort-lock-suppresses-live-heartbeat` | BR abort can delete a live restore registry row because its row lock suppresses the heartbeat writer. | [draft](../bug-drafts/ai-native-br-abort-lock-suppresses-live-heartbeat-draft.md) | [oracle](../core/ai-native-oracle-library.md) |
+| 1680003 | confirmed | backup correctness | `br-scheduler-removal-stale-error-false-success` | BR can report success with no backup artifact when PD scheduler removal fails. | [draft](../bug-drafts/ai-native-br-scheduler-removal-false-success-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
+| 1710003 | confirmed | DDL control plane | `resource-group-external-effect-before-ddl-commit` | Cancelled `ALTER RESOURCE GROUP` can leave the uncommitted runtime definition active in PD. | [draft](../bug-drafts/ai-native-resource-group-cancel-external-drift-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
+| 1740003 | confirmed | resource control | `runaway-watch-flush-error-drops-batch` | A transient watch-publication error can silently disable cross-node runaway quarantine. | [draft](../bug-drafts/ai-native-runaway-watch-flush-loss-draft.md) | [case](../method-cases/ai-native-id1740003-failed-publication-retry-owner-method-case.md) |
+| 1770003 | confirmed | data-integrity | `importinto-processchunk-writer-close-false-success` | File `IMPORT INTO` can report success while publishing rows without secondary-index entries. | [draft](../bug-drafts/ai-native-import-writer-close-false-success-draft.md) | [case](../method-cases/ai-native-id1770003-deferred-terminal-error-method-case.md) |
+| 1800003 | confirmed | DDL control plane | `table-placement-pd-bundle-before-ddl-commit` | Cancelled table placement DDL can silently reduce the table's declared replica redundancy in PD. | [draft](../bug-drafts/ai-native-table-placement-cancel-external-drift-draft.md) | [case](../method-cases/ai-native-id1800003-selector-reuse-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

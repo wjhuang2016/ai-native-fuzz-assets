@@ -1,11 +1,14 @@
--- No pending found_bug inserts as of 2026-07-12.
--- Remote found_bug was re-verified after promoting id30001 to issue-filed:
---   MAX(id)=1530002, COUNT(*)=90, COUNT(DISTINCT root_cause_id)=67
+-- No pending found_bug inserts as of 2026-07-13.
+-- Remote found_bug was re-verified after inserting id1800003:
+--   MAX(id)=1800003, COUNT(*)=99, COUNT(DISTINCT root_cause_id)=76, high=24
 --
 -- Bug DB command:
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
+--   id1800003 confirmed/high: cancelled ALTER TABLE PLACEMENT leaves the uncommitted replica rule active in PD
+--     root_cause_id=table-placement-pd-bundle-before-ddl-commit
+--     evidence=assets/store/logs/ddl-table-placement-cancel-real-pd-20260713.log
 --   id1530002 known-duplicate/high: current-master rediscovery of TiDB #65958, where local engine SST loss exits the serving TiDB during ADD INDEX
 --     root_cause_id=dist-addindex-local-engine-db-loss-process-exit
 --     issue=https://github.com/pingcap/tidb/issues/65958

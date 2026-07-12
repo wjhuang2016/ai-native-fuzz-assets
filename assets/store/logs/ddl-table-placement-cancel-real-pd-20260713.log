@@ -1,0 +1,22 @@
+testbed=8220955
+namespace=testbed-tps-8220955-1-213
+source=TiDB 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa plus test-only pause hook
+provenance=independent current-source target; post-RED issue dedup only
+
+RED table ai_tp_cancel_0713.t, table_id=5367:
+  p1 FOLLOWERS=2 -> PD voter count 3
+  p2 FOLLOWERS=1 -> PD voter count 2
+  pause after successful PutRuleBundlesWithDefaultRetry
+  ADMIN CANCEL DDL JOBS 5369 -> successful
+  ALTER -> ERROR 8214 Cancelled DDL job
+  history -> cancelled
+  SHOW CREATE -> ai_tp_cancel_p1_0713
+  PD TiDB_DDL_5367 -> voter count 2
+
+GREEN table ai_tp_cancel_0713.t_green, table_id=5370:
+  normal ALTER p1 -> p2
+  job 5372 -> synced
+  SHOW CREATE -> ai_tp_cancel_p2_0713
+  PD TiDB_DDL_5370 -> voter count 2
+
+consequence=cancelled DDL silently weakens declared replica redundancy

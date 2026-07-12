@@ -1399,3 +1399,23 @@ sensitivity: EXECUTION-CONFIRMED on id1770003 with real PD/TiKV and file IMPORT 
 specificity: GOOD; both same-path no-fault and one-variable error-ownership controls passed.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O42 table_placement_metadata_pd_bundle_coherence
+
+```text
+obligation:  a terminal table-placement DDL result, committed table metadata, and PD's effective
+             placement-rule bundle must describe one policy and replica count.
+form:        capture the old metadata and PD bundle; pause after the new PD bundle is accepted;
+             cancel through ADMIN CANCEL DDL JOBS; release the worker; observe ALTER result, DDL
+             history, SHOW CREATE, InfoSchema bundle, and PD group TiDB_DDL_<table_id>.
+red:         ALTER 8214 plus cancelled history plus old p1/three-voter metadata, while PD retains
+             the uncommitted p2/two-voter rule.
+green:       normal ALTER aligns metadata and PD on p2; committed-bundle republication after the
+             same cancellation restores both owners to p1.
+catches:     external placement publication before local commit, missing abort compensation, and
+             silent weakening of declared replica redundancy.
+blind to:    tests that inspect only SHOW CREATE, only DDL history, or only PD scheduling state.
+sensitivity: EXECUTION-CONFIRMED on id1800003 with local mock PD and real PD on testbed 8220955.
+specificity: GOOD; normal publication and one-variable compensation controls both passed.
+status:      USED + EXECUTION-CONFIRMED.
+```
