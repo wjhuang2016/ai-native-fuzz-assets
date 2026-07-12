@@ -1116,6 +1116,21 @@ stop rule:  do not enumerate all DDLs that share `txnBackfillExecutor`. Reopen o
             consequence, or fix validation proving result draining/acceptance closes the root.
 ```
 
+## Retired Candidate: Optimistic Retry Omits Read-Only Session-State Assignment
+candidate: BEGIN; SELECT @v := source_value; UPDATE target SET value=@v; COMMIT
+           with one optimistic commit retry and a source change before retry
+source:   pkg/session/tidb.go finishStmt plus pkg/session/session.go retry/StmtHistory
+local_red: retry can commit the old @v value after the source changed from 10 to 20
+contract:  documented behavior: automatic optimistic retry replays only write
+           statements and warns that query-derived writes can violate Repeatable Read
+status:    retired / known-documented-semantic-boundary
+bug_count: excluded
+asset:     docs/method-cases/ai-native-txn-retry-user-variable-known-boundary.md
+stop rule: do not enumerate user variables, GET_LOCK, LAST_INSERT_ID, or other
+           session side effects under this retry mode. Reopen only if a supported
+           default mode promises full replay, or a different retry owner loses a
+           state dimension outside the documented limitation.
+
 ## Promoted from id30001 — S29: semantic proof gate with normalization asymmetry
 ```text
 selector:   a planner fast-path checker claims that an access path is safe by proving a semantic

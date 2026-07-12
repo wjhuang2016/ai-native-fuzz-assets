@@ -3205,6 +3205,32 @@ DDL target cells:
 - only revisit sequence-default after fix semantics are agreed; the current red cells are already minimized and share one root family.
 - only revisit add-index/global-index rollback after fix-direction validation; the current red cell is already minimized to a lost `IsGlobal`/tableID cleanup bit during rollback argument reconstruction.
 
+## Negative Calibration: Optimistic Retry Replays Writes but Not Read-Only Session State
+
+2026-07-12:
+
+- Source proof: pkg/session/tidb.go adds retry-safe writes to StmtHistory,
+  while pkg/session/session.go:retry rebuilds and replays that history. A
+  read-only SELECT @v := ... is not replayed.
+- Strong local probe: after SELECT @retry_value := v read 10, a retry hook
+  changed the source row to 20; the retried UPDATE ... SET v=@retry_value
+  committed 10. The retry path therefore exposes a real stale session-state
+  result, not a harness assertion failure.
+- Contract gate: the official optimistic transaction documentation explicitly
+  describes write-only replay and warns that query-derived writes may violate
+  Repeatable Read. It also deprecates automatic optimistic retry from v8.0.
+- Classification: known/documented-semantic-boundary, not a new bug and not
+  inserted into the bug library.
+- Testbed note: the attempted SQL lift was INVALID(failpoint-lifecycle);
+  the dirty test binary left an empty HTTP failpoint action after DELETE and
+  then panicked at a val.(bool) assertion. It is not product evidence.
+- Asset: docs/method-cases/ai-native-txn-retry-user-variable-known-boundary.md.
+
+Method gate added: a strong wrong-result oracle must still be followed by a
+release/default/contract check. A candidate that reproduces a documented,
+opt-in semantic limitation is a reusable negative calibration, not a severe
+bug.
+
 Non-DDL shortcut/extractor target cells:
 - virtual/system table, cache, or reuse path that replaces normal scalar evaluation with a custom prefilter.
 - string/time/collation/session-variable semantics where the SQL-visible predicate can be rechecked independently.

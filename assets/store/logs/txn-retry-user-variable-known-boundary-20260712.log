@@ -1,0 +1,12 @@
+case=txn-retry-user-variable-known-boundary-20260712
+source_commit=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+local_command=go test -tags=intest ./pkg/sessiontxn -run '^TestOptimisticRetryUserVariableReplayProbe$' -count=1 -v -timeout 180s
+local_result=PASS
+local_shape=BEGIN; SELECT @retry_value := v FROM retry_src; UPDATE retry_dst SET v=@retry_value; COMMIT
+retry_hook=before retry prepare, second session changed retry_src.v from 10 to 20
+observed=retry history logged begin, insert/update, commit; SELECT assignment was not replayed; retry_dst remained 10
+source_contract=pkg/session/tidb.go finishStmt adds retry-safe writes to StmtHistory; pkg/session/session.go retry replays history
+product_contract=https://docs.pingcap.com/tidb/stable/optimistic-transaction/
+classification=known-documented-semantic-boundary
+bug_library=not_inserted
+testbed_lift=INVALID(failpoint-lifecycle-on-dirty-build): HTTP DELETE left an empty action and current failpoint Eval/val assertion panicked; no product conclusion taken from that run
