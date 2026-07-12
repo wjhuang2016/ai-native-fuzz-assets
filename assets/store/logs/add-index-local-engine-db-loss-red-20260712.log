@@ -1,0 +1,56 @@
+AI-native DDL runtime-asset-loss evidence
+testbed: 8220955
+namespace: testbed-tps-8220955-1-213
+binary: /tmp/tidb-server-engine-loss-linux-amd64-v3
+source: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa (dirty test-only hooks)
+
+RED: delete the Pebble local engine DB directory
+-----------------------------------------------
+DDL: ALTER TABLE ai_native_engine_loss_20260712.t6 ADD INDEX idx_a(a)
+job: 5151
+task: 630002
+executor before fault: 10.200.16.101:4000
+pause: pauseAfterSetTSBeforeImportEngine=pause
+asset deleted:
+  /tmp/tidb/tmp_ddl-4000/5151/0918a1ff-0528-5d8e-ab55-616bfa336277/
+  (the Pebble DB directory containing 000004.sst)
+
+owner log after release:
+  [backend.go:400] import start
+  000004.sst:
+  orig err: open .../0918a1ff-0528-5d8e-ab55-616bfa336277/000004.sst: no such file or directory
+  list err: open .../0918a1ff-0528-5d8e-ab55-616bfa336277: no such file or directory
+
+client: ERROR 2013 (HY000): Lost connection to MySQL server during query
+process proof: /proc no longer contained the port-4000 v3 tidb-server
+front proof: 127.0.0.1:14000 / status 10080 unavailable
+
+FAILOVER:
+  balancer moved task 630002 from exec_id=10.200.16.101:4000
+  to exec_id=10.200.16.101:4001
+  task executor restarted and completed
+  job 5151 finished synced/public at 2026-07-12 11:18:23 UTC
+
+END-STATE ORACLE:
+  table scan COUNT(*) IGNORE INDEX(idx_a) = 10000
+  forced index COUNT(*) FORCE INDEX(idx_a) = 10000
+  default COUNT(*) = 10000
+  ADMIN CHECK TABLE t6 = GREEN
+
+GREEN CONTROL: delete the raw ingest input SST before db.Ingest
+---------------------------------------------------------------
+DDL: ALTER TABLE ai_native_engine_loss_20260712.t5 ADD INDEX idx_a(a)
+job: 5148
+pause: pauseBeforeLocalDBIngest=pause
+asset deleted: /tmp/tidb/tmp_ddl-4000/5148/<engine_uuid>.sst/<input>.sst
+result:
+  flush error / context canceled
+  subtask classified retryable
+  resume checkpoint reported folder is empty
+  task rebuilt from the table scan
+  job 5148 finished synced/public
+  table/index counts both 10000
+
+The two cells are different assets. Missing raw input SST is converted into a
+recoverable task retry; deleting the Pebble DB directory leaves a missing table
+referenced by the open DB and reaches the fatal MustExist logger path.

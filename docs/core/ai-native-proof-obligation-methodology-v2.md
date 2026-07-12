@@ -203,6 +203,23 @@ find a natural pause after progress is durable but before the asset is consumed
 → observe both user-facing symptom and process/owner aftermath
 ```
 
+The asset name must be resolved before the fault is injected. A single directory tree
+can contain several semantically different assets:
+
+```text
+raw ingest input:        <engine>.sst/<file>.sst
+open local engine DB:    <engine>/000004.sst + MANIFEST/CURRENT
+checkpoint/ownership:    durable task state in KV
+```
+
+Do not treat them as interchangeable because they are adjacent on disk. The current
+`ADD INDEX` calibration makes the distinction executable: deleting the raw input SST
+is a GREEN retry/rebuild control, while deleting the internal Pebble DB SST reaches a
+fatal missing-file path and kills the executor. The selector must name the exact
+asset-to-consumer edge (`P -> Q`) and every RED must have the neighboring asset-type
+control, otherwise a broad “local file loss” result is not attributable to a product
+contract.
+
 This is different from ordinary chaos. The point is not to make the system
 "unstable"; it is to test a precise hidden proof: after progress has been made,
 is the remaining runtime asset treated as a guaranteed fact?
@@ -224,6 +241,12 @@ One practical trap matters a lot here: container health can mask process death.
 If PID1 is only a sleeper or shell wrapper, a TiDB process can exit while the
 pod remains `Running`. For this lane, "process is gone" must be proven from the
 actual process/port surface, not inferred from pod restart counters.
+
+For a candidate that self-heals after failover, severity is still judged by the
+serving-process interval: client disconnect, process disappearance, owner handoff,
+and delayed completion are separate observables. A green final table does not erase
+the availability RED, but it does keep it distinct from wrong-result or permanent
+liveness roots.
 
 ### Performance obligations are a sibling loop, not the same loop
 

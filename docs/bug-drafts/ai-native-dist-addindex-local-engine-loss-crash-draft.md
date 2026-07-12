@@ -16,9 +16,13 @@
 
 这是一条高价值 availability bug candidate:系统最终能自愈,但对用户来说是一次真实的 TiDB 进程退出,不是普通可见错误返回。
 
-## Update 2026-07-11: 单个 SST 文件已经足够
+## Update 2026-07-11: engine DB 内部单个 SST 文件已经足够
 
-前面最早拿到的是“删整个 local engine 目录会打掉执行 TiDB 进程”的 live 证据;这轮又把必要扰动继续压小了一层。
+前面最早拿到的是“删整个 local engine 目录会打掉执行 TiDB 进程”的 live 证据;这轮又把必要扰动继续压小了一层。这里的
+“单个 SST”是 Pebble **local engine DB 内部**的 `000004.sst`,路径形如
+`<job_id>/<engine_uuid>/000004.sst`,不是 ingest 输入目录里的
+`<engine_uuid>.sst/<uuid>.sst`。后者的删除已经单独做过 GREEN control:TiDB 把它变成
+`context canceled`/retry,重建任务后正常完成。
 
 新的更强 live 形状:
 
@@ -27,7 +31,7 @@
 - `tidb_max_dist_task_nodes=1`
 - hook 仍然是 `pauseAfterSetTSBeforeImportEngine`
 
-在 `job 4282 / global task 420001` 上,只删除了:
+在 `job 4282 / global task 420001` 上,只删除了 local engine DB 内部的:
 
 - `/tmp/fp-survivor-20260711/tmp_ddl-4001/4282/09ae5021-ec10-5ca9-8a0d-fbeb2e371e16/000004.sst`
 
@@ -41,12 +45,34 @@
 这把结论从“目录级 runtime asset loss 会打崩 import front”收紧成了:
 
 ```text
-单 SST 文件级 runtime asset loss
+local engine DB 内部单 SST 文件级 runtime asset loss
 -> import path fatal
 -> TiDB front exit
 -> owner failover
 -> delayed self-heal
 ```
+
+## Update 2026-07-12: current-master 再次复现并补齐绿色边界
+
+在同一 testbed 的 current dirty build 上重新跑了 `job 5151 / task 630002`:
+
+- `4000` 在 `SetTSBeforeImportEngine` 之后被 pause;
+- 删除 `/tmp/tidb/tmp_ddl-4000/5151/0918a1ff-0528-5d8e-ab55-616bfa336277/`,其中含 `000004.sst`;
+- 放行后 `4000` 的 DDL 前台返回 `ERROR 2013 Lost connection`,进程从 `/proc` 消失;
+- owner 日志出现 `orig err`/`list err` 的缺文件信息;
+- DXF balancer 把同一个 `task-id=630002` 从 `exec_id=4000` 移到 `4001`,并最终完成;
+- `job 5151` 在 `11:18:23 UTC` 变成 `synced/public`;
+- table scan、`FORCE INDEX`、default scan 均为 `10000`,`ADMIN CHECK TABLE` 通过。
+
+同轮的对照是 `job 5148`:在 `pauseBeforeLocalDBIngest` 删除 raw input SST 后,TiDB 没有退出,
+而是把 subtask 标成 retryable,从空目录重新扫描并完成。这个对照很重要:不能把“输入文件丢失”
+和“已打开 Pebble DB 引用的内部 SST 丢失”混成同一个资产。
+
+当前远端 bug 库记录为 `id1530002` (`candidate/high`,
+`root_cause_id=dist-addindex-local-engine-db-loss-process-exit`),但仍保留产品契约门:
+需要确认临时 DDL engine 的损坏是否允许 fail-fast,以及是否应该由 Pebble logger/DDL 边界把它
+转换为 subtask error,而不是杀掉 serving TiDB。证据:
+`assets/store/logs/add-index-local-engine-db-loss-red-20260712.log`。
 
 ## 实验卫生补充
 
@@ -156,14 +182,16 @@ ERROR 2013 (HY000): Lost connection to MySQL server at 'reading initial communic
 
 现在这条 candidate 的 source chain 也基本闭环了:
 
-1. TiDB ingest 会把真实 SST 路径交给 Pebble:
+1. TiDB ingest 会把 raw SST 路径交给 Pebble:
    - `pkg/ingestor/ingestctrl/engine.go`
    - `dbSSTIngester.ingest(...) -> db.Ingest(paths)`
+   - raw input SST 缺失时,`db.Ingest` 的 `FS.Open` 返回普通错误;本轮 GREEN control 证明上层会 retry。
 2. TiDB 打开 local engine 的 Pebble DB 时没有自定义 `Logger`:
    - `pkg/ingestor/ingestctrl/engine_mgr.go`
 3. Pebble 默认会把空 `Logger` 补成 `DefaultLogger`:
    - `github.com/cockroachdb/pebble/options.go`
-4. Pebble 读取本地对象/SST 时会走 `MustExist: true`:
+4. `db.Ingest(paths)` 期间,已打开的 Pebble DB version 仍引用 engine DB 内部的 table file;
+   读取这个缺失的内部 SST 会走 `OpenOptions{MustExist: true}`:
    - `github.com/cockroachdb/pebble/table_cache.go`
    - `github.com/cockroachdb/pebble/objstorage/objstorageprovider/vfs.go`
 5. `MustExist(...)` 一旦命中 `ENOENT`,会打印与 live 完全同形状的:
@@ -190,9 +218,10 @@ ERROR 2013 (HY000): Lost connection to MySQL server at 'reading initial communic
 
 ## 当前判断
 
-- 质量:高价值 availability bug candidate
+- 质量:高价值 availability bug candidate,已两次 live 命中 engine-DB-loss -> process-exit
+- 远端资产:`id1530002`, `candidate/high`;尚未按 confirmed root 计数
 - 形态:local engine runtime loss -> import path fatal -> TiDB process exit -> owner failover -> delayed self-heal
 - 还需要的下一步:
   - 评估这是“合理的致命保护”还是“应该返回错误而不该打掉进程”
-  - 决定是否把它升级成正式 severe root,还是先保留为 high-value runtime-fault candidate
+  - 对照不同 Pebble logger/engine boundary 的修复位置,决定是否升级成正式 severe root
   - 若要对外提 issue,复现里要明确说明这是一条 runtime fault-injection / asset-loss 场景,不是纯 SQL 场景
