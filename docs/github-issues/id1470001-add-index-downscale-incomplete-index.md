@@ -54,6 +54,65 @@ reproducer: if the duplicate is detected before the downscale, rollback is the
 correct control. The failpoint reproducer below fixes only this ordering; it does not
 invent a different error class.
 
+### Copyable production-shaped example: timeout retry leaves a duplicate
+
+The duplicate does not require a corrupt storage engine or a deliberately malformed
+row. A common source is an ambiguous commit at the application boundary: the first
+insert commits, the client times out before receiving the response, and the retry is
+accepted because the table has not yet had a unique constraint. The following is the
+small part of that workflow that can be reproduced on an ordinary TiDB deployment:
+
+```sql
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_no VARCHAR(64) NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  payload VARCHAR(128) NOT NULL
+);
+
+-- Request A: the client times out after the server commits this statement.
+INSERT INTO orders(order_no, status, payload)
+VALUES ('SO-20260712-0042', 'paid', 'import-attempt-1');
+
+-- Request A is retried with a new connection/idempotency key.
+-- Without uk_order_no, the retry is accepted as a second row.
+INSERT INTO orders(order_no, status, payload)
+VALUES ('SO-20260712-0042', 'paid', 'import-retry-2');
+
+SELECT id, order_no, status, payload
+FROM orders
+WHERE order_no = 'SO-20260712-0042';
+-- Two rows with different id values and the same business key.
+```
+
+In a real incident, `orders` is already a large, write-active table and the duplicate
+is naturally late in the primary-key space. The operational sequence is:
+
+1. Start `ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no)` on the normal
+   transaction backfill path (`tidb_ddl_enable_fast_reorg=OFF`, or ingest unavailable).
+2. Wait until `ADMIN SHOW DDL JOBS` reports `write reorganization` with a growing
+   `row_count`; the duplicate must still be in an unprocessed later range.
+3. During a foreground latency spike, let the DBA or resource-control automation run
+   `ADMIN ALTER DDL JOBS <job_id> THREAD = 1`.
+4. If the late-range worker is removed and its ordinary uniqueness check returns
+   `ERROR 1062` after cancellation, validate the published state with both index and
+   table paths:
+
+```sql
+SELECT id FROM orders IGNORE INDEX(uk_order_no)
+WHERE order_no = 'SO-20260712-0042' ORDER BY id;
+SELECT id FROM orders FORCE INDEX(uk_order_no)
+WHERE order_no = 'SO-20260712-0042' ORDER BY id;
+ADMIN CHECK TABLE orders;
+```
+
+The expected control is `ERROR 1062` followed by rollback. The bug signature is a
+`synced/public` DDL job with different result sets or `ADMIN CHECK TABLE` reporting
+`8223`. The exact timing remains probabilistic without the test-only failpoint, but
+this is a realistic and relatively common source of the required in-flight terminal
+error, and it uses only normal application retry behavior plus a supported DDL
+concurrency change.
+
 ### 1. Minimal reproduce step (Required)
 
 This was reproduced on current master with a test-only failpoint build.

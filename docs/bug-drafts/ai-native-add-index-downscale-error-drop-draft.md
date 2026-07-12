@@ -119,6 +119,56 @@ SELECT COUNT(*) FROM t WHERE a = 5676;                     -- 0
 -> 用户拿到错误结果
 ```
 
+## 一个更容易在真实环境出现的例子
+
+“重复业务键”在生产里并不一定来自手工造脏数据，常见来源之一是**提交结果不明确
+时的客户端重试**：第一次请求实际上已经提交，但客户端在收到响应前超时，随后用新
+连接再次写入。表上还没有唯一约束时，两次写入都会成功：
+
+```sql
+CREATE TABLE orders (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_no VARCHAR(64) NOT NULL,
+  status VARCHAR(16) NOT NULL,
+  payload VARCHAR(128) NOT NULL
+);
+
+-- 第一次请求：服务端已提交，但客户端没有收到成功响应。
+INSERT INTO orders(order_no, status, payload)
+VALUES ('SO-20260712-0042', 'paid', 'import-attempt-1');
+
+-- 超时重试：新的连接再次插入同一业务键。
+INSERT INTO orders(order_no, status, payload)
+VALUES ('SO-20260712-0042', 'paid', 'import-retry-2');
+```
+
+把这张表换成已有的百万级、持续写入的业务表，且让这两个重复值落在较晚的主键
+范围，就得到比较容易拉长窗口的真实形状。在线补唯一约束时走普通 txn backfill
+（例如 `tidb_ddl_enable_fast_reorg=OFF` 或 ingest 不可用）：
+
+```sql
+ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no);
+-- 另一个会话观察到 write reorganization 且 row_count 增长后：
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+```
+
+这里不需要 TiKV 故障。晚范围 worker 在检查两个相同 `order_no` 时会自然产生
+`ERROR 1062 Duplicate entry 'SO-20260712-0042'`；如果它正好属于被缩容的 tail，
+就进入本 bug 的取消后结果投递窗口。DDL 结束后必须同时查两条路径：
+
+```sql
+SELECT id FROM orders IGNORE INDEX(uk_order_no)
+WHERE order_no = 'SO-20260712-0042' ORDER BY id;
+SELECT id FROM orders FORCE INDEX(uk_order_no)
+WHERE order_no = 'SO-20260712-0042' ORDER BY id;
+ADMIN CHECK TABLE orders;
+```
+
+无 failpoint 时这仍然是概率性触发：如果重复值先被检查到，正常的 `ERROR 1062`
+和 rollback 是 control；只有 `synced/public` 后两条路径分裂或 `8223` 才是 bug。
+这段例子补的是“错误从哪里来、谁触发缩容、用户最后看到什么”，不是把概率性窗口
+包装成确定性复现。
+
 ## live 复现摘要
 
 环境:
