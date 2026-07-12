@@ -1381,3 +1381,38 @@ NEXT:      Guard BATCH syntax enumeration. Reopen only for another stale input c
 Automation lesson: when a wrapper internally executes SQL, the wrapper inherits the full session
 state machine unless it explicitly clears or rejects every relevant state input. That is a sharp
 selector for AI because the candidate list comes from source-owned state fields, not random SQL.
+
+## Follow-up S6 recovery identity-drift tick, EXECUTED (2026-07-12)
+
+This tick stayed in DDL and reused the existing `FLASHBACK TABLE` FK validator obligation, but
+changed one hidden dimension: the historical referenced object was replaced by a different
+same-name object before recovery.
+
+```text
+SENSE:      RecoverTable checks schema/table-name and table-ID availability, then clones historical
+            TableInfo and rows. Normal create/FK validation proves current parent structure, but
+            recovery has no proof that the current same-name object is the historical parent or
+            that recovered child rows still belong to its current rowset.
+SCHEDULE:   P4 allowed this one-dimensional mutation because the candidate had a direct consequence-3
+            oracle: existing-row FK differential, followed by a normal action on the current parent.
+            Do not enumerate more FK actions after the root boundary is established.
+ACT:        Same-name empty parent remained RED: FLASHBACK TABLE succeeded, an existing child row
+            was orphaned, and ADMIN CHECK TABLE stayed green. A same-key replacement with
+            ON DELETE CASCADE deleted the recovered child row. A second sibling with ON UPDATE
+            CASCADE changed recovered (10,1) to (10,2) after UPDATE p SET id=2.
+INTEGRATE:  Keep id1500002 as one candidate root, flashback-fk-rebinds-recreated-parent. The delete
+            and update siblings are consequence escalation, not separate bugs. Assets and the
+            recovery oracle were updated; asset store is 138 revisions, RED=23.
+HEALTH:     High-value candidate: the published schema looks structurally valid and future invalid
+            inserts are still rejected, while normal actions against the replacement parent mutate
+            or delete historical rows. ADMIN CHECK TABLE is therefore a weak recovery oracle.
+NEXT:       Source-target refresh found no new high-consequence DDL owner: terminal-action scan only
+            produced a consequence-1 non-DDL candidate, and the remaining DDL hits are covered or
+            have cleanup guards. Keep the negative cache and choose a new selector before executing.
+```
+
+Automation lesson: for restore/recovery paths, `metadata shape + future-write validation` is not a
+complete oracle. After recovery, exercise the current referenced object and compare the recovered
+rowset. This turns an identity claim into a behavioral proof and catches silent cascade effects that
+`ADMIN CHECK TABLE` cannot see. The queue must also treat a screened-out low-consequence source
+candidate as negative evidence, not as permission to widen the matrix blindly.
