@@ -1,0 +1,4 @@
+=== RUN   TestAINativeMaxRecoverableCheckpointRejectsCrossLineageResumeStateRED
+Error: "100" is not less than or equal to "10"
+Message: restore must not prefer an unbound resume state from a different replication lineage
+--- FAIL: TestAINativeMaxRecoverableCheckpointRejectsCrossLineageResumeStateRED

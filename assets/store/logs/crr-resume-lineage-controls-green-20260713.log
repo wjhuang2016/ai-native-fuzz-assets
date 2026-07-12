@@ -1,0 +1,5 @@
+=== RUN   TestAINativeCRRResumeStateSameLineageGREEN
+--- PASS: TestAINativeCRRResumeStateSameLineageGREEN
+=== RUN   TestAINativeCRRNoResumeStateGREEN
+--- PASS: TestAINativeCRRNoResumeStateGREEN
+PASS

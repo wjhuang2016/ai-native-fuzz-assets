@@ -1674,3 +1674,13 @@ TiFlash server timeout。只恢复 captured committed rule 后 progress=1/query=
 删除 metadata/PD 后,TiFlash-only session 立即返回明确 1815。RED 后 exact issue 搜索为空,已入库
 id1830003 并提交 #69785。方法论增量:control-plane drift 必须继续追到 consumer altitude；owner
 split 用来 admission,真实 consumer consequence 用来定 severity。发现过程没有使用 PR review finding。
+
+**2026-07-13 current-source-only 命中 id1860003/high:CRR resume state 可跨 replication lineage
+抬高 PITR 可恢复点。** `PersistentState` 只保存 LastCheckpoint/SyncedTS/SyncedByStore,固定写到
+downstream 的 `crr-checkpoint/resume-state.json`,没有 upstream cluster、task generation 或 storage
+identity。lineage A 留下 100 后,同 task 名/同 bucket 的 lineage B 当前 checkpoint=10；calculator
+直接返回 100 且 object checker 0 次调用。restore consumer 同样优先 resume 100 而不是 storage
+checkpoint 10；未显式指定 restore-ts 时还会把 100 设成默认目标。同-lineage 100/100 与 no-state
+current=10 均 GREEN。RED 后四组 GitHub issue 搜索无 exact root。远端 `found_bug id1860003`,当前
+101 rows/78 roots/26 high。新 selector S39 `PERSISTED_STATE_MUST_BIND_LINEAGE`,oracle O44。发现
+过程没有使用 PR review finding,testbed 未使用。

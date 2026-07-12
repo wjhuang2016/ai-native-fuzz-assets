@@ -1592,3 +1592,22 @@ Automation lesson: control-plane drift severity must be tested at the **consumer
 the owner chain until either a downstream layer heals/rejects safely or the proposed user consequence
 is directly observed. Metadata-versus-PD RED admitted the target; query timeout justified high
 severity. This prevents the system from promoting every external-state mismatch on inference alone.
+
+## Follow-up lineage-binding tick: CRR resume state, EXECUTED (2026-07-13)
+
+This tick used current source only. A disaster-consequence scan led to CRR's persisted fast path:
+
+```text
+P:          resume progress may skip only artifacts from its producing replication lineage.
+Q:          fixed downstream path plus task name is treated as lineage proof.
+F:          state contains progress only; no cluster/task generation or storage identity.
+RED 1:      saved 100 + current upstream 10 -> calculator 100, object checks 0.
+RED 2:      resume 100 + storage checkpoint 10 -> PITR max recoverable 100.
+CONTROL:    same-lineage 100/100 and no-state current 10 both GREEN.
+INTEGRATE:  id1860003 high, S39, O44, module/obligation/scenario/scaffold assets.
+```
+
+Automation lesson: a persisted state format needs **semantic lineage binding**, not only parse
+compatibility. For every token that enables a skip, generate a same-name/same-path two-lineage
+matrix and follow the token to its highest consumer. This adds a new high-yield selector that is
+independent of PR review findings.

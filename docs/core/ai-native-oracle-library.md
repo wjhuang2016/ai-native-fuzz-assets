@@ -1439,3 +1439,21 @@ sensitivity: EXECUTION-CONFIRMED on id1830003 with real PD, TiKV, TiFlash, and M
 specificity: GOOD; same table and query recovered after one-owner compensation.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O44 crr_lineage_checkpoint_consumer_bound
+
+```text
+obligation:  a CRR safe/recoverable checkpoint must be backed by evidence from the current
+             upstream task and replicated-object lineage.
+form:        restore old progress Pold; expose a different current lineage at Pnew < Pold while
+             keeping task name and state path equal; record object-check count, calculator result,
+             storage checkpoint, and PITR maximum recoverable checkpoint.
+red:         Pold=100, Pnew=10, object checks=0, calculator=100, PITR consumer=100.
+green:       same-lineage 100/100 returns 100; no-state current 10 returns 10.
+catches:     unbound resume state, cross-cluster/task-generation cache reuse, stale fast paths.
+blind to:    state that persists and validates a complete lineage fingerprint, or consumers that
+             independently revalidate every skipped artifact.
+sensitivity: EXECUTION-CONFIRMED on id1860003 in service and restore-consumer packages.
+specificity: GOOD; two lineage controls isolate identity from ordinary resume behavior.
+status:      USED + EXECUTION-CONFIRMED.
+```

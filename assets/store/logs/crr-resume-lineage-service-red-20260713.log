@@ -1,0 +1,5 @@
+=== RUN   TestAINativeCRRResumeStateMustNotCrossLineageRED
+Error: "100" is not less than or equal to "10"
+Message: a checkpoint from an unbound resume state must not exceed the current upstream task checkpoint
+object validation calls: 0
+--- FAIL: TestAINativeCRRResumeStateMustNotCrossLineageRED

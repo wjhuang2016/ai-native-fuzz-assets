@@ -1364,3 +1364,24 @@ status:     validated/terminal - local exact-error RED/GREEN and real-PD/TiKV su
 stop rule:  one root per discarded terminal error owner. Data/index writer and error-type variants
             are blast radius; reopen only for a different public owner or fix validation.
 ```
+
+## S39: persisted state must bind lineage
+
+```text
+selector:   a persisted token authorizes skipping scan/replay, but stores progress without the
+            identity or generation of the producer and object lineage that made it true
+born from:  id1860003 (CRR accepts a fixed-path resume file from another replication lineage)
+prediction:
+  - keep weak keys such as task name and object path constant;
+  - replace producer cluster/task generation/source lineage;
+  - stale progress takes a fast path and reaches a current consumer without revalidation.
+oracle gate:
+  - compare persisted and current lineage evidence;
+  - count whether skipped objects were revalidated;
+  - observe the highest consumer of the token;
+  - include same-lineage and no-state controls.
+status:     validated/terminal - service returns 100 over current upstream 10 with zero object checks,
+            and PITR max-recoverable consumer also returns 100; remote id1860003 high.
+stop rule:  do not enumerate task names or storage schemes. Reopen for another state owner only when
+            the missing lineage dimensions or highest consumer are distinct.
+```

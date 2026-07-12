@@ -322,3 +322,14 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   and restore-heartbeat-abort terms found no upstream issue.
 - Counting rule: one root only. Heartbeat intervals, restore filters, and running/resetting status
   variants are blast radius.
+
+## 2026-07-13 update: id1860003
+
+- Remote `found_bug`: 101 surfaces, 78 distinct root causes, 26 high-severity rows.
+- New root: `crr-resume-state-unbound-lineage`.
+- Consequence: C3 direct restore-safety breach. CRR and PITR claim checkpoint 100 while the current
+  upstream/storage lineage proves only 10; the fast path performs zero object checks.
+- Distinctness: this is not checkpoint flush loss or stale heartbeat. The missing proof is semantic
+  lineage identity on a successfully loaded persistent token.
+- Counting rule: one root only. Task names, bucket schemes, checkpoint values, and cluster-replacement
+  mechanisms are blast radius.
