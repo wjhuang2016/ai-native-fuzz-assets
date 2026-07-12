@@ -1338,3 +1338,26 @@ status:     validated/terminal - local RED/counterfactual GREEN and real-PD/TiKV
             remote id1740003 high.
 stop rule:  one root per destroyed retry owner. Payload types and policy actions are blast radius.
 ```
+
+## S38: deferred terminal error dominates success
+
+```text
+selector:   a deferred Close/Flush/Commit/Finalize owns the last transfer from private state to a
+            durable owner, but its error is logged or metered after the public result was chosen
+born from:  id1770003 (IMPORT INTO discards per-chunk writer Close errors, reports success, and
+            publishes rows without secondary-index entries)
+prediction:
+  - normal work returns nil before deferred finalization runs;
+  - finalization fails before transferring all private state;
+  - cleanup destroys or detaches the failed private state;
+  - the caller treats the unchanged nil result as permission to publish or acknowledge success.
+oracle gate:
+  - prove the deferred action is a durability boundary, not best-effort cleanup;
+  - inject after normal work and before the terminal transfer;
+  - jointly observe public status, durable artifact, and semantic consistency;
+  - change only error ownership and repeat the same fault.
+status:     validated/terminal - local exact-error RED/GREEN and real-PD/TiKV success+3/0+ADMIN
+            8223 RED; named-return counterfactual error+0/0+ADMIN green; remote id1770003 high.
+stop rule:  one root per discarded terminal error owner. Data/index writer and error-type variants
+            are blast radius; reopen only for a different public owner or fix validation.
+```

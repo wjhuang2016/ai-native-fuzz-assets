@@ -251,6 +251,17 @@ same: external PD state has no compensation when the local DDL commit owner abor
 Count policy actions and watch match types as one root. The failed batch owner and missing retry
 edge are identical. Remote state after insert: 97 surfaces, 74 distinct root causes.
 
+## 2026-07-13 update: id1770003
+
+| root cause | selector | surfaces | consequence | status |
+| --- | --- | --- | --- | --- |
+| deferred per-chunk writer Close errors are excluded from ProcessChunk's public result | `DEFERRED_TERMINAL_ERROR_DOMINATES_SUCCESS` | file IMPORT INTO local-sort data/index writers | finished import publishes rows without secondary-index entries | confirmed high |
+
+Count data-writer, index-writer, disk, SST, and flush error variants as one root. This is distinct
+from id1260008, where an already-visible data-writer error skips a sibling Close, and id1590002,
+where a later engine error is visible after data publication. Remote state after insert: 98
+surfaces, 75 distinct root causes, 23 high-severity rows.
+
 1. New hits are logged here by root cause first; a surface only gets its own row after passing
    the Reopen test. Blast-radius siblings append to an existing root as "affects +1 owner".
 2. The target queue is ordered by `consequence` first (see Target Selection Rules). The

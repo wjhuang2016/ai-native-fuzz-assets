@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 05:08:34 +0800
+Generated at: 2026-07-13 05:43:30 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -26,3 +26,4 @@ Generated at: 2026-07-13 05:08:34 +0800
 | 1680003 | confirmed | high | backup_restore | NULL | BR scheduler removal | `br-scheduler-removal-stale-error-false-success` | BR can report backup success when PD scheduler removal fails |  |
 | 1710003 | confirmed | high | ddl_control_plane | ALTER RESOURCE GROUP | resource control | `resource-group-external-effect-before-ddl-commit` | Cancelled ALTER RESOURCE GROUP leaves the uncommitted configuration active in PD |  |
 | 1740003 | confirmed | high | resource_control | runaway watch publication | runaway protection | `runaway-watch-flush-error-drops-batch` | Transient runaway-watch flush errors silently disable cross-node quarantine |  |
+| 1770003 | confirmed | high | correctness/data-integrity | IMPORT INTO from file | per-chunk local engine writer finalization | `importinto-processchunk-writer-close-false-success` | IMPORT INTO reports success and leaves a missing secondary index when a chunk writer Close fails |  |

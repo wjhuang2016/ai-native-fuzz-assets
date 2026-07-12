@@ -1,0 +1,34 @@
+Environment: authorized QA testbed 8220955, namespace testbed-tps-8220955-1-213.
+TiDB source: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa.
+Input: /tmp/ai-import-writer-close.csv with rows (1,10),(2,20),(3,30).
+SQL mode: file IMPORT INTO, THREAD=1, CHECKSUM_TABLE='off'.
+Fault: first ingestctrl.Writer.Close returns "ai-native writer close failed before flush".
+
+NO-FAULT GREEN
+IMPORT job status: finished
+Imported_Rows: 3
+table scan: 3
+forced secondary-index scan: 3
+ADMIN CHECK TABLE: success
+
+CURRENT-SOURCE RED
+IMPORT job id: 30001
+IMPORT job status: finished
+Imported_Rows: 3
+client exit: 0
+table scan: 3
+forced secondary-index scan: 0
+ADMIN CHECK TABLE: ERROR 8223 data inconsistency in table red, index ib, handle 3
+TiDB log: process chunk completed, followed by "close index writer failed" with the injected error.
+
+ONE-VARIABLE COUNTERFACTUAL GREEN
+Only change: append deferred data/index writer Close errors to ProcessChunk's named return error.
+Same one-shot fault, input, SQL, thread count, and checksum mode.
+IMPORT: ERROR 1105 ai-native writer close failed before flush
+client exit: 1
+table scan: 0
+forced secondary-index scan: 0
+ADMIN CHECK TABLE: success
+TiDB log: worker/subtask failed and the task reverted with the injected error.
+
+Cleanup: database, TiDB process, binaries, logs, temporary directories, CSV, and port-forward removed.

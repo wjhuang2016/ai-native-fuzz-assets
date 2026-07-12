@@ -1380,3 +1380,22 @@ sensitivity: EXECUTION-CONFIRMED on id1740003 with two TiDB frontends and real P
 specificity: GOOD; raising the threshold to 24h removed independent re-detection as a confounder.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O41 import_terminal_status_row_index_coherence
+
+```text
+obligation:  a successful IMPORT INTO terminal state implies every reported row has all required
+             record and secondary-index KV, and the physical table is internally consistent.
+form:        inject one terminal writer Close error after AppendRows succeeds but before final
+             flush; record client exit, import job status/Imported_Rows, table scan count, forced
+             secondary-index scan count, and ADMIN CHECK TABLE.
+red:         exit 0 / job finished / Imported_Rows=3, but table/index=3/0 and ADMIN CHECK 8223.
+green:       no fault gives success+3/3+ADMIN green; error-owning counterfactual gives error+0/0+
+             ADMIN green under the same fault.
+catches:     swallowed terminal errors, incomplete engine publication, false-success task ack.
+blind to:    required checksum that independently rejects the mismatch, or tests that observe only
+             logs, task state, table rows, or index rows in isolation.
+sensitivity: EXECUTION-CONFIRMED on id1770003 with real PD/TiKV and file IMPORT INTO.
+specificity: GOOD; both same-path no-fault and one-variable error-ownership controls passed.
+status:      USED + EXECUTION-CONFIRMED.
+```

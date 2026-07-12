@@ -1,0 +1,18 @@
+TiDB source: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+Target: pkg/executor/importer.ProcessChunk
+
+Current-source RED
+- ProcessChunkWithWriter completed successfully.
+- index EngineWriter.Close returned "ai-native index writer close failed".
+- data EngineWriter.Close returned "ai-native data writer close failed".
+- Both errors were logged.
+- Public result was nil: require.Error failed with "An error is expected but got nil".
+
+One-variable counterfactual GREEN
+- Change ProcessChunk to use a named error result.
+- Append each deferred writer Close error to that result.
+- The same test returned both sentinels and passed.
+- Command: go test -tags=intest ./pkg/executor/importer -run '^TestProcessChunkPropagatesWriterCloseErrors$' -count=1 -v
+
+Conclusion: the deferred terminal errors being excluded from the public return value is sufficient
+to explain the false-success result.

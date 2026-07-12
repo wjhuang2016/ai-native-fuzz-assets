@@ -10,20 +10,20 @@ It treats three things as first-class reusable assets:
 
 ## Snapshot
 
-- `docs/core/`: 16 core methodology and ledger documents.
+- `docs/core/`: 17 core methodology and ledger documents.
 - `docs/handoff/`: latest handoff snapshot for session-to-session continuation.
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
 - `docs/github-issues/`: filed GitHub issue bodies for important bugs.
-- `docs/bug-drafts/`: 83 draft bug writeups.
-- `docs/method-cases/`: 65 compact case summaries tied to bug-db entries.
+- `docs/bug-drafts/`: 94 draft bug writeups.
+- `docs/method-cases/`: 79 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
-- `scaffolds/top-level/`: 61 top-level Python/shell/data scaffolds from the working directory.
-- `scaffolds/go-probes/`: 19 Go probe source files plus `go.mod` and `go.sum`.
-- `scaffolds/tidb-tests/`: 11 TiDB-side AI-native test/probe files used as harness fixtures.
+- `scaffolds/top-level/`: 62 top-level Python/shell/data scaffolds from the working directory.
+- `scaffolds/go-probes/`: 21 Go probe/source-scanner files plus `go.mod` and `go.sum`.
+- `scaffolds/tidb-tests/`: 17 TiDB-side AI-native test/probe files used as harness fixtures.
 - `scripts/`: asset refresh and bug-index generation helpers.
 
-Current snapshot size is about 17 MB.
+Current snapshot size is about 41 MB.
 
 ## Layout
 
@@ -44,7 +44,9 @@ Current snapshot size is about 17 MB.
 `scaffolds/`
 
 - `top-level/`: Python and shell probes copied from the original workspace root.
-- `go-probes/`: standalone Go probes used against live clusters or focused scenarios.
+- `go-probes/`: standalone Go probes and current-source scanners used against live clusters or
+  focused proof-obligation shapes. `failed_publication_owner_scan.go` finds failed-publication
+  owner resets; `nonblocking_semantic_send_scan.go` inventories default-droppable channel sends.
 - `tidb-tests/`: TiDB-repo-side AI-native harness tests and probe fixtures.
 
 `scripts/`

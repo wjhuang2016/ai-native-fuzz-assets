@@ -1634,3 +1634,17 @@ table scan 仍返回 `1,3,4`,重复写入也成功,`ADMIN CHECK TABLE` 静默。
 **2026-07-12 txn/state-ingress live lift: `RECOMMEND INDEX RUN` 已在 testbed 8220955 打出无 failpoint 的 wrong-snapshot RED。** 这轮先修正了环境入口: `tidbbug` login path 指向另一套 TiDB,所以所有 live SQL 均显式走 `127.0.0.1:14000`。在同一数据库里先提交 `(1,10)`,记录 `2026-07-12 12:58:03.379233`,等待 2 秒后提交 `(2,20)`。直接 `SET TRANSACTION READ ONLY AS OF TIMESTAMP ...; SELECT` 只返回 `(1,10)`；同样的 stale setup 后执行成功的 `RECOMMEND INDEX RUN FOR 'SELECT ...'`,下一条用户 `SELECT` 返回 `(1,10),(2,20)`；无 pending stale state 的 advisor control 正常返回两行。证据:`assets/store/logs/txn-index-advisor-txreadts-testbed8220955-20260712.log` 和 `assets/store/txn-index-advisor-txreadts-testbed-results.jsonl`;草案:`docs/bug-drafts/ai-native-index-advisor-txreadts-id1260002-draft.md`。远端 bug 库 `id1260002` 已补入 testbed repro/actual/evidence,仍保持 `medium / contract-needed / confirmed=0`,不能因为 live RED 就越过产品契约门。当前判定:源码路径、用户可观察 wrong snapshot、无 failpoint live RED、无 pending control、local ingress-isolation GREEN 都已成立；唯一未闭合的是 TiDB 对 `SET TRANSACTION` 中“next query statement”的边界是否把 management statement 内部 helper SQL 视为用户的 next query。**
 
 **2026-07-13 新 high-severity 命中 id1620002: TTL job 内 scan/delete 时区上下文漂移会静默删除已刷新的 DATETIME 行。** 该候选完全从当前源码证明义务产生,没有使用 PR/review finding 选题:`SQLBuilder` 让 scan/delete 都携带同一 epoch `E`,但每条 TTL SQL 独立 reset 到最新 global `time_zone` 后执行 `FROM_UNIXTIME(E)`；`validateTTLWork` 不检查时区。testbed 8220955 的真实 worker 在 UTC scan 后暂停,把已选中行刷新到原 cutoff+4h(原谓词=0),切 global time_zone 到 +08 后释放 delete；同一 epoch 的 cutoff 扩大 8h,行被删除且 job 正常完成。相同 pause/refresh 但 UTC 不变时行保留。命中后去重才发现历史 #41043/#41044；其“job 启动前切时区”原场景在当前源码为 GREEN(id 1/2 保留),所以本次是不同的 mid-job context-stability 缺口。新 selector `SCAN_DELETE_CONTEXT_STABILITY`:跨阶段携带 token 时,必须同时证明解释 token 的语义上下文被 pin/version/revalidate；存在 recheck 不等于 recheck 含义稳定。远端 `found_bug` 已入库 `id1620002/high/confirmed`,当前 93 行/70 roots。资产:`docs/bug-drafts/ai-native-ttl-midjob-timezone-drift-refreshed-row-draft.md`,`docs/method-cases/ai-native-ttl-context-stability-method-case.md`,`assets/store/ttl-midjob-timezone-drift-results.jsonl`;证据:`context logs/0027-ttl-worker-timezone-drift-red.log`。暂停门:不枚举 offset/interval/batch/DATE 变体。
+
+**2026-07-13 current-source-only terminal boundary lane 命中 id1770003/high。** 本轮没有使用 PR
+review finding 生成候选。`pkg/executor/importer.ProcessChunk` 的 data/index writer `Close` 都在
+defer 中执行,错误只写日志,函数仍返回更早的 nil;而 `ingestctrl.Writer.Close` 正是 private KV
+buffer 的最终 flush,失败后 buffer 被销毁。local mock RED 先证明两个 Close sentinel 都被吞,
+named-return+multierr 单变量反事实转 GREEN。随后在授权 testbed 8220955 用 file IMPORT INTO、
+`THREAD=1,CHECKSUM_TABLE='off'` 做真实提升:current source 的 job `finished`/exit 0/
+Imported_Rows=3,但 table/index=3/0,`ADMIN CHECK TABLE` 报 8223;无故障为 3/3+ADMIN GREEN;
+同高度 named-return 反事实为 ERROR 1105、0/0+ADMIN GREEN。去重只在 RED 后进行:#69756/
+id1260008 是 visible data-close error 后跳过 sibling Close,id1590002 是 visible engine error 前已
+发布 data,均不是本 root 的 false success。远端 `found_bug id1770003`,当前 98 rows/75 roots/
+23 high。新 selector `DEFERRED_TERMINAL_ERROR_DOMINATES_SUCCESS`,oracle O41。资产库 212
+revisions,C3_DIRECT=14,RED=39/GREEN=34,next=null。暂停门:不枚举 writer/error 类型;只在不同
+public terminal owner 或 fix validation 时重开。
