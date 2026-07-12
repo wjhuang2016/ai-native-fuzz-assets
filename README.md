@@ -13,6 +13,7 @@ It treats three things as first-class reusable assets:
 - `docs/core/`: 16 core methodology and ledger documents.
 - `docs/handoff/`: latest handoff snapshot for session-to-session continuation.
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
+- `docs/github-issues/`: filed GitHub issue bodies for important bugs.
 - `docs/bug-drafts/`: 82 draft bug writeups.
 - `docs/method-cases/`: 64 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
@@ -30,6 +31,7 @@ Current snapshot size is about 17 MB.
 
 - `handoff/`: the running handoff document.
 - `bug-index/`: high-severity bug index for prioritizing future mining.
+- `github-issues/`: issue bodies that were filed upstream.
 - `core/`: the main loop, methodology, ledgers, oracle libraries, and supporting notes.
 - `bug-drafts/`: narrative bug writeups with evidence and reasoning.
 - `method-cases/`: compact reusable case cards organized by bug id.

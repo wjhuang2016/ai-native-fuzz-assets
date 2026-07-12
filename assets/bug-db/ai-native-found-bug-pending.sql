@@ -6,7 +6,8 @@
 --   mysql --login-path=tidbbug --ssl-mode=VERIFY_IDENTITY --ssl-ca=/etc/ssl/cert.pem -D test
 --
 -- Latest inserted rows:
---   id1470001 confirmed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index
+--   id1470001 issue-filed/high: common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index
+--     https://github.com/pingcap/tidb/issues/69776
 --   id1440001 confirmed/high: MDL-off ADD INDEX lets concurrent async-commit txn fail despite delayForAsyncCommit safe-window protection
 --   id1410001 confirmed/high: Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine context-deadline-exceeded errors
 --   id1350002 confirmed/high: Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine engine-not-found errors

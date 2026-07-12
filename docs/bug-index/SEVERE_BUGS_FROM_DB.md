@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-12 02:00:12 +0800
+Generated at: 2026-07-12 11:13:48 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -16,4 +16,4 @@ Generated at: 2026-07-12 02:00:12 +0800
 | 1350002 | confirmed | high | ddl-liveness | ADD INDEX / distributed reorg ingest | DXF runtime retry bridge / source-native import error | `dist-addindex-runtime-fundamental-retry-hang` | Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine engine-not-found errors |  |
 | 1410001 | confirmed | high | ddl-liveness | ADD INDEX / distributed reorg ingest | DXF runtime retry budget / source-native import timeout | `dist-addindex-retryable-timeout-unbounded-loop` | Distributed ADD INDEX hangs in running/retry on persistent SetTSBeforeImportEngine context-deadline-exceeded errors |  |
 | 1440001 | confirmed | high | ddl-availability | ADD INDEX / online schema change | delayForAsyncCommit / MDL-off async-commit safe window | `async-commit-schema-change-safe-window-broken` | MDL-off ADD INDEX lets concurrent async-commit txn fail with Information schema is changed despite delayForAsyncCommit safe-window protection |  |
-| 1470001 | confirmed | high | wrong-result | ADD INDEX / common reorg / ADMIN ALTER DDL JOBS THREAD | txn backfill worker downscale result delivery | `addindex-downscale-drops-tail-worker-error` | common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index |  |
+| 1470001 | issue-filed | high | wrong-result | ADD INDEX / common reorg / ADMIN ALTER DDL JOBS THREAD | txn backfill worker downscale result delivery | `addindex-downscale-drops-tail-worker-error` | common reorg ADD INDEX downscale can drop a removed tail worker error and publish an incomplete index | [https://github.com/pingcap/tidb/issues/69776](https://github.com/pingcap/tidb/issues/69776) |
