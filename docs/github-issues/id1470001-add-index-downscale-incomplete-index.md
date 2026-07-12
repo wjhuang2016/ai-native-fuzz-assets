@@ -2,6 +2,28 @@
 
 ## Bug Report
 
+### The concrete in-flight operation
+
+This phrase refers to a normal duplicate-key check, not an unspecified internal
+failure. A common production sequence is: an order insert commits, the client times
+out before receiving the response, and an application retry writes the same
+`order_no` again because the table still has no unique constraint. During a later
+online `ADD UNIQUE INDEX`, the txn backfill worker that reaches those two rows runs
+`batchCheckUniqueKey`, returns `kv.ErrKeyExists`, and would normally make the DDL
+rollback with the familiar:
+
+```text
+ERROR 1062 (23000): Duplicate entry 'SO-20260712-0042' for key 'orders.uk_order_no'
+```
+
+The operational trigger is a foreground latency spike while the job is in
+`write reorganization`: the DBA or resource-control automation reduces the job from
+8 workers to 1 with `ADMIN ALTER DDL JOBS <job_id> THREAD = 1`. If that late-range
+worker is the canceled tail and its batch returns the `ERROR 1062` after cancellation,
+the bug is that the result can be dropped and the DDL can publish `synced/public`
+instead of rolling back. A normal `ERROR 1062` followed by rollback is expected and
+is not a bug; only a published index that disagrees with the table scan is a hit.
+
 ### Real-world trigger at a glance (no test fault)
 
 The easiest production-shaped trigger is an online uniqueness migration on a table with

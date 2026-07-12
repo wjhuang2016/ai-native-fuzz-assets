@@ -1,5 +1,31 @@
 # common reorg ADD INDEX 动态缩容会吞掉被移除 worker 的真实错误,并发布缺行索引
 
+## 这里的 in-flight 操作具体是什么
+
+它不是抽象的“某个错误”。一个真实且容易出现的来源是订单写入的
+ambiguous commit:第一次 INSERT 已经提交,客户端在收到响应前超时,应用用新连接
+重试,而表当时还没有 `order_no` 唯一约束,于是同一个订单号落到两个不同的
+自增 `id`。之后在线补唯一索引时,txn backfill 的 `batchCheckUniqueKey` 在处理
+这两个订单号所在的 batch 时返回 `kv.ErrKeyExists`,用户侧就是普通的:
+
+```text
+ERROR 1062 (23000): Duplicate entry 'SO-20260712-0042' for key 'orders.uk_order_no'
+```
+
+这条错误本来应该让 DDL rollback。真实环境里,大表正在
+`write reorganization`,前台延迟上升,DBA 或资源控制自动化把 job 从 8 个 worker
+降到 1 个:
+
+```sql
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+```
+
+如果包含重复订单号的后段 worker 正好在缩容时被 cancel,但仍完成当前 batch 并
+返回 `ERROR 1062`,它就是这里说的 in-flight terminal result。只有这份错误被
+吞掉、DDL 仍变成 `synced/public`,随后 `IGNORE INDEX` 与 `FORCE INDEX` 看到的
+订单集合不一致或 `ADMIN CHECK TABLE` 报 `8223`,才是 bug。正常的
+`ERROR 1062` + rollback 是 control。
+
 ## TL;DR
 
 在 testbed `8220955` 上,对普通 txn-backfill `ADD INDEX` 做一个很小但非常有语义的控制面扰动:
