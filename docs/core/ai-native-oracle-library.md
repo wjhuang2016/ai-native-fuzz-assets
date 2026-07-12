@@ -1299,3 +1299,20 @@ specificity: GOOD; same worker schedule under UTC->UTC preserved the row, and ol
              scenario stayed GREEN.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O36 br_live_restore_registry_retention
+
+```text
+obligation:  an abort/takeover observer must not delete state owned by a proven-live heartbeat
+             writer, including when the observer holds locks needed by that writer.
+form:        prove heartbeat timestamp progress before the observer transaction; acquire the target
+             lock; continue the same writer; record writer result, deleted ID, and final row count.
+red:         pre-lock progress, post-lock write conflict, nonzero deleted ID, registry row absent.
+green:       pre-lock live-owner classification retains the row; a no-heartbeat stale task is deleted.
+catches:     observer-induced stale evidence, lease/heartbeat self-suppression, unsafe takeover.
+blind to:    tests without an independently proven live writer, mock stores without lock semantics,
+             and conflict-only probes that do not observe the terminal action.
+sensitivity: EXECUTION-CONFIRMED on id1650002; live-owner RED 3/3 on real TiKV.
+specificity: GOOD; truly stale control deleted correctly 3/3 under the same compressed clock.
+status:      USED + EXECUTION-CONFIRMED.
+```

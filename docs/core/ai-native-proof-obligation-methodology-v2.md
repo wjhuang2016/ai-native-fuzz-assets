@@ -2687,3 +2687,39 @@ cannot use duplicate value 2 as its C3 oracle: RESTART itself intentionally move
 that used range, and current source explicitly permits concurrent DML to use the old definition and
 lose monotonicity. A live duplicate would therefore be non-discriminating. Retire such candidates in
 source; require a consequence impossible in the no-stale-phase control before testbed admission.
+
+## Observer-signal interference proof
+
+For every stale, timeout, takeover, cleanup, or abort decision driven by heartbeat/lease/progress
+state, prove that observation is non-interfering. The key question is not only whether the code reads
+the right signal, but whether resources held by the reader prevent the writer from producing it.
+
+Build this graph before creating a schedule:
+
+```text
+observer-held lock/resource -> signal-writer required lock/write set
+signal writer               -> heartbeat/lease/progress field
+observed field               -> irreversible decision
+```
+
+If the first edge exists, require this altitude matrix:
+
+1. prove the signal advances before the observer acquires the resource;
+2. keep the same writer alive after acquisition and observe its real result;
+3. observe the terminal action, not merely a lock conflict or timeout;
+4. run a genuinely stale control with the same clock compression;
+5. stop after one stable live-owner RED and stale GREEN.
+
+This adds a measurement-independence proof to `P -> Q -> F`:
+
+```text
+P: the observer holds resource R to stabilize a safety decision
+Q: unchanged signal S means the remote owner is stale
+F: the producer of S also needs R, so the observer manufactures unchanged S
+```
+
+id1650002 is the calibration case. BR abort holds `FOR UPDATE` on the restore-registry row while
+waiting for a heartbeat written to that row by another session. Real TiKV proved pre-lock progress,
+post-lock write conflict, stale classification, and live-row deletion 3/3; a no-heartbeat stale
+control deleted correctly 3/3. PR and issue history were excluded from discovery and searched only
+after the RED.

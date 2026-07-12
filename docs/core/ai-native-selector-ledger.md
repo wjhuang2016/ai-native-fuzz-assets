@@ -1236,3 +1236,25 @@ status:     validated/terminal - actual TTL worker RED plus no-drift GREEN; remo
 stop rule:  do not enumerate offsets, batch sizes, or DATE variants. Reopen only for a different
             context owner or fix validation.
 ```
+
+## S33: observation lock suppresses liveness signal
+
+```text
+selector:   an observer retains resource R while waiting for another owner's heartbeat/progress,
+            but the signal writer also needs R
+born from:  id1650002 (BR abort locks a live restore registry row, suppresses its heartbeat UPDATE,
+            declares it stale, and deletes the row)
+prediction:
+  - signal advances before the observer acquires R;
+  - the same writer conflicts or blocks after R is acquired;
+  - unchanged signal authorizes an irreversible transition.
+oracle gate:
+  - name the signal producer and its lock/write set;
+  - prove pre-lock progress and post-lock interference;
+  - observe the terminal state, not only the conflict;
+  - include a genuinely stale control.
+status:     validated/terminal - local real-TiKV live-owner RED 3/3 and stale GREEN 3/3;
+            remote id1650002 high.
+stop rule:  do not enumerate heartbeat intervals, statuses, or restore filters. Reopen only for fix
+            validation or a different observer/signal resource cycle.
+```

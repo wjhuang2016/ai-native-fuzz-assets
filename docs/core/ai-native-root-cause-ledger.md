@@ -249,3 +249,15 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   cross-phase interpretation context, not initial cutoff rendering.
 - Counting rule: one root only. Offset direction, interval length, batch size, and DATE variants are
   blast radius, not additional bugs.
+
+## 2026-07-13 update: id1650002
+
+- Remote `found_bug`: 94 surfaces, 71 distinct root causes.
+- New root: `br-abort-lock-suppresses-live-heartbeat`.
+- Consequence: C3 direct coordination-state destruction; a live restore registry row is deleted.
+  The direct caller then cleans checkpoints, but command-level cleanup was not executed in this
+  harness and is not counted as observed data corruption.
+- Distinctness: current-source P/Q/F generated the target; post-hit searches for the table, function,
+  and restore-heartbeat-abort terms found no upstream issue.
+- Counting rule: one root only. Heartbeat intervals, restore filters, and running/resetting status
+  variants are blast radius.

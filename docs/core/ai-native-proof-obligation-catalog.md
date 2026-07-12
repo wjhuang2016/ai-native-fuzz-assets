@@ -3287,3 +3287,22 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   `assets/store/ttl-midjob-timezone-drift-results.jsonl`.
 - Pause gate: do not enumerate offsets, TTL intervals, or DATE variants. Reopen only for fix
   validation or another cross-phase context owner.
+
+## id1650002 - BR abort suppresses the live heartbeat it observes
+
+- Target: `target.br.restore-abort-self-suppresses-live-heartbeat.v1`.
+- Selector: `OBSERVATION_LOCK_SUPPRESSES_LIVENESS_SIGNAL`.
+- **P**: `FOR UPDATE` stabilizes the matching registry row for the abort decision.
+- **Q**: heartbeat reads still independently reveal whether the restore owner is alive.
+- **F**: the heartbeat writer updates that same row through another session and conflicts with the
+  observer's retained pessimistic lock.
+- C3 oracle: prove pre-lock heartbeat progress, then require abort to return zero and retain the row.
+  Current source instead emits `kv:9007`, declares stale, returns the task ID, and deletes the row.
+- Controls: the unlocked liveness phase classifies the same owner active; a genuinely stale task is
+  deleted under the same compressed clock.
+- Status: **CONFIRMED**, remote `found_bug id1650002`, high severity. Remote state after insert:
+  `COUNT(*)=94`, `COUNT(DISTINCT root_cause_id)=71`.
+- Assets: `docs/bug-drafts/ai-native-br-abort-lock-suppresses-live-heartbeat-draft.md`,
+  `docs/method-cases/ai-native-br-observation-lock-liveness-method-case.md`, and
+  `assets/store/br-abort-live-heartbeat-results.jsonl`.
+- Pause gate: do not enumerate restore filters, running/resetting status, or heartbeat intervals.

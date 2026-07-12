@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 02:36:53 +0800
+Generated at: 2026-07-13 03:12:15 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -22,3 +22,4 @@ Generated at: 2026-07-13 02:36:53 +0800
 | 1530002 | known-duplicate | high | ddl-availability | ADD INDEX / distributed reorg ingest | local Pebble engine asset lifetime and DXF failover | `dist-addindex-local-engine-db-loss-process-exit` | Distributed ADD INDEX can exit the serving TiDB when its temporary local engine DB disappears | [https://github.com/pingcap/tidb/issues/65958](https://github.com/pingcap/tidb/issues/65958) |
 | 1590002 | confirmed | high | correctness/data-integrity | IMPORT INTO ... FROM SELECT | standalone local-sort multi-engine import | `importinto-data-before-index-finalization` | IMPORT INTO can leave durable rows without secondary indexes after index-engine terminal failure |  |
 | 1620002 | confirmed | high | correctness/data-loss | TTL background delete | DATETIME TTL scan/delete pipeline | `ttl-midjob-timezone-context-drift` | TTL can silently delete a refreshed DATETIME row when global time_zone changes during a job |  |
+| 1650002 | confirmed | high | correctness/restore-safety | BR point restore --abort | PITR registry heartbeat | `br-abort-lock-suppresses-live-heartbeat` | BR abort can delete a live restore because its row lock suppresses heartbeats |  |

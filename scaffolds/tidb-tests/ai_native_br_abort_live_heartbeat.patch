@@ -1,0 +1,30 @@
+diff --git a/br/pkg/registry/registration.go b/br/pkg/registry/registration.go
+index 4e89cdbb4d..9303618a9b 100644
+--- a/br/pkg/registry/registration.go
++++ b/br/pkg/registry/registration.go
+@@ -804,6 +804,9 @@ func (r *Registry) isTaskStale(ctx context.Context, taskID uint64, initialHeartb
+ 
+ 	selectHeartbeatSQL := fmt.Sprintf(selectTaskHeartbeatSQLTemplate, RestoreRegistryDBName, RestoreRegistryTableName)
+ 	remainingMinutes := StaleTaskThresholdMinutes
++	failpoint.Inject("is-task-stale-check-count", func(val failpoint.Value) {
++		remainingMinutes = val.(int)
++	})
+ 	for remainingMinutes > 0 {
+ 		select {
+ 		case <-ctx.Done():
+@@ -985,6 +988,7 @@ func (r *Registry) FindAndDeleteMatchingTask(ctx context.Context,
+ 			zap.Uint64("resolved_restored_ts", resolvedRestoreTS))
+ 		info.RestoredTS = resolvedRestoreTS
+ 	}
++	failpoint.InjectCall("afterAbortResolvedRestoreTS")
+ 
+ 	filterStrings := strings.Join(info.FilterStrings, FilterSeparator)
+ 
+@@ -1028,6 +1032,7 @@ func (r *Registry) FindAndDeleteMatchingTask(ctx context.Context,
+ 		log.Info("found and locked matching task",
+ 			zap.Uint64("task_id", taskID),
+ 			zap.String("status", status))
++		failpoint.InjectCall("afterAbortLockedRestoreTask", taskID)
+ 
+ 		// handle different task statuses
+ 		if status == string(TaskStatusPaused) {
