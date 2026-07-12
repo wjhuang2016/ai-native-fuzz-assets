@@ -137,6 +137,8 @@ ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
 
 The four-row table above only proves that a normal `ERROR 1062` can come from the transaction backfill path. It is too small: the job can finish before an operator has a chance to downscale it. The production-shaped trigger is a million-row table with a duplicate left by an import/application retry, with the duplicate in a later primary-key range. The backfill then runs long enough to have multiple workers, and an operator reduces the concurrency while the job is still active.
 
+The important point is what the in-flight operation actually is. It is the normal unique-key check performed by `addIndexTxnWorker.BackfillData`: while processing the batch that contains the two rows below, `batchCheckUniqueKey` sees the same `email` value attached to two different handles and returns the ordinary duplicate-key error (`ErrKeyExists`, surfaced to SQL as `ERROR 1062`). This is not a TiKV outage, a panic, or a test-only error. The bug is that this result can be produced after the worker has been canceled by the downscale and then be dropped by `sendResult`.
+
 The following SQL constructs that shape. In production, the first million rows would normally already exist:
 
 ```sql
@@ -192,9 +194,9 @@ The required timing is concrete:
 
 1. the worker handling the later primary-key range is still inside the transaction backfill;
 2. that range contains the ordinary duplicate `dupe@example.com`;
-3. the operator reduces the job from 8 workers to 1, so the busy worker is in the canceled tail;
-4. its in-flight uniqueness check returns `Duplicate entry 'dupe@example.com'` after cancellation;
-5. `sendResult` can choose the canceled-context branch and drop that terminal result;
+3. a DBA or resource-control automation temporarily reduces the job from 8 workers to 1 to protect foreground latency, so the busy worker is in the canceled tail;
+4. `batchCheckUniqueKey` compares the two handles for `dupe@example.com` and returns the normal `ERROR 1062` condition while that worker's batch is in flight;
+5. `sendResult` can choose the canceled-context branch and drop that terminal result instead of delivering it to the collector;
 6. the parent collector sees no worker error and can publish the index as if all ranges succeeded.
 
 After the job finishes, do not validate only the `ALTER TABLE` return. Run:
@@ -211,7 +213,7 @@ SELECT COUNT(*) FROM users FORCE INDEX(uk_email)
   WHERE email = 'dupe@example.com';
 ```
 
-The correct result is `ERROR 1062` followed by rollback, with no published `uk_email`. A bug hit is a `synced/public` job followed by inconsistent table-scan versus `FORCE INDEX(uk_email)` results, or `ADMIN CHECK TABLE` reporting `8223`. This needs no TiKV failure and no test-only failpoint; it only combines dirty historical data, an online unique-index build, and a normal operator thread-downscale during resource pressure. If the job detects the duplicate before the downscale and rolls back, that is the expected control, not a bug; the large table and late duplicate are what widen the race window.
+The correct result is `ERROR 1062` followed by rollback, with no published `uk_email`. A bug hit is a `synced/public` job followed by inconsistent table-scan versus `FORCE INDEX(uk_email)` results, or `ADMIN CHECK TABLE` reporting `8223`. This needs no TiKV failure and no test-only failpoint; it only combines dirty historical data, an online unique-index build, and the supported operational action of temporarily reducing DDL concurrency during resource pressure. If the job detects the duplicate before the downscale and rolls back, that is the expected control, not a bug; the large table and late duplicate are what widen the race window.
 
 This non-failpoint scenario remains timing-sensitive and is not a deterministic replacement for the failpoint reproducer. The failpoint fixes the same ordering without inventing a new error class: it holds the worker so the real terminal error arrives after downscale cancellation.
 

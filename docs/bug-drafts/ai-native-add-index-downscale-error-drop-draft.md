@@ -158,6 +158,8 @@ ALTER TABLE users ADD UNIQUE INDEX uk_email(email);
 
 上面的四行表只是确认真实 `ERROR 1062` 会从 txn backfill 返回,它太小,作业会在运维来得及缩容前结束。真正容易把 race 窗口拉出来的线上形状是:表已经有百万级历史数据,重复值来自一次导入/应用重试,重复值位于较晚的主键范围,而运维在回填期间为了降低延迟把并发线程降下来。
 
+这里的 “in-flight 操作” 可以具体到 TiDB 的正常执行步骤: `addIndexTxnWorker.BackfillData` 处理包含两行重复邮箱的 batch 时,`batchCheckUniqueKey` 发现两个不同 handle 对应同一个 `email`,返回 `ErrKeyExists`,最终就是用户熟悉的 `ERROR 1062 Duplicate entry`。它不是人为制造的 TiKV 故障;真正异常的是这个已经产生的终止结果在 worker 被缩容 cancel 后没有送到父 collector。
+
 可以用下面的 SQL 构造同样的形状。生产中前面的百万行通常已经存在,不需要重新生成:
 
 ```sql
@@ -209,7 +211,7 @@ ADMIN SHOW DDL JOBS;
 ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
 ```
 
-命中的必要时序是:包含 `dupe@example.com` 的后段 region 正在由一个非前缀 worker 处理;8-to-1 缩容把它放进 canceled tail;该 worker 的唯一性检查随后返回普通的 `Duplicate entry 'dupe@example.com'`;此时 `sendResult` 的 `ctx.Done()` 分支赢过结果发送,collector 没看到错误,DDL 错误地进入 `synced/public`。如果作业在缩容前已经发现重复值并 rollback,那是正常的 control,不是 bug;因此要用足够大的表和较晚范围来扩大这个窗口。
+命中的必要时序是:包含 `dupe@example.com` 的后段 region 正在由一个非前缀 worker 处理;线上为了保护前台延迟执行一次受支持的 `ADMIN ALTER DDL JOBS <job_id> THREAD = 1`;这个 worker 被放进 canceled tail;它在 `batchCheckUniqueKey` 中返回普通的 `Duplicate entry 'dupe@example.com'`;此时 `sendResult` 的 `ctx.Done()` 分支赢过结果发送,collector 没看到错误,DDL 错误地进入 `synced/public`。如果作业在缩容前已经发现重复值并 rollback,那是正常的 control,不是 bug;因此要用足够大的表和较晚范围来扩大这个窗口。
 
 作业结束后用下面的 SQL 判断是否命中,而不是只看 `ALTER TABLE` 是否返回:
 
