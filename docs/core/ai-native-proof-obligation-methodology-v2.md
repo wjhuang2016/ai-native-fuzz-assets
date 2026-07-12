@@ -2674,3 +2674,16 @@ safety purpose.
 History remains post-hit calibration. In this case #41043 was found only after worker RED; replaying
 its old schedule as a GREEN control proved that the new target was a mid-job context-stability gap,
 not rediscovery used as a selector seed.
+
+### Counterfactual consequence gate
+
+Before admitting a context-drift target, remove the suspected stale phase but keep the user's
+semantic mutation. If the same consequence remains valid by contract, the oracle cannot identify
+the proposed root.
+
+The first post-id1620002 source candidate illustrates the gate. `NEXTVAL(?)` may resolve a sequence
+dynamically and retain an old cache across `ALTER SEQUENCE`, but a schedule using `RESTART WITH 2`
+cannot use duplicate value 2 as its C3 oracle: RESTART itself intentionally moves the sequence into
+that used range, and current source explicitly permits concurrent DML to use the old definition and
+lose monotonicity. A live duplicate would therefore be non-discriminating. Retire such candidates in
+source; require a consequence impossible in the no-stale-phase control before testbed admission.
