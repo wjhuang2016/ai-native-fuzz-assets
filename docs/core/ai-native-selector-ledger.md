@@ -1170,3 +1170,26 @@ stop rule:  do not enumerate all partial-index syntax. Reopen only for proof-inp
   - This upgrades the index-advisor sibling from local RED/GREEN method evidence to a
     current-master user-visible RED. It does not close the product-contract gate.
   - Asset: `assets/store/txn-index-advisor-txreadts-testbed-results.jsonl`.
+
+## S30: restore special-object runtime-state rebuild
+
+```text
+selector:   a restore/recover path republishes a generic TableInfo but the object kind has
+            runtime state stored outside the generic table/AutoIDGroup keys
+born from:  id1500003 (FLASHBACK DATABASE restores sequence TableInfo but not sequence value)
+prediction:
+  - object-specific create/drop uses an extra meta key or scheduler/cache row;
+  - generic recover path enumerates TableInfo and calls a table helper;
+  - the first post-recover object action consumes the missing state and shows rollback,
+    duplicate value, stale scheduler behavior, or wrong rowset.
+oracle gate:
+  - require a direct post-recover behavior oracle, not only SHOW CREATE or system-table diff;
+  - include a no-recovery control for the same object behavior;
+  - include a generic-object control when possible, to isolate special-object state from broad
+    recover-schema failure.
+negative calibration:
+  - reject lazy-name-resolution cases where ordinary CREATE is already permissive;
+  - reject recover paths that explicitly disable/strip the field by design;
+  - do not enumerate options within the same object kind before the root is fixed.
+status:     validated/terminal — 1/1 current-master C3 hit; remote id1500003 confirmed.
+```

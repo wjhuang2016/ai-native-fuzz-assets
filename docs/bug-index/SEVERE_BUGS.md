@@ -4,10 +4,10 @@ This index tracks the high-severity bug assets that should guide future mining.
 
 Source of truth for status and severity is the remote `found_bug` table. This file is curated so each row also points to the most useful local asset in this repository.
 
-Last verified: 2026-07-12
+Last verified: 2026-07-13
 
-- Remote `found_bug`: `MAX(id)=1530002`, `COUNT(*)=90`, `COUNT(DISTINCT root_cause_id)=67`
-- High-severity entries: 15; new-root candidates: 1; known-root rediscoveries: 1
+- Remote `found_bug`: `MAX(id)=1530002`, `COUNT(*)=91`, `COUNT(DISTINCT root_cause_id)=68`
+- High-severity entries: 16; new-root candidates: 1; known-root rediscoveries: 1
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -26,6 +26,7 @@ Last verified: 2026-07-12
 | 1470001 | issue-filed | wrong-result | `addindex-downscale-drops-tail-worker-error` | common reorg `ADD INDEX` downscale can drop a removed tail worker error and publish an incomplete index. | [issue](https://github.com/pingcap/tidb/issues/69776), [draft](../bug-drafts/ai-native-add-index-downscale-error-drop-draft.md) | [root-cause ledger](../core/ai-native-root-cause-ledger.md) |
 | 30001 | issue-filed | wrong-result | `partial-index-implication` | Planner can retain a partial index when the query predicate does not imply its predicate, silently omitting rows while `ADMIN CHECK TABLE` stays green. | [issue](https://github.com/pingcap/tidb/issues/69779), [draft](../bug-drafts/ai-native-partial-index-id30001-draft.md) | [method case](../method-cases/ai-native-id30001-method-case.md) |
 | 1500002 | issue-filed | data-integrity | `flashback-fk-rebinds-recreated-parent` | `FLASHBACK TABLE` can publish existing orphan rows after same-name parent recreation. | [issue](https://github.com/pingcap/tidb/issues/69777), [draft](../bug-drafts/ai-native-fk-flashback-same-name-parent-rebind-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
+| 1500003 | confirmed | data-integrity | `flashback-db-sequence-runtime-state-lost` | `FLASHBACK DATABASE` can move a recovered sequence backward and reuse IDs already present in recovered rows. | [draft](../bug-drafts/ai-native-flashback-db-sequence-reset-draft.md) | [case](../method-cases/ai-native-flashback-db-sequence-reset-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

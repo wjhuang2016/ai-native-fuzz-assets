@@ -4,6 +4,8 @@
 
 ---
 
+**2026-07-13 `id1500003` 新命中: `FLASHBACK DATABASE` 恢复 sequence 时会丢失 sequence runtime value,导致 `NEXTVAL` 回卷并复用已有 ID。** 在 testbed `8220955` current master 上,创建 `seq` 和 `t(id DEFAULT NEXT VALUE FOR seq PRIMARY KEY)`,先插入两行得到 `id=1,2`,再 `NEXTVAL(seq)=3`;执行 `DROP DATABASE` 后 `FLASHBACK DATABASE`,恢复后的表仍有 `1,2`,但 `NEXTVAL(seq)` 返回 `1`,下一次默认插入报 `ERROR 1062 Duplicate entry '2' for key 't.PRIMARY'`。控制格显示:无 recovery 的同形状 sequence 正常走到 `1,2,3,4`;普通 `AUTO_INCREMENT` 表经 `FLASHBACK DATABASE` 后不会复用 `1,2`。源码链路是 `onRecoverSchema` 从 snapshot `ListTables` 拉出 sequence 的 `TableInfo`,统一调用 `recoverTable -> CreateTableAndSetAutoID`;但 sequence create/drop/runtime 使用独立 `sequenceKey`,不在 `AutoIDGroup` 内。新 selector 为 `RESTORE_SPECIAL_OBJECT_STATE_REBUILD`:恢复路径不能只证明 `TableInfo` 被重建,还要检查特殊对象的 runtime side state 是否一起重建。证据:`assets/store/logs/flashback-db-sequence-reset-red-20260713.log` 和 `...-controls-20260713.log`;资产:`assets/store/flashback-db-sequence-reset-results.jsonl`;draft/case 已入 `docs/bug-drafts/ai-native-flashback-db-sequence-reset-draft.md` 与 `docs/method-cases/ai-native-flashback-db-sequence-reset-method-case.md`。当前为 confirmed / C3_DIRECT,远端 `found_bug` id1500003 已入库,上游 issue 待补。
+
 **2026-07-12 `issue59701` topology lift 收口为当前环境 capability boundary。** 在 testbed `8220955` 的
 `fp-tidb` 上，先用 `resign-owner` 在 active `write reorganization` 窗口执行一次，再用 300000 行、64
 regions 的长窗口连续执行 4 次 owner resign；job 5254 始终可恢复，最终 `synced/public`，
