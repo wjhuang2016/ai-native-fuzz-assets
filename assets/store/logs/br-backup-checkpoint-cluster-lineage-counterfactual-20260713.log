@@ -1,0 +1,15 @@
+=== RUN   TestAINativeBackupCheckpointMustBindSourceCluster
+=== RUN   TestAINativeBackupCheckpointMustBindSourceCluster/old_cluster_checkpoint_must_not_complete_current_cluster_range
+[2026/07/13 07:46:18.464 +08:00] [INFO] [local.go:97] ["failed to write file, try to mkdir the path"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeBackupCheckpointMustBindSourceClusterold_cluster_ch1325196417/001/checkpoints/backup]
+[2026/07/13 07:46:21.468 +08:00] [INFO] [checkpoint.go:499] ["stop checkpoint runner"]
+[2026/07/13 07:46:21.469 +08:00] [INFO] [local.go:97] ["failed to write file, try to mkdir the path"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeBackupCheckpointMustBindSourceClusterold_cluster_ch1325196417/001/checkpoints/backup/data]
+[2026/07/13 07:46:21.471 +08:00] [INFO] [checkpoint.go:388] ["stop checkpoint flush worker"]
+[2026/07/13 07:46:21.473 +08:00] [INFO] [local.go:143] ["Local Storage Hint: WalkDir yields a tomestone, a race may happen."] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeBackupCheckpointMustBindSourceClusterold_cluster_ch1325196417/001/checkpoints/backup/checksum]
+[2026/07/13 07:46:21.473 +08:00] [INFO] [metafile.go:953] ["write metas finished"] [type=datafile]
+[2026/07/13 07:46:21.473 +08:00] [INFO] [metafile.go:993] ["finish the write metas"] [item=0] [type=datafile] [costs=295.125µs]
+=== RUN   TestAINativeBackupCheckpointMustBindSourceCluster/no_checkpoint_submits_the_current_range
+--- PASS: TestAINativeBackupCheckpointMustBindSourceCluster (3.01s)
+    --- PASS: TestAINativeBackupCheckpointMustBindSourceCluster/old_cluster_checkpoint_must_not_complete_current_cluster_range (3.01s)
+    --- PASS: TestAINativeBackupCheckpointMustBindSourceCluster/no_checkpoint_submits_the_current_range (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/br/pkg/backup	4.166s

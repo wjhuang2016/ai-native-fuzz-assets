@@ -1,0 +1,14 @@
+Post-RED dedup only. Candidate generation used current source and local execution; PR/review/issues/history were excluded before RED.
+
+Local asset store queries:
+- backup checkpoint cluster lineage: no matching target or root
+- checkpoint BackupTS config hash: no matching target or root
+- old SST backupmeta checkpoint: no matching target or root
+
+GitHub issue searches in pingcap/tidb:
+- backup checkpoint cluster id: []
+- BR backup checkpoint different cluster: []
+- checkpoint BackupTS old cluster SST: []
+- BuildProgressRangeTree checkpoint cluster: []
+
+Classification: distinct current-source root. Reuse selector PERSISTED_STATE_MUST_BIND_LINEAGE under the backup source-cluster owner.

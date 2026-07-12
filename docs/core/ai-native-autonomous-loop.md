@@ -1628,3 +1628,24 @@ INTEGRATE: id1890003 high; input-owner module, obligation, oracle, scenario, and
 Automation lesson: when a weak identity token is actively copied into the new run, comparing that
 token cannot expose drift. The LOOP must identify and mutate the semantic owner that the token is
 supposed to represent. This correction is part of selector execution, not an after-the-fact fix.
+
+## Third lineage-binding tick: BR backup checkpoint, EXECUTED (2026-07-13)
+
+S39 was applied from current source to the backup source-cluster owner. The config hash preserves PD
+address strings but the checkpoint metadata has no actual cluster ID.
+
+```text
+P:          completed ranges and SSTs belong to the current source cluster and snapshot.
+Q:          same config hash, PD address strings, and storage prefix prove that lineage.
+F:          cluster identity is absent; retry reuses old BackupTS, ranges, checksums, and files.
+RED:        cluster 222 + old range -> admission nil, TS 200->100, incomplete=0,
+            backupmeta=[old-cluster.sst].
+CONTROL:    no checkpoint -> one current range remains.
+COUNTERFACTUAL: persist cluster 111 and compare with 222 -> reject before backupmeta.
+INTEGRATE:  id1920003 high; complete module/obligation/oracle/scenario/schedule/fault pack.
+```
+
+Method improvement: missing lineage metadata is not sufficient evidence. Follow the weak token to
+the highest consumer and jointly observe skipped current work plus the published artifact. Also link
+every obligation to selector, oracle, scenario, schedule, and fault assets; otherwise the database
+contains the pieces but an incremental agent cannot retrieve a complete executable pack.

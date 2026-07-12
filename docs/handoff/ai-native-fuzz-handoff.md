@@ -1694,3 +1694,15 @@ GroupKey 复制进新运行,所以最初的 cross-group 矩阵被源码否决,�
 成功后只实现 remove,保留状态仍在原查找位置。RED 后四组 GitHub issue 搜索无 exact root。远端
 `found_bug id1890003`,当前 102 rows/79 roots/27 high；资产 231 revisions,RED=46/GREEN=43,
 C3_DIRECT=18,next=null。发现过程没有使用 PR review finding,testbed 未使用。
+
+**2026-07-13 S39 第三个 current-source-only 命中 id1920003/high:BR backup checkpoint 未绑定
+source cluster,可把旧集群 SST 发布进新 backupmeta。** `CheckpointMetadataForBackup` 保存 config
+hash/BackupTS,但没有实际 PD cluster ID；hash 只含 PD 地址字符串且故意不含 BackupTS。local consumer
+RED 用 current client clusterID=222 加旧 completed range:`CheckCheckpoint=nil`,请求 TS 200 被旧 TS
+100 覆盖,当前 incomplete ranges=0,最终 backupmeta 含 `old-cluster.sst`。no-checkpoint control 保留一个
+current range；临时只加 `ClusterID=111` 并在入口比较 222 后,在 artifact publication 前失败关闭。
+RED 后本地资产与四组 GitHub issue 搜索均无 exact root。远端 `found_bug id1920003`,当前 103 rows/
+80 roots/28 high；资产 237 revisions,RED=47/GREEN=45,C3_DIRECT=19,next=null,pack open_gaps=[]。
+发现过程没有使用 PR review finding,testbed 未使用。方法增量:缺 lineage field 只够产生候选,必须继续
+验证“跳过当前 work + 发布旧 lineage artifact”；同时 obligation 必须通过 typed links 连接 selector/
+oracle/scenario/schedule/fault,否则数据库无法支持下一轮增量执行。

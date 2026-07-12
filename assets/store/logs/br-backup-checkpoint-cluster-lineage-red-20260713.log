@@ -1,0 +1,29 @@
+=== RUN   TestAINativeBackupCheckpointMustBindSourceCluster
+=== RUN   TestAINativeBackupCheckpointMustBindSourceCluster/old_cluster_checkpoint_must_not_complete_current_cluster_range
+[2026/07/13 07:44:46.711 +08:00] [INFO] [local.go:97] ["failed to write file, try to mkdir the path"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeBackupCheckpointMustBindSourceClusterold_cluster_ch3446600195/001/checkpoints/backup]
+[2026/07/13 07:44:49.715 +08:00] [INFO] [checkpoint.go:499] ["stop checkpoint runner"]
+[2026/07/13 07:44:49.717 +08:00] [INFO] [local.go:97] ["failed to write file, try to mkdir the path"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeBackupCheckpointMustBindSourceClusterold_cluster_ch3446600195/001/checkpoints/backup/data]
+[2026/07/13 07:44:49.720 +08:00] [INFO] [checkpoint.go:388] ["stop checkpoint flush worker"]
+[2026/07/13 07:44:49.722 +08:00] [INFO] [local.go:143] ["Local Storage Hint: WalkDir yields a tomestone, a race may happen."] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeBackupCheckpointMustBindSourceClusterold_cluster_ch3446600195/001/checkpoints/backup/checksum]
+[2026/07/13 07:44:49.722 +08:00] [INFO] [client.go:476] ["reuse checkpoint BackupTS"] [backup-ts=100]
+[2026/07/13 07:44:49.724 +08:00] [INFO] [client.go:1136] ["past cost time"] [cost=3.025888167s]
+[2026/07/13 07:44:49.724 +08:00] [INFO] [metafile.go:953] ["write metas finished"] [type=datafile]
+[2026/07/13 07:44:49.724 +08:00] [INFO] [metafile.go:993] ["finish the write metas"] [item=1] [type=datafile] [costs=1.987542ms]
+[2026/07/13 07:44:49.724 +08:00] [INFO] [metafile.go:1017] ["save backup meta"] [size=55]
+    ai_native_checkpoint_lineage_test.go:96: 
+        	Error Trace:	/Users/bba/pc/.worktrees/tidb-backup-checkpoint-lineage/br/pkg/backup/ai_native_checkpoint_lineage_test.go:96
+        	Error:      	"[]" should have 1 item(s), but has 0
+        	Test:       	TestAINativeBackupCheckpointMustBindSourceCluster/old_cluster_checkpoint_must_not_complete_current_cluster_range
+        	Messages:   	the current cluster range must still be submitted
+    ai_native_checkpoint_lineage_test.go:97: 
+        	Error Trace:	/Users/bba/pc/.worktrees/tidb-backup-checkpoint-lineage/br/pkg/backup/ai_native_checkpoint_lineage_test.go:97
+        	Error:      	[]string{"old-cluster.sst"} should not contain "old-cluster.sst"
+        	Test:       	TestAINativeBackupCheckpointMustBindSourceCluster/old_cluster_checkpoint_must_not_complete_current_cluster_range
+        	Messages:   	the current backupmeta must not publish an SST from another cluster
+=== RUN   TestAINativeBackupCheckpointMustBindSourceCluster/no_checkpoint_submits_the_current_range
+--- FAIL: TestAINativeBackupCheckpointMustBindSourceCluster (3.02s)
+    --- FAIL: TestAINativeBackupCheckpointMustBindSourceCluster/old_cluster_checkpoint_must_not_complete_current_cluster_range (3.02s)
+    --- PASS: TestAINativeBackupCheckpointMustBindSourceCluster/no_checkpoint_submits_the_current_range (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/br/pkg/backup	4.169s
+FAIL

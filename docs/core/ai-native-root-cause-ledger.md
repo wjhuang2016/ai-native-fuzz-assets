@@ -344,3 +344,14 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   table-level job submission rather than upstream checkpoint and PITR restore boundary.
 - Counting rule: one root only. File names, checkpoint drivers, keep modes, and table counts are
   blast radius.
+
+## 2026-07-13 update: id1920003
+
+- Remote `found_bug`: 103 surfaces, 80 distinct root causes, 28 high-severity rows.
+- New root: `br-backup-checkpoint-unbound-source-cluster`.
+- Consequence: C3 direct mixed-lineage backup artifact; the retry backupmeta publishes an old-cluster
+  SST while the matching current-cluster range is omitted from work.
+- Distinctness: S39 is reused, but the durable owner and highest consumer are BR source-cluster
+  identity and final backupmeta, not CRR recoverable TS or Lightning job submission.
+- Counting rule: one root only. PD address forms, storage backends, range boundaries, and replacement
+  mechanisms are blast radius.
