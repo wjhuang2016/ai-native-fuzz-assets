@@ -4,6 +4,26 @@
 
 ---
 
+**2026-07-12 `issue59701` topology lift 收口为当前环境 capability boundary。** 在 testbed `8220955` 的
+`fp-tidb` 上，先用 `resign-owner` 在 active `write reorganization` 窗口执行一次，再用 300000 行、64
+regions 的长窗口连续执行 4 次 owner resign；job 5254 始终可恢复，最终 `synced/public`，
+`ADMIN CHECK TABLE`、table/index count 和 `idx_c` 行集均一致。这个结果是强 GREEN，但只覆盖同一 TiDB
+实例的 owner resignation/re-election，不覆盖 PD leader isolation 或有独立 survivor 的跨实例 handoff。
+因此 `target.seed.issue59701...` 已标为 `blocked`，不是 bug，也不再重复同形状 GREEN。资产为
+`assets/store/issue59701-resign-owner-results.jsonl` 及两份 live log。
+
+**本轮严重性调度正式停机。** `issue61255` 的当前非 partition 形状因 merge `workerCnt=1` 被记录为
+`INVALID(target-shape)` 并退役；`issue59701` 的同实例 topology 控制已有强 GREEN；新的
+`state-ingress`、pooled-session、session-state-restore 源码扫描没有产生新的候选，terminal-action
+扫描只产生 consequence-1。资产库当前没有可执行的 `C3_DIRECT` target，`store.py next` 返回
+`no severity-admitted targets`。下一轮应先补充新的高后果 selector 或可达的 multi-owner/PD fault
+能力，再继续执行；不要为了保持 bug 数量而扩展低严重性矩阵。
+
+**方法论新增 GREEN-only exhaustion gate。** 当一个 target 已有强 GREEN，但 GREEN 发生在目标证明义务
+所需的控制维度不存在时，结果必须拆成“观察结果”和“目标有效性”：前者可作为 negative boundary，后者
+进入 `blocked`/`INVALID(target-shape)`，不能成为 family-wide safety proof。只有同时具备 active phase、
+真实 fault ingress、独立 survivor/owner handoff 和 consequence oracle，才允许再次消费该 C3 target。
+
 **2026-07-12 `id30001` 从候选提升为 current-master confirmed / issue-filed。** 在 testbed `8220955` 重跑一个不含 NULL 的五行表：`INDEX pi(b) WHERE a < 3`，查询 `WHERE a >= 0 ORDER BY b LIMIT 5`。`IGNORE INDEX(pi)` 返回五行，而默认计划和 `FORCE INDEX(pi)` 都只返回 `a<3` 的三行；`EXPLAIN` 明确走 `IndexLookUp(Build=pi)`，`ADMIN CHECK TABLE` 无输出。上游 issue 为 [#69779](https://github.com/pingcap/tidb/issues/69779)，远端 `found_bug.id30001` 已更新为 `status=issue-filed,confirmed=1`。当前根因表述收窄为：`CheckPartialIndexes` 对 raw metadata predicate 的输入路径与 query predicate 的 normalizer 不同，range implication checker 可能把 under-normalized/full range 当成证明；这使“proof input normalization”成为证明义务的一部分。新方法案例为 `docs/method-cases/ai-native-id30001-method-case.md`，证据为 `assets/store/logs/partial-index-implication-red-20260712.log`。这不是新的测试添加，而是把“源码证明义务 -> 语义反例 -> fast/safe path 差分 -> 强 wrong-result oracle”固化成可复用 selector S29；hint、no-hint 属于同一 root 的 blast radius，不重复计数。
 
 **2026-07-12 `issue61255` non-partition 宿主筛选给出一条无效绿边界。** 复用 mixed-owner probe，在 `requested_workers=4`、`ADD UNIQUE INDEX idx_b(b), ADD INDEX idx_c(c)`、merge pause 和 `ADMIN CHECK TABLE` 强 oracle 下，job `5176` 最终 `synced/public` 且 rowset 全绿；但 owner log 明确显示 `type="merge temporary index" workerCnt=1 regionCnt=2`。因此这个 run 不能证明 mixed-owner merge 安全，也不能算新 bug；它证明了 C3 harness 必须在目标 phase 检查 controlling dimension 是否真的存在。后续只有在 merge `workerCnt>1` 或出现另一个 live owner-homogeneity 维度时才重开该 lane，证据已入 `assets/store/issue61255-mixed-owner-results.jsonl`。

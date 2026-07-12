@@ -1506,3 +1506,36 @@ the planned multi-worker race cannot occur. The asset log and JSONL run are stor
 Method lesson: a strong oracle does not rescue a dead target shape. Before grading a GREEN sibling,
 prove that the target's controlling dimension exists at the exact phase where the obligation is
 claimed. Otherwise the right output is a reusable negative boundary and a host-selection constraint.
+
+## Follow-up C3 capability-boundary tick: issue59701 topology lift, EXECUTED (2026-07-12)
+
+The scheduler consumed the next severity seed only after `issue61255` had been retired as
+`INVALID(target-shape)`. The smallest reachable topology control was then tested on the authorized
+testbed:
+
+```text
+shape:        ordinary non-partition ADD INDEX, classic txn reorg, 300000 rows, 64 regions
+phase:        active write reorganization, first fault at row_count=42535
+fault:        four consecutive same-instance HTTP owner resigns, 1s apart
+terminal:     synced/public
+oracle:       ADMIN CHECK green; table=300000, index=300000; visible [PRIMARY, idx_c]
+verdict:      GREEN boundary, not a broad topology proof
+```
+
+The job remained `running` while the owner was repeatedly resigned, then resumed and completed.
+This closes the same-instance resign/re-election shape as a strong negative boundary. It does not
+exercise PD leader isolation or a distinct surviving TiDB owner, so it cannot supply the RED/GREEN
+counterpart required by the broad `OWNER_TOPOLOGY_HANDOFF` C3 obligation. The target is therefore
+`blocked` until that controlling dimension is available, rather than being re-run with more rows or
+more same-instance resigns.
+
+The source-target refill rules were also run for state ingress, pooled-session state, session-state
+restore, identity tokens, and terminal-action errors. No new C3 target was produced; the only fresh
+terminal-action candidate was consequence-1. The severity scheduler now returns no admitted target.
+
+Automation lesson: add a **GREEN-only exhaustion gate** to incremental fuzzing. A strong GREEN is
+valuable only when the target's controlling dimension was live. If the environment can exercise only
+a weaker sibling, record the result as `GREEN_BOUNDARY`, normalize it to `INVALID` in the storage
+schema when necessary, and block the target until the missing fault ingress or survivor topology is
+available. This prevents the loop from converting repeated reachable GREEN runs into false evidence
+of family-wide safety.

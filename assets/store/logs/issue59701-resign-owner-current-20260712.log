@@ -1,0 +1,36 @@
+2026/07/12 22:03:21 ddl job watermark before submit: 5073
+2026/07/12 22:03:51 prefill progress: 50000/50000
+2026/07/12 22:03:51 prefill done, row_count=50000
+2026/07/12 22:03:51 split table requested: regions=16
+2026/07/12 22:03:52 ddl start: alter table ai_native_owner_probe.rows add index idx_c(c)
+2026/07/12 22:03:53 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:53 ddl entered active fault window: job_id=5250 schema_state=write reorganization row_count=0
+2026/07/12 22:03:53 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=0s
+2026/07/12 22:03:54 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:54 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=1s
+2026/07/12 22:03:55 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:55 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=2s
+2026/07/12 22:03:56 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:56 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=3s
+2026/07/12 22:03:57 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:57 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=4s
+2026/07/12 22:03:58 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:58 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=5s
+2026/07/12 22:03:59 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=0
+2026/07/12 22:03:59 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=0 active_for=6s
+2026/07/12 22:04:00 ddl state observed: job_id=5250 state=running schema_state=write reorganization row_count=37063
+2026/07/12 22:04:00 ddl active fault window: job_id=5250 schema_state=write reorganization row_count=37063 active_for=7s
+2026/07/12 22:04:00 observed running ddl job: job_id=5250 row_count=37063
+2026/07/12 22:04:01 ddl session returned success after 9.480186542s
+2026/07/12 22:04:01 fault window sees: job_id=5250 state=running schema_state=write reorganization row_count=37063
+2026/07/12 22:04:01 owner fault 1/2: resign ddl owner via status api
+2026/07/12 22:04:01 resign owner request returned 200 OK
+2026/07/12 22:04:08 fault window sees: job_id=5250 state=synced schema_state=public row_count=50000
+2026/07/12 22:04:08 skip remaining owner faults because ddl is already terminal
+2026/07/12 22:04:09 ddl terminal wait sees: job_id=5250 state=synced schema_state=public
+2026/07/12 22:04:09 observed terminal ddl state: synced
+2026/07/12 22:04:09 visible indexes after terminal state: [PRIMARY idx_c]
+2026/07/12 22:04:10 terminal counts: table=50000 c=50000 d=50000
+2026/07/12 22:04:10 index count via idx_c: 50000
+2026/07/12 22:04:10 final ddl job summary: job_id=5250 type=add index state=synced schema_state=public
+2026/07/12 22:04:10 probe finished cleanly
