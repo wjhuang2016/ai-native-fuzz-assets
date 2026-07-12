@@ -3336,3 +3336,16 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   `ai-native-id1710003-external-effect-precommit-method-case.md`, and
   `assets/store/resource-group-cancel-external-drift-results.jsonl`.
 - Pause gate: do not enumerate resource-group option values under this ordering root.
+
+## Retired negative - BR ignored GC read error
+
+- Target: `target.br.gc-safepoint-read-error-allows-unprotected-backup.v1`.
+- Selector: `GC_PROTECTION_ACK_DOMINATES_HISTORICAL_READ`.
+- P/Q/F: BR ignores `GetGCSafePoint` errors and global service-safepoint writes can return nil
+  despite an effective boundary newer than backupTS.
+- C3 oracle: after physical GC, success plus a wrong restored rowset.
+- Result: **GREEN/RETIRED**. Normal BR rejected at the front guard. With only the read failure
+  injected, TiKV's snapshot owner rejected with 9006; exit 1 and no backupmeta.
+- Method gain: continue dominance analysis through every downstream independent owner.
+- Assets: `ai-native-br-gc-protection-layered-rejection-method-case.md` and
+  `assets/store/br-gc-protection-layered-rejection-results.jsonl`.

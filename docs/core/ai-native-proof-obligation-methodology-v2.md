@@ -2781,3 +2781,19 @@ id1710003 is the calibration case. ALTER RESOURCE GROUP updates PD before the DD
 commits. ADMIN CANCEL wins the job-row conflict, the ALTER and history are cancelled, metadata stays
 at 1000/LOW, but real PD remains at 1/HIGH. A normal ALTER aligned both owners at 2000/HIGH. This
 turns the LOOP from error-path scanning into cross-system commit ownership analysis.
+
+## Layered-dominance rejection gate
+
+An unsound primary guard is a candidate, not yet a bug. After forcing it to pass, continue through
+all independent owners that can reject the invalid operation:
+
+```text
+weak guard -> effective owner acquisition -> downstream data owner -> terminal status -> artifact
+```
+
+Admit RED only when the invalid state crosses every layer and reaches the user-visible terminal
+owner. The BR GC calibration physically collected an old version, swallowed both primary
+safepoint-read errors, and let the real PD service write return nil. TiKV still rejected the old
+snapshot with error 9006, BR exited 1, and no backupmeta existed. This is a source weakness but not
+a user-visible bug. Recording the GREEN prevents repeated overcounting and adds the downstream
+owner to future proof graphs.

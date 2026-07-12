@@ -1299,3 +1299,22 @@ status:     validated/terminal - mock scheduler and real PD RED, real PD normal 
             remote id1710003 high.
 stop rule:  one root per external/local ordering. Values and policy options are blast radius.
 ```
+
+## S36: GC protection acknowledgement dominates historical read
+
+```text
+selector:   a successful protection RPC must prove the effective boundary covers the requested read
+born from:  BR GC-protection source screen and real-TiKV negative matrix
+prediction:
+  - a lease/barrier/safepoint API returns success without acquiring the requested boundary;
+  - the caller proceeds as if historical state were protected;
+  - no downstream owner rejects the stale read;
+  - a terminal artifact can be published from unavailable history.
+oracle gate:
+  - physically advance the destructive boundary;
+  - force only the primary guard to pass;
+  - enumerate every downstream independent owner;
+  - observe process status, required artifact, and restored state.
+status:     execution-screened GREEN for BR: TiKV snapshot rejected with 9006 and no backupmeta.
+stop rule:  do not enumerate primary error codes while the same downstream owner remains dominant.
+```

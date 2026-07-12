@@ -1,0 +1,8 @@
+target=target.br.gc-safepoint-read-error-allows-unprotected-backup.v1
+backup_ts=467635675593179140
+effective_gc_safe_point=467635681347502081
+gc_clock=test-only 1s; real PD and real TiKV GC
+control_exit=1
+control_error=GC safepoint 467635681347502081 exceed TS 467635675593179140
+backupmeta=absent
+verdict=GREEN

@@ -1,0 +1,9 @@
+target=target.br.gc-safepoint-read-error-allows-unprotected-backup.v1
+backup_ts=467635675593179140
+fault=GetGCSafePoint returns injected error; SetServiceSafePoint uses real PD
+primary_guard=two read failures swallowed; service write returned nil with lost-safepoint warning
+downstream_owner=TiKV snapshot in BuildBackupRangeAndInitSchema
+downstream_error=9006 GC life time is shorter than transaction duration
+injected_exit=1
+backupmeta=absent
+verdict=GREEN

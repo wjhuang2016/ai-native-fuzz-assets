@@ -1348,3 +1348,19 @@ sensitivity: EXECUTION-CONFIRMED on id1710003 with real PD.
 specificity: GOOD; normal real-PD ALTER aligned both owners.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O39 historical_artifact_after_physical_gc
+
+```text
+obligation:  success from a historical reader implies the requested history was protected and
+             the published artifact can reproduce the old rowset.
+form:        commit old state, capture TS, commit new state, physically GC above TS, bypass only
+             the primary guard, then observe exit, artifact, and restored rowset.
+red:         exit 0 with backupmeta whose restore misses or changes the old row.
+green:       front guard rejects, or a downstream snapshot owner rejects with no artifact.
+catches:     ineffective leases/barriers, swallowed protection errors, false historical success.
+blind to:    runs that only advance PD safepoint without executing physical GC.
+sensitivity: execution-screened on BR GetGCSafePoint pass-through.
+specificity: GOOD; normal and injected paths both exited 1 before artifact publication.
+status:      USED + EXECUTION-CONFIRMED NEGATIVE.
+```

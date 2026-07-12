@@ -1,0 +1,7 @@
+gc_clock=test-only 1s; all GC actions use real PD and real TiKV
+old_row=1,old
+current_row=1,new
+backup_ts=467635675593179140
+gc_job_safe_point=467635681347502081
+gc_job=start whole job -> resolve locks -> delete ranges -> redo delete ranges -> finish
+sql_snapshot_control=ERROR 8055 snapshot is older than GC safe point
