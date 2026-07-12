@@ -229,6 +229,10 @@ SELECT COUNT(*) FROM users FORCE INDEX(uk_email)
 
 正常结果是 `ERROR 1062` 加 rollback,不会发布 `uk_email`;可疑结果是 job `synced/public`,但 table scan 与 `FORCE INDEX(uk_email)` 的行数/重复值结果不一致,或者 `ADMIN CHECK TABLE` 报 `8223`。这就是一个不需要 TiKV 故障、不需要测试 failpoint、只依赖“历史脏数据 + 在线建唯一索引 + 运维动态降并发”的真实环境触发例子。
 
+一个更贴近线上变更的具体故事是: `orders` 表同时被旧版 importer 和新版服务写入,旧 importer 在超时重试时把同一个业务 `order_no` 写进了两个不同的自增 `id`。发布前团队执行 `ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no)` 来补上约束;这不是为了测试而故意制造坏数据,而是典型的历史数据治理/在线 schema migration。变更白天运行时前台延迟升高,DBA 或资源控制自动化执行一次受支持的 `ADMIN ALTER DDL JOBS <job_id> THREAD = 1`;如果重复 `order_no` 位于后段主键范围,就会形成“前面的 worker 已完成,后段 worker 仍在检查重复值,随后被缩容”的真实窗口。
+
+用户侧的命中信号也要写具体:DDL history 显示 `synced/public`,但 `SELECT ... IGNORE INDEX(uk_order_no)` 能看到两行,`FORCE INDEX(uk_order_no)` 少一行,普通查询可能因为选中该索引而漏掉订单,并且 `ADMIN CHECK TABLE orders` 报 `8223`。如果 duplicate 在缩容之前被发现并正常 rollback,这是预期 control;真正的 bug 是同样的 `Duplicate entry '<order_no>'` 已经由 txn backfill 产生,却随 canceled tail worker 的 terminal result 一起丢失,最后发布了不完整索引。
+
 这个无 failpoint 场景仍然是 timing-sensitive,不是 deterministic replacement。确定性 reproducer 继续使用上面的 failpoint,但它固定的不是虚构错误类型,而是把真实 `Duplicate entry` 发生在 downscale 之后的窗口固定住。
 
 证据记录在 `assets/store/logs/add-index-real-duplicate-control-20260712.log`。

@@ -215,6 +215,47 @@ SELECT COUNT(*) FROM users FORCE INDEX(uk_email)
 
 The correct result is `ERROR 1062` followed by rollback, with no published `uk_email`. A bug hit is a `synced/public` job followed by inconsistent table-scan versus `FORCE INDEX(uk_email)` results, or `ADMIN CHECK TABLE` reporting `8223`. This needs no TiKV failure and no test-only failpoint; it only combines dirty historical data, an online unique-index build, and the supported operational action of temporarily reducing DDL concurrency during resource pressure. If the job detects the duplicate before the downscale and rolls back, that is the expected control, not a bug; the large table and late duplicate are what widen the race window.
 
+#### Concrete production-shaped example
+
+For example, an `orders` table has been written by two application versions. The old importer retried a batch after a timeout, so the same business `order_no` exists under two different auto-increment `id` values. The team wants to enforce the invariant before the next release:
+
+```sql
+-- The duplicate is a data-quality problem that already exists before the DDL.
+SELECT order_no, COUNT(*)
+FROM orders
+GROUP BY order_no
+HAVING COUNT(*) > 1;
+
+ALTER TABLE orders ADD UNIQUE INDEX uk_order_no(order_no);
+```
+
+The table is large enough that this is an online operation rather than a short metadata change. During a daytime traffic spike, TiDB latency rises and the DBA or resource-control automation uses the supported DDL control statement to reduce background work:
+
+```sql
+-- Session B: issued after SHOW DDL JOBS reports write reorganization and a growing row_count.
+ADMIN ALTER DDL JOBS <job_id> THREAD = 1;
+```
+
+To make the natural race more likely, the duplicate `order_no` should be in a later primary-key range, while earlier ranges have already been processed. The likely sequence is then:
+
+1. the `ADD UNIQUE INDEX` job has several txn backfill workers;
+2. the worker covering the late range is still processing the batch containing the two `order_no` rows;
+3. the supported downscale cancels that worker because it is in the removed tail;
+4. the normal unique-key check returns `Duplicate entry '<order_no>'` after the cancellation;
+5. the canceled worker loses the terminal result at `sendResult`, and the parent can publish a partial `uk_order_no`.
+
+The production symptom is not merely an `ALTER TABLE` error. The job may report `synced/public`, while a point lookup or a normal plan using `uk_order_no` misses one of the pre-existing rows. Validate both paths explicitly:
+
+```sql
+SELECT COUNT(*) FROM orders IGNORE INDEX(uk_order_no);
+SELECT COUNT(*) FROM orders FORCE INDEX(uk_order_no);
+SELECT * FROM orders IGNORE INDEX(uk_order_no) WHERE order_no = '<duplicate-order-no>';
+SELECT * FROM orders FORCE INDEX(uk_order_no) WHERE order_no = '<duplicate-order-no>';
+ADMIN CHECK TABLE orders;
+```
+
+This example is a high-probability production shape, not a deterministic no-failpoint reproducer: the duplicate may be detected before the downscale, in which case rollback is correct. The failpoint reproducer is still required to prove the specific ordering and to avoid confusing a normal duplicate-key rollback with this silent-publish bug.
+
 This non-failpoint scenario remains timing-sensitive and is not a deterministic replacement for the failpoint reproducer. The failpoint fixes the same ordering without inventing a new error class: it holds the worker so the real terminal error arrives after downscale cancellation.
 
 The same result-delivery window can also be entered by a real non-duplicate TiKV/transaction error from a non-unique `ADD INDEX`; the unique-index example is easier to explain because the error source is ordinary application data.

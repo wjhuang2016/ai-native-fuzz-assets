@@ -1,0 +1,8 @@
+001 5037	ai_native_issue59701_live	t	add index	none	5032	5034	0	2026-07-12 08:36:03.109000	NULL	NULL	queueing	batch_size=64, max_node_count=3
+002 5037	ai_native_issue59701_live	t	add index	write reorganization	5032	5034	0	2026-07-12 08:36:03.109000	2026-07-12 08:36:03.109000	NULL	running	txn, batch_size=64, max_node_count=3
+DDL_OWNER_KILLED pid=24576
+018 5037	ai_native_issue59701_live	t	add index	write reorganization	5032	5034	13632	2026-07-12 08:36:03.109000	2026-07-12 08:36:03.109000	NULL	running	txn, batch_size=64, max_node_count=3
+026 5037	ai_native_issue59701_live	t	add index	write reorganization	5032	5034	29440	2026-07-12 08:36:03.109000	2026-07-12 08:36:03.109000	NULL	running	txn, batch_size=64, max_node_count=3
+033 5037	ai_native_issue59701_live	t	add index	write reorganization	5032	5034	48576	2026-07-12 08:36:03.109000	2026-07-12 08:36:03.109000	NULL	running	txn, batch_size=64, max_node_count=3
+041 5037	ai_native_issue59701_live	t	add index	public	5032	5034	100000	2026-07-12 08:36:03.109000	2026-07-12 08:36:03.109000	2026-07-12 08:36:29.559000	synced	txn, batch_size=64, max_node_count=3
+KILLED=1
