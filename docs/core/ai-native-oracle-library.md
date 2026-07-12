@@ -1332,3 +1332,19 @@ sensitivity: EXECUTION-CONFIRMED on id1680003.
 specificity: GOOD; same real-TiKV command without fault produced a 285-byte backupmeta.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O38 resource_group_metadata_runtime_coherence
+
+```text
+obligation:  DDL terminal state, metadata definition, and PD runtime definition must describe one
+             committed resource-group state.
+form:        pause after PD mutation, cancel the DDL through SQL, release the worker, then read ALTER
+             result, DDL history, SHOW CREATE, and INFORMATION_SCHEMA.RESOURCE_GROUPS.
+red:         cancelled terminal/history, old metadata, new runtime definition.
+green:       normal ALTER success and both views equal the new definition.
+catches:     external-before-local commit, missing compensation, split control-plane truth.
+blind to:    tests using only InfoSchema or only PD, and direct in-memory job cancellation.
+sensitivity: EXECUTION-CONFIRMED on id1710003 with real PD.
+specificity: GOOD; normal real-PD ALTER aligned both owners.
+status:      USED + EXECUTION-CONFIRMED.
+```

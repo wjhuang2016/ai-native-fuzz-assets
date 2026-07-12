@@ -1278,3 +1278,24 @@ status:     validated/terminal - local real-TiKV command RED, action GREEN, iden
 stop rule:  one representative surface per root. Keep syntactic siblings as blast radius rather
             than counting or executing each one.
 ```
+
+## S35: external effect precommit rollback coherence
+
+```text
+selector:   local transactional state remains abortable after an external owner commits a mutation
+born from:  id1710003 (cancelled ALTER RESOURCE GROUP leaves the new definition active in PD)
+prediction:
+  - external state changes before local durable publication;
+  - a supported cancel/conflict/owner-loss aborts local state;
+  - rollback has no compensation or reconciliation edge;
+  - metadata and runtime owners disagree after terminal failure.
+oracle gate:
+  - name both durable boundaries and every post-call abort edge;
+  - pause only after external success;
+  - use a supported local abort;
+  - compare terminal result, history, metadata view, and runtime view;
+  - include normal publication and counterfactual controls.
+status:     validated/terminal - mock scheduler and real PD RED, real PD normal ALTER GREEN;
+            remote id1710003 high.
+stop rule:  one root per external/local ordering. Values and policy options are blast radius.
+```

@@ -1,0 +1,5 @@
+-- Already inserted as found_bug.id1710003 on 2026-07-13.
+INSERT INTO found_bug
+(title,severity,category,ddl_op,feature,symptom,repro,expected,actual,root_cause,fix_hint,oracle,method,root_cause_id,affects,confirmed,status,notes)
+VALUES
+('Cancelled ALTER RESOURCE GROUP leaves the uncommitted configuration active in PD','high','ddl_control_plane','ALTER RESOURCE GROUP','resource control','Cancelled DDL retains old SQL metadata but changes PD runtime state.','Pause after PD ModifyResourceGroup, cancel the DDL job, release the worker, and compare SHOW CREATE with INFORMATION_SCHEMA.RESOURCE_GROUPS.','Both owners remain on the old definition after cancellation.','DDL is cancelled; metadata is 1000/LOW while runtime is 1/HIGH.','External PD mutation precedes DDL commit and generic cancellation has no compensation.','Publish externally after durable metadata or compensate/reconcile PD on abort.','metadata-runtime-owner-coherence','current-source-owner-ledger-cancel-injection','resource-group-external-effect-before-ddl-commit','master 13282a8bd06b',1,'confirmed','Local scheduler and real PD RED; real PD normal ALTER GREEN; no PR/review/history seed.');

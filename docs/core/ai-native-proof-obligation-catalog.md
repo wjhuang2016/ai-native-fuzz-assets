@@ -3321,3 +3321,18 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   `ai-native-id1680003-br-terminal-success-method-case.md`, and
   `assets/store/br-scheduler-removal-false-success-results.jsonl`.
 - Pause gate: five source sites are one root. Do not execute each sibling.
+
+## id1710003 - cancelled ALTER RESOURCE GROUP leaves runtime state changed
+
+- Target: `target.ddl.resource-group-external-effect-survives-cancel.v1`.
+- Selector: `EXTERNAL_EFFECT_PRECOMMIT_ROLLBACK_COHERENCE`.
+- **P**: resource-group metadata and job publication are staged in the DDL worker transaction.
+- **Q**: cancellation means neither SQL metadata nor runtime resource control changed.
+- **F**: PD mutation commits first and generic rollback has no compensation.
+- C3 oracle: ALTER and history are cancelled; SHOW CREATE is old; PD-backed runtime view is new.
+- Controls: normal real-PD ALTER aligns both views; no precommit external effect makes drift impossible.
+- Status: **CONFIRMED**, remote `found_bug id1710003`, high severity.
+- Assets: `ai-native-resource-group-cancel-external-drift-draft.md`,
+  `ai-native-id1710003-external-effect-precommit-method-case.md`, and
+  `assets/store/resource-group-cancel-external-drift-results.jsonl`.
+- Pause gate: do not enumerate resource-group option values under this ordering root.

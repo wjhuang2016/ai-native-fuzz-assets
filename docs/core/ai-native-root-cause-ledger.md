@@ -233,6 +233,15 @@ This is one root across five sibling sites. Count it once. The reusable boundary
 error check: the check exists, but the checked value does not dominate the public terminal owner.
 Command status and required artifact must be observed together.
 
+## 2026-07-13 update: id1710003
+
+| root cause | selector | surfaces | consequence | status |
+| --- | --- | --- | --- | --- |
+| PD resource-group mutation commits before cancellable DDL metadata publication | `EXTERNAL_EFFECT_PRECOMMIT_ROLLBACK_COHERENCE` | ALTER RESOURCE GROUP | cancelled DDL changes live resource-control policy and splits metadata/runtime truth | confirmed high |
+
+Count RU, priority, burst, and runaway-policy variants as one root. The ownership boundary is the
+same: external PD state has no compensation when the local DDL commit owner aborts.
+
 1. New hits are logged here by root cause first; a surface only gets its own row after passing
    the Reopen test. Blast-radius siblings append to an existing root as "affects +1 owner".
 2. The target queue is ordered by `consequence` first (see Target Selection Rules). The

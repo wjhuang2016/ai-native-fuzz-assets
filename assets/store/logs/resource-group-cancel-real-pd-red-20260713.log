@@ -1,0 +1,11 @@
+source_commit=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+runner=local TiDB 127.0.0.1:4400 with real PD 127.0.0.1:2379 and one TiKV
+phase=after successful PD ModifyResourceGroup, before DDL worker transaction commit
+admin_cancel_job_118=successful
+alter_error=ERROR 8214 Cancelled DDL job
+job_history=118 alter resource group none cancelled
+show_create=CREATE RESOURCE GROUP ai_rg_real RU_PER_SEC=1000 PRIORITY=LOW
+information_schema_resource_groups=1 HIGH OFF
+worker_commit=[kv:9007] Write conflict on mysql.tidb_ddl_job handle 118
+rollback=the DDL job is cancelled normally
+verdict=RED

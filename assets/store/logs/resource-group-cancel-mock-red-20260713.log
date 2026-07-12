@@ -1,0 +1,9 @@
+source_commit=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+runner=pkg/resourcegroup/tests with mock ResourceManagerClient
+admin_cancel=successful
+alter_error=[ddl:8214] Cancelled DDL job
+worker_commit=[kv:9007] Write conflict on mysql.tidb_ddl_job handle 118
+job_state=cancelled
+show_create=RU_PER_SEC=1000 PRIORITY=LOW
+runtime_view=RU_PER_SEC=1 PRIORITY=HIGH
+verdict=RED

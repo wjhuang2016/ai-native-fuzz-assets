@@ -2752,3 +2752,32 @@ earlier setup error `err`. A local real-TiKV command exited 0 with a failed summ
 `backupmeta`; the no-fault command wrote the artifact, and changing only the returned identity made
 the same fault exit 1. PR/review/history were excluded from target generation and used only for
 post-hit dedup.
+
+## External-effect durable-boundary proof
+
+For any local transaction that also calls an external service or non-transactional side store,
+error identity is only the first layer. Build a durable-boundary ledger:
+
+```text
+local owner:     stage -> commit -> publish success | cancel/conflict/owner loss
+external owner:  call  -> durable visible state     | compensate/reconcile
+```
+
+If the external call precedes local commit, enumerate every abort edge reachable after external
+success. A missing compensation or reconciliation edge is a proof obligation even when every call
+checks errors correctly.
+
+The minimal matrix is:
+
+1. pause after real external success;
+2. trigger a supported local cancel or conflict;
+3. observe local terminal result and history;
+4. independently read metadata and runtime owners;
+5. run normal publication GREEN;
+6. prove the same cancel cannot drift state when the precommit external effect is removed or
+   compensated.
+
+id1710003 is the calibration case. ALTER RESOURCE GROUP updates PD before the DDL worker transaction
+commits. ADMIN CANCEL wins the job-row conflict, the ALTER and history are cancelled, metadata stays
+at 1000/LOW, but real PD remains at 1/HIGH. A normal ALTER aligned both owners at 2000/HIGH. This
+turns the LOOP from error-path scanning into cross-system commit ownership analysis.

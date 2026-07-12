@@ -1,0 +1,6 @@
+source_commit=13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+runner=local TiDB with real PD and target pause disabled
+alter=ALTER RESOURCE GROUP ai_rg_real RU_PER_SEC=2000 PRIORITY=HIGH
+show_create=RU_PER_SEC=2000 PRIORITY=HIGH
+information_schema_resource_groups=2000 HIGH OFF
+verdict=GREEN
