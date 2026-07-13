@@ -984,3 +984,23 @@ target.source.dynamic-state-ingress.pkg-infoschema-infoschema.v1
 
 That next target must start with session-ownership proof for masking-policy loading before any RED
 execution.
+
+## 2026-07-13 cloned-view identity increment
+
+The system imported id2070003 as a current-source-only optimizer target rather than a historical
+review seed:
+
+```text
+target:          target.optimizer.correlate-clone-access-path-identity-loss.v1
+selector:        CLONED_CANONICAL_ACTIVE_VIEW_IDENTITY
+oracle:          alternative plan rowset plus scan altitude
+asset revisions: 287
+runs:            RED=59, GREEN=57, INVALID=10, INFO=1
+pack:            7 directly reusable assets, open_gaps=[]
+```
+
+The reusable increment is an alias graph over cloned collections plus a negative boundary that
+records when a downstream repair owner masks the defect. Future candidate generation should search
+current clone/copy routines for canonical and filtered views, then rank producer/consumer splits
+whose stale view feeds an empty, complete, cached, or fast-path decision. Upstream history remains a
+post-RED dedup channel only.

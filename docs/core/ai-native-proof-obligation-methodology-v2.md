@@ -2871,3 +2871,42 @@ real DXF testbed the DDL finished synced, but FORCE INDEX missed a committed row
 returned 8223. Changing only the returned error retried to three metas; resetting the attempt
 payload as well returned exactly two. Candidate generation used current source only; PR/issue search
 was reserved for post-RED dedup and found no exact root.
+
+## Clone alias-graph proof
+
+Deep-copy review must prove two properties separately:
+
+```text
+external ownership isolation: alternatives A and B do not share mutable objects
+internal view coherence:      producer and consumer views inside A reference the same A-owned clone
+```
+
+A field-by-field copy audit proves neither alias graph automatically. For every clone routine,
+identify canonical collections and derived/active/indexed views, then record which owner mutates
+each object and which owner consumes it. The suspicious shape is:
+
+```text
+original canonical[i] ----+
+                          +--> one mutable object
+original active[j] -------+
+
+cloned canonical[i] ------> clone X -- producer mutates X
+cloned active[j] ----------> clone Y -- shortcut consumes stale Y
+```
+
+The smallest useful matrix varies **repair-path reachability**, not syntax breadth:
+
+1. bypass the cloned strategy and establish the expected rowset;
+2. select the cloned strategy while a later repair owner does not touch the leaf;
+3. use an adjacent shape where that repair owner rebuilds both views;
+4. preserve the original alias graph inside the clone and keep the same selected strategy.
+
+A GREEN sibling in cell 3 is evidence about the mask, not evidence that the clone is safe. Promote
+the candidate only when cell 2 has a direct behavior oracle and cell 4 changes only identity.
+
+id2070003 is the calibration case. `cloneDataSource` independently cloned
+`AllPossibleAccessPaths` and `PossibleAccessPaths`. Stats filled the canonical clone, physical
+planning consumed an active clone with empty ranges, and aggregate IN became `TableDual`. Plain IN
+was GREEN because correlation reached the leaf and rebuilt both views. Mapping active paths to the
+canonical clones kept Apply selected and made all nine cells GREEN. Discovery used current source
+only; post-RED dedup found no exact root, and testbed 8220955 reproduced the SQL-only wrong result.

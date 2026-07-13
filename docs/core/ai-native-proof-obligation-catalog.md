@@ -3368,3 +3368,21 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
 - Method gain: continue dominance analysis through every downstream independent owner.
 - Assets: `ai-native-br-gc-protection-layered-rejection-method-case.md` and
   `assets/store/br-gc-protection-layered-rejection-results.jsonl`.
+
+## id2070003 - Correlate alternative clone loses active AccessPath identity
+
+- Target: `target.optimizer.correlate-clone-access-path-identity-loss.v1`.
+- Selector: `CLONED_CANONICAL_ACTIVE_VIEW_IDENTITY`.
+- **P**: the alternative subtree and all access paths were deep-cloned.
+- **Q**: canonical stats derivation and active physical planning still observe the same path state
+  inside the clone.
+- **F**: `AllPossibleAccessPaths` and `PossibleAccessPaths` are independently cloned; aggregate IN
+  leaves the leaf unrepaired, so only canonical clones receive ranges and active clones look empty.
+- C3 oracle: feature OFF returns `1,2,3`; feature ON selects
+  `Apply -> HashAgg -> TableDual` and returns no rows. Plain IN is the repair-path GREEN control.
+- Counterfactual: clone canonical paths once and map active paths to those clones; Apply remains and
+  all nine rowset cells become GREEN.
+- Status: **ISSUE-FILED**, remote `found_bug id2070003`, high severity, upstream #69790.
+- Assets: `docs/method-cases/ai-native-id2070003-cloned-view-identity-method-case.md` and
+  `assets/store/correlate-clone-access-path-identity-results.jsonl`.
+- Pause gate: do not enumerate aggregate functions, indexes, or cost factors under this alias root.

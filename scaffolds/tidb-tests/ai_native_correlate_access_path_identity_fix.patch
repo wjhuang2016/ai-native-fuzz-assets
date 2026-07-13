@@ -1,0 +1,27 @@
+diff --git a/pkg/planner/core/plan_clone_utils.go b/pkg/planner/core/plan_clone_utils.go
+index 95c8f8a6c9..ed4d5c8919 100644
+--- a/pkg/planner/core/plan_clone_utils.go
++++ b/pkg/planner/core/plan_clone_utils.go
+@@ -140,13 +140,20 @@ func cloneDataSource(ds *logicalop.DataSource) *logicalop.DataSource {
+ 	// independent path objects. Stats derivation (fillIndexPath, etc.) mutates
+ 	// AccessPath fields in place; without deep cloning, costing one alternative
+ 	// can corrupt the other and destabilize CBO.
++	clonedPaths := make(map[*util.AccessPath]*util.AccessPath, len(ds.AllPossibleAccessPaths))
+ 	clone.AllPossibleAccessPaths = make([]*util.AccessPath, len(ds.AllPossibleAccessPaths))
+ 	for i, ap := range ds.AllPossibleAccessPaths {
+-		clone.AllPossibleAccessPaths[i] = ap.Clone()
++		cloned := ap.Clone()
++		clone.AllPossibleAccessPaths[i] = cloned
++		clonedPaths[ap] = cloned
+ 	}
+ 	clone.PossibleAccessPaths = make([]*util.AccessPath, len(ds.PossibleAccessPaths))
+ 	for i, ap := range ds.PossibleAccessPaths {
+-		clone.PossibleAccessPaths[i] = ap.Clone()
++		if cloned, ok := clonedPaths[ap]; ok {
++			clone.PossibleAccessPaths[i] = cloned
++		} else {
++			clone.PossibleAccessPaths[i] = ap.Clone()
++		}
+ 	}
+ 	// Preserve original stats so DeriveStats returns early for DataSources
+ 	// that don't receive correlated conditions. Without this, DeriveStats

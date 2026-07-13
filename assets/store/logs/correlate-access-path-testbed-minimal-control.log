@@ -1,0 +1,42 @@
+phase
+AGG_OFF
+id
+1
+2
+3
+phase
+AGG_ON_PLAN
+id	estRows	task	access object	operator info
+Projection	2.40	root		ai_native_correlate_20260713.o.id
+└─Apply	2.40	root		CARTESIAN semi join, left side:TableReader
+  ├─TableReader(Build)	3.00	root		data:TableRangeScan
+  │ └─TableRangeScan	3.00	cop[tikv]	table:o	range:[-inf,3], keep order:true
+  └─Limit(Probe)	3.00	root		offset:0, count:1
+    └─Selection	3.00	root		eq(Column#9, ai_native_correlate_20260713.o.a), not(isnull(Column#9))
+      └─HashAgg	3.00	root		group by:ai_native_correlate_20260713.i.b, funcs:max(ai_native_correlate_20260713.i.a)->Column#9
+        └─TableDual	15.00	root		rows:0
+phase
+AGG_ON_ROWS
+phase
+PLAIN_OFF
+id
+1
+2
+3
+phase
+PLAIN_ON_PLAN
+id	estRows	task	access object	operator info
+Projection	2.40	root		ai_native_correlate_20260713.o.id
+└─Apply	2.40	root		CARTESIAN semi join, left side:TableReader
+  ├─TableReader(Build)	3.00	root		data:TableRangeScan
+  │ └─TableRangeScan	3.00	cop[tikv]	table:o	range:[-inf,3], keep order:true
+  └─Limit(Probe)	3.00	root		offset:0, count:1
+    └─IndexReader	3.00	root		index:Limit
+      └─Limit	3.00	cop[tikv]		offset:0, count:1
+        └─IndexRangeScan	3.75	cop[tikv]	table:i, index:ia(a)	range: decided by [eq(ai_native_correlate_20260713.i.a, ai_native_correlate_20260713.o.a)], keep order:false
+phase
+PLAIN_ON_ROWS
+id
+1
+2
+3

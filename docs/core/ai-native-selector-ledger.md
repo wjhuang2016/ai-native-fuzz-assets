@@ -1505,3 +1505,25 @@ status:     validated/terminal - local planner matrix and real DXF testbed RED; 
 stop rule:  one root per retry payload owner. Batch counts, TSO error strings, and region layouts are
             blast radius; reopen only for a distinct published payload or highest consumer.
 ```
+
+## S44: cloned canonical/active view identity
+
+```text
+selector:   a clone/copy routine independently duplicates multiple slices, maps, indexes, or
+            filtered views that originally reference the same mutable objects
+born from:  id2070003 (CorrelateSolver clones canonical and active AccessPath views separately)
+prediction:
+  - one cloned view is populated, normalized, or refreshed in place;
+  - another cloned view is consumed by a shortcut such as empty, complete, or cached;
+  - value equality at clone time hides that later mutations no longer propagate;
+  - a conditional rebuild path makes one sibling GREEN and masks the broken alias graph.
+oracle gate:
+  - draw the pre-clone and post-clone alias graphs, not only field inventories;
+  - compare the shortcut with a feature/bypass reference on the same data;
+  - vary whether the downstream rebuild/repair owner reaches the consumed object;
+  - change only the alias mapping and require the same selected strategy to become GREEN.
+status:     validated/terminal - local nine-cell matrix, exact identity-preserving GREEN, and
+            SQL-only real-TiKV RED on testbed 8220955; remote id2070003 high, upstream #69790.
+stop rule:  one root per clone owner and alias graph. Aggregate functions, SQL forms, indexes, and
+            cost values are blast radius; reopen only for a different producer/consumer view pair.
+```

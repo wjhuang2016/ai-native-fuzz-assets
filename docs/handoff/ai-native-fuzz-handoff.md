@@ -1806,3 +1806,19 @@ attempt-local/reset，成功后验必须证明 source domain exactly-once covera
 nonempty payload。暂停本 root 的 batch/error/region 变体；下一轮继续从当前源码独立生成新的 C3
 候选，PR review finding 继续禁止作为生成器。上游已提交
 https://github.com/pingcap/tidb/issues/69789，状态同步为 `issue-filed`。
+
+**2026-07-13 current-source-only 命中 id2070003/high：alternative logical plan 会把非空的聚合
+IN 子查询变成 TableDual，并静默返回空结果。** 候选来自当前源码 clone/shortcut 证明义务，生成、
+排序和本地 RED/GREEN 全程未使用 PR review、issue、fix 或历史 finding。`cloneDataSource` 为隔离 Join
+与 Apply，分别 deep-clone `AllPossibleAccessPaths` 和 `PossibleAccessPaths`；但这两个 slice 原本是同一
+批 mutable AccessPath 的 canonical/active 视图。stats 只填 canonical clone 的 ranges，physical
+planning 却消费另一批 active clone。普通 correlated IN 会触发 leaf rebuild，因而掩盖缺陷；聚合把
+correlation 留在 HashAgg 之上，leaf 不重建，active ranges 为空并被当成 TableDual。local 九格只有
+aggregate IN 一格 RED：OFF=`1,2,3`，ON=空；只把 active path 映射到对应 canonical clone 后，仍选
+Apply、恢复 real scan，九格全绿。testbed 8220955 在默认 cost、真实 TiKV、无 fault injection 下复现
+相同 SQL-only RED；plain IN 控制在 ON/OFF 都返回 `1,2,3`。post-RED 去重无 exact root。远端
+`found_bug` 为 108 rows/85 roots/33 high，id2070003 已 issue-filed；上游 issue
+https://github.com/pingcap/tidb/issues/69790 带 `found-by-ai`/`severity/major`。私有资产 287
+revisions，RED=59/GREEN=57，新增 S44 `CLONED_CANONICAL_ACTIVE_VIEW_IDENTITY` 与 O54，pack
+`open_gaps=[]`。暂停 aggregate/index/cost 变体；下一轮继续只从当前源码 proof obligation 生成新 C3，
+PR review finding 仍只能在独立 RED 后去重。

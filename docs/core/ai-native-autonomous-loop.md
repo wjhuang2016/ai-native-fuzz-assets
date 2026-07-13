@@ -1753,3 +1753,24 @@ only visible key inputs. Give extra priority to hit paths that perform fresh ana
 overwrite part of it from the template: the discarded fresh value supplies a precise counterfactual
 before testing. Provenance must also be enforced by actual worker behavior; a discovery worker that
 opens review/history tools invalidates the entire generation round even when its prompt said not to.
+
+## Clone alias-graph tick: CorrelateSolver wrong result, EXECUTED (2026-07-13)
+
+This tick came from current-source clone and shortcut obligations. PR reviews, issues, fixes, and
+history were unavailable during candidate generation, ranking, and the local RED/GREEN matrix.
+
+```text
+P:          the alternative subtree and each AccessPath are deep-cloned.
+Q:          canonical stats producer and active physical consumer still share path state.
+F:          canonical and active views are independently cloned into different objects.
+LOCAL RED:  aggregate IN OFF=[1,2,3], ON=[]; Apply -> HashAgg -> TableDual.
+MASK:       plain IN rebuilds leaf paths and returns [1,2,3] in both modes.
+EXACT GREEN: map active paths to canonical clones; same Apply, real scan, 9/9 cells match.
+LIVE RED:   identical SQL-only result on testbed 8220955 with real TiKV and default costs.
+INTEGRATE:  id2070003 high; S44, O54, eight assets, four runs, open_gaps=[].
+```
+
+Method improvement: clone analysis now carries an alias graph and a repair-path dimension. A deep
+copy can be simultaneously correct across alternatives and incorrect inside one alternative.
+Passing siblings that activate a rebuild owner are retained as mask evidence; the next matrix
+changes owner reachability before it changes syntax or data volume.

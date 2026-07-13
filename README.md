@@ -13,14 +13,14 @@ It treats three things as first-class reusable assets:
 - `docs/core/`: 17 core methodology and ledger documents.
 - `docs/handoff/`: latest handoff snapshot for session-to-session continuation.
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
-- `docs/github-issues/`: filed GitHub issue bodies for important bugs.
-- `docs/bug-drafts/`: 97 draft bug writeups.
-- `docs/method-cases/`: 82 compact case summaries tied to bug-db entries.
+- `docs/github-issues/`: filed GitHub issue bodies for important bugs, including #69790.
+- `docs/bug-drafts/`: 106 draft bug writeups and filed-issue source bodies.
+- `docs/method-cases/`: 91 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
-- `scaffolds/top-level/`: 62 top-level Python/shell/data scaffolds from the working directory.
+- `scaffolds/top-level/`: 63 top-level Python/shell/data scaffolds from the working directory.
 - `scaffolds/go-probes/`: 22 Go probe/source-scanner files plus `go.mod` and `go.sum`.
-- `scaffolds/tidb-tests/`: 21 TiDB-side AI-native test/probe files used as harness fixtures.
+- `scaffolds/tidb-tests/`: 32 TiDB-side AI-native test/probe files used as harness fixtures.
 - `scripts/`: asset refresh and bug-index generation helpers.
 
 Current snapshot size is about 41 MB.

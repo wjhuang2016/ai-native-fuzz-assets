@@ -1497,3 +1497,24 @@ sensitivity: EXECUTION-CONFIRMED on id2040003 locally and testbed 8220955 with r
 specificity: GOOD; 2->1, 2->3, and 2->2 controls isolate both error and attempt-state ownership.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O54 alternative_plan_rowset_and_scan_altitude_differential
+
+```text
+obligation:  enabling an alternative logical-plan strategy preserves the expected rowset, and a
+             nonempty base-table input is not replaced by an empty physical source.
+form:        execute identical data and SQL with the alternative feature OFF and ON; record rowsets,
+             selected strategy, and inner scan altitude. Add one adjacent shape that activates a
+             downstream rebuild owner, then rerun after changing only the clone alias mapping.
+red:         aggregate IN returns [1,2,3] OFF and [] ON; ON selects Apply -> HashAgg -> TableDual.
+green:       plain correlated IN returns [1,2,3] in both modes with IndexRangeScan; alias-preserving
+             clone keeps Apply for aggregate IN, restores the real scan, and returns [1,2,3].
+catches:     split canonical/active clones, stale filtered views, and empty/complete shortcuts over
+             independently copied mutable state.
+blind to:    plans that never select the target alternative, references with unknown expected
+             rowsets, and defects whose producer and consumer already use one cloned object.
+sensitivity: EXECUTION-CONFIRMED on id2070003 locally and testbed 8220955 without fault injection.
+specificity: GOOD; rowset, plan altitude, adjacent repair-path control, and one-variable identity
+             counterfactual isolate the clone graph.
+status:      USED + EXECUTION-CONFIRMED.
+```

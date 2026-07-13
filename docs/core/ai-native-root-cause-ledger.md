@@ -400,3 +400,15 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   slice, so error propagation alone produces duplicate failed-attempt residue.
 - Counting rule: region counts, batch sizes, and transient TSO error forms are blast radius. Reopen
   only for a distinct retry payload owner or highest consumer.
+
+## 2026-07-13 update: id2070003
+
+- Remote `found_bug`: 108 surfaces, 85 distinct root causes, 33 high-severity rows.
+- New root: `correlate-clone-breaks-active-access-path-alias`.
+- Consequence: C3 direct silent wrong result. Alternative logical plans turn a nonempty aggregate
+  IN subquery into `TableDual` and return an empty rowset.
+- Distinctness: alternatives must not share mutable paths with each other, but canonical and active
+  views inside one clone must share the corresponding cloned path. The violated identity is inside
+  one clone, not cross-alternative sharing.
+- Counting rule: aggregate choices, SQL forms, index layouts, and cost factors are blast radius.
+  Reopen only for a different clone owner or canonical/active producer-consumer pair.
