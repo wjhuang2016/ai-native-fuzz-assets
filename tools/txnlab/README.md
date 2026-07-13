@@ -21,6 +21,8 @@ does not choose a target by itself.
 - JSONL run records compatible with `assets/store/store.py`; RED creates a promotion candidate but
   never creates a confirmed bug automatically.
 - Official `PingCAP-QE/artifacts` failpoint build-script generation for a future source hook.
+- Packet-only AI source scouting with hard input-size, source-region, candidate-count, and
+  wall-clock limits. It does not hard-code a model and never uses `--output-schema`.
 
 The pinned 8220955 preparation has been live-checked against one TiDB, three TiKV, and one PD
 replica. The cluster is Ready, required RBAC checks pass, both exact failpoint images exist, and the
@@ -58,6 +60,29 @@ python3 -m tools.txnlab realtikvtest tools/txnlab/examples/testbed-8220955.toml 
 The runner refuses to reuse port 2379, verifies exact binaries before startup, records both logs,
 and terminates only the playground process group it created. Always run a feature-specific baseline
 before interpreting a candidate result; a cached `nightly` alias can point to a months-old binary.
+
+Run a bounded source scout only after the main loop has selected the relevant owners. The child
+agent receives the numbered snippets inline and has no repository path in its working directory:
+
+```bash
+python3 -m tools.txnlab source-packet-scout \
+  tools/txnlab/examples/testbed-8220955.toml \
+  --question 'Can the exclusive upper bound omit a flushed lock from terminal resolve?' \
+  --region client-go:txnkv/transaction/txn.go:640:675 \
+  --region client-go:txnkv/transaction/pipelined_flush.go:301:365 \
+  --region client-go:txnkv/transaction/pipelined_flush.go:458:525 \
+  --region client-go:txnkv/rangetask/range_task.go:156:245 \
+  --timeout 90
+```
+
+The input limits are enforced before launch: at most 12 regions, 240 lines per region, 1,200 lines
+and 32 KiB total. The outer process kills the complete scout process group at the wall-clock limit.
+Prompt-only command/token budgets are intentionally not treated as controls; the main loop must
+curate the source packet first.
+
+The 32 KiB cap is calibrated, not decorative. A 47 KiB packet timed out at 75 seconds, while a
+25 KiB packet completed in about 45 seconds. Reported token usage remains observational because the
+CLI does not expose a hard output-token limit in this provider.
 
 Evaluate an oracle without touching a cluster:
 

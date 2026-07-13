@@ -1877,3 +1877,31 @@ set. Add zero-work re-entry to the small matrix, compare against the same final 
 follow the published value through one downstream durable consumer. This reused S45's selector,
 fault boundary, and schedule while adding only the target-specific publication obligation and
 oracle.
+
+## Bounded transaction source-packet tick: no severe hit, method promoted (2026-07-13)
+
+This tick stayed in COLD_SOURCE mode and did not touch testbed 8220955. It closed the remaining
+commit-outcome and lock-generation proof debts before selecting another target.
+
+```text
+NEGATIVE: lock resolver caches only durable determined status; pessimistic no-op actions are not cached.
+NEGATIVE: lost LockedWithConflictTS can leave a TTL-bounded lock, but no C3 consumer was found.
+NEGATIVE: pipelined exclusive-end cleanup can omit a boundary Region, but read resolution and GC own recovery.
+NEGATIVE: delayed fair-lock rollback is bounded by older forUpdateTS; later LockKeys installs the newer owner.
+NEGATIVE: primary batch Region relocation rebuilds batches and re-labels primary by key.
+SCOUT:    47 KiB/9 regions -> hard timeout at 75s; 25 KiB/9 regions -> valid JSON in about 45s.
+SCANNER:  terminal-action scan over pinned client-go found only KVStore close ordering, no C3 txn owner.
+```
+
+Method improvement: AI source reasoning is now a compiled-packet stage. The main loop selects the
+proof debt and owner ranges; `txnlab source-packet-scout` enforces 32 KiB, line, region, candidate,
+and wall-clock budgets, isolates the child from repository search, and validates JSON locally. A
+child-proposed schedule still requires direct owner-transfer verification. This tick caught a
+plausible three-attempt fair-lock schedule and then rejected it because the child conflated TiDB
+transaction-context publication with client-go committer mutation.
+
+The next legal transaction proof debt is `ASYNC_SECONDARY_SET_COMPLETENESS`: verify that every key
+whose async prewrite may be accepted is represented in the primary lock's secondary set across
+filtering, batching, Region relocation, fallback, and duplicate-key handling. Do not revisit shared
+locks, pipelined exclusive-end cleanup, status-cache classification, or primary Region relocation
+unless a new owner or higher consumer appears.

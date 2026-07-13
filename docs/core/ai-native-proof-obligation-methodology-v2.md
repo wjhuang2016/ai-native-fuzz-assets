@@ -3057,3 +3057,33 @@ testbed use.
 Only after both gates pass should the matrix be built. Prefer a successful zero-work replay and a
 run beginning directly from the same final state. That isolates failed-attempt residue from ordinary
 zero-work semantics and was the decisive control for id2190003.
+
+## Compile source packets before delegating reasoning
+
+Do not ask a child agent to discover its own repository scope. The parent loop must first compile a
+source packet from an owner graph:
+
+```text
+proof debt -> explicit owners -> exact source ranges -> bounded packet -> reasoning pass
+```
+
+The packet is an executable budget boundary. Enforce source-region count, lines per region, total
+lines, encoded bytes, candidate count, and wall time outside the prompt. A prompt that says "use at
+most N commands/tokens" is not a control: full-repository scouts exceeded 60k tokens without
+returning a result. The calibrated default is at most 12 regions, 240 lines per region, 1,200 lines,
+32 KiB, three candidates, and a process-group wall timeout. The model is capability-probed rather
+than hard-coded, and this provider uses JSON-only prompting plus `--output-last-message`, never
+`--output-schema`.
+
+Packet size is part of selector precision. In the transaction campaign, a 47 KiB packet timed out
+after 75 seconds. Removing neighboring modes and explanatory ranges produced a 25 KiB packet that
+completed in about 45 seconds. The child should reason over a selected owner graph, not repeat
+source discovery.
+
+Treat the child result as an adversarial hypothesis, not a verdict. The fair-lock packet proposed a
+three-attempt delayed-cleanup schedule, but assigned TiDB's newly allocated `forUpdateTS` to the
+client-go committer too early. Direct owner verification showed that TiDB updated transaction
+context and snapshot state first; client-go received the new timestamp only in the later
+`LockKeys`. The cleanup therefore retained the older threshold, and TiKV's comparison protected the
+newer lock. This is the desired division of labor: the child finds a sharp counterexample shape;
+the parent verifies every owner transfer before admission.

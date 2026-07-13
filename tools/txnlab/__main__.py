@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import time
 from pathlib import Path
 
 from .build import generate_build_script
@@ -19,6 +20,7 @@ from .local import (
 from .oracles import ORACLES, evaluate
 from .process import CommandRunner
 from .runner import TxnLab
+from .scout import SourceRegion, run_source_packet_scout
 from .workspace import prepare_worktrees
 
 
@@ -80,6 +82,21 @@ def main() -> None:
     )
     realtikvtest.add_argument("--timeout", type=int, default=300)
 
+    scout = sub.add_parser(
+        "source-packet-scout",
+        help="run a wall-clock-bounded AI scout over explicitly selected source regions",
+    )
+    scout.add_argument("config", type=Path)
+    scout.add_argument("--question", required=True)
+    scout.add_argument(
+        "--region",
+        action="append",
+        required=True,
+        help="COMPONENT:PATH:START:END; repeat for at most 12 regions",
+    )
+    scout.add_argument("--timeout", type=int, default=90)
+    scout.add_argument("--output", type=Path)
+
     oracle = sub.add_parser("oracle", help="evaluate one evidence payload")
     oracle.add_argument("name", choices=sorted(ORACLES))
     oracle.add_argument("input", type=Path)
@@ -138,6 +155,21 @@ def main() -> None:
         )
         _print(result)
         if not result["passed"]:
+            sys.exit(2)
+    elif args.command == "source-packet-scout":
+        output = args.output or (
+            config.evidence_root
+            / f"{config.run_key}-scout-{time.strftime('%Y%m%d-%H%M%S')}"
+        )
+        result = run_source_packet_scout(
+            config,
+            args.question,
+            [SourceRegion.parse(value) for value in args.region],
+            output,
+            timeout_seconds=args.timeout,
+        )
+        _print(result)
+        if not result["ok"]:
             sys.exit(2)
     elif args.command == "run":
         result = TxnLab(config).run(allow_mutation=args.allow_mutation)

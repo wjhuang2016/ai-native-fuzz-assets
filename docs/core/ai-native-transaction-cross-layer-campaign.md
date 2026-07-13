@@ -397,17 +397,52 @@ This does **not** admit the current mode-fallback shape, authorize a testbed fau
 bug. The shared-lock FK matrix is GREEN. The remaining work stays at proof: close one owner graph,
 admit one P/Q/F card, and produce the transaction-scoped oracle input locally.
 
+### Bounded source-packet and owner-close checkpoint
+
+The remaining lock-status and lock-generation paths were closed from current source without a
+testbed mutation:
+
+- `getTxnStatus` caches only determined TiKV responses. `LockNotExistDoNothing` and pessimistic
+  rollback actions are not classified as durable rollback, and primary mismatch falls back to
+  owner-specific lock cleanup.
+- A lost force-lock response can hide a larger `LockedWithConflictTS`; the resulting rollback may
+  miss that pessimistic lock. Heartbeat termination and TTL resolution bound the result to residual
+  lock availability, with no data-loss, atomicity, or false-terminal consumer found.
+- Pipelined DML records the greatest flushed key as an exclusive range end, so a Region beginning at
+  exactly that key can be omitted from eager terminal cleanup. Ordinary read lock resolution and
+  GC's mandatory resolve pass remain recovery owners; this does not meet the severe gate.
+- Fair-lock retry cleanup captures client-go's previous committer `forUpdateTS`. TiDB's newly
+  allocated retry timestamp first updates transaction context and snapshot state, and reaches the
+  committer only in the later `LockKeys`. TiKV deletes only `lock.for_update_ts <= rollback_ts`, so
+  a later lock generation survives.
+- Region relocation rebuilds commit batches from the mutation subset and re-identifies the primary
+  by key. The old batch's `isPrimary` bit is not copied into split children.
+
+Unbounded full-repository scouts were not useful: three runs consumed roughly 61k-82k tokens and
+returned no JSON. `txnlab source-packet-scout` now receives only explicit numbered ranges, runs in an
+isolated directory, validates at most three owner-anchored candidates, and kills its whole process
+group at the wall limit. Calibration tightened the hard packet cap to 32 KiB: 47 KiB timed out at
+75 seconds; 25 KiB completed in about 45 seconds. Token counts are observed, not treated as a hard
+provider control.
+
+The first packet-only adversarial pass also demonstrated why parent verification remains mandatory.
+It proposed a three-attempt fair-lock deletion schedule, but conflated TiDB transaction-context
+publication with client-go committer mutation. Direct owner tracing retired the schedule. The
+method is therefore `parent selects owners -> child proposes counterexample -> parent verifies
+transfers -> only then admit`.
+
 ### Remaining work order
 
 1. Build a current-source owner graph for client-go's `undeterminedErr`: every write, clear, read,
    and terminal conversion through TiDB. **Completed for the initial path.**
 2. Compare every cleanup/rollback request's lock identity with the identity TiKV checks before
-   deletion, especially `forUpdateTS` and pessimistic-primary handling.
+   deletion, especially `forUpdateTS` and pessimistic-primary handling. **Completed as negative.**
 3. Close the exact mode-at-send/current-mode proof debt above by tracing mixed lock cleanup and
-   status semantics at TiKV.
-4. Admit exactly one target with a complete card. Do not place all three families in the active
-   queue at once.
-5. Execute locally first. The testbed remains closed until an independently admitted local RED.
+   status semantics at TiKV. **Completed as negative: durable mixed-mode marker forces sync.**
+4. Trace `ASYNC_SECONDARY_SET_COMPLETENESS`: every accepted async-prewrite key must be represented by
+   the primary's recovery set after filtering, batching, Region relocation, fallback, and dedup.
+5. Admit exactly one target with a complete card, then execute locally first. The testbed remains
+   closed until an independently admitted local RED.
 
 The default first source pass is commit-outcome terminal truth because it has the cleanest severe
 user promise and the strongest cross-layer oracle. If source ownership proves complete, record the

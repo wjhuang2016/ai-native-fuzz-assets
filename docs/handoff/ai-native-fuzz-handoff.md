@@ -1904,3 +1904,22 @@ commit 且只声称 current-head capability，exact lane 校验 TiKV 二进制 S
 `schedule.txn-feature-capability-before-candidate.v1`、`module.txnlab-local-runtime.v1`，均已导入
 `assets.sqlite3`。方法论新增两条硬门：候选前先过最高消费者+入口/capability；AI source scout 同时
 限制 command/source-region/token/wall-clock，不能再用“命令数少”伪装成低成本探索。
+
+**2026-07-13 txn bounded source-packet checkpoint：仍无新 severe bug，但事务 proof debt 与 AI
+探索预算进一步闭合。** 当前 source pin 不变：TiDB `5c9198e9484d`、client-go `661db4f5f4e8`、TiKV
+`bf73df27b967`。本轮未触碰 testbed。lock resolver 终态缓存、lost `LockedWithConflictTS`、pipelined
+exclusive-end、fair-lock delayed rollback、primary Region relocation 均完成最高消费者审计；分别由
+durable status classification、TTL/heartbeat、read+GC recovery、旧/新 `forUpdateTS` 分代、按 key 重新
+标 primary 等 owner guard 淘汰。它们应作为 negative screen 保留，不再重复。
+
+新增 `tools/txnlab source-packet-scout`：parent 先选证明义务和精确源码区段，child 只能看内嵌编号
+packet；硬限制 12 regions、240 lines/region、1,200 lines、32 KiB、3 candidates 和 wall timeout，使用
+JSON-only + `--output-last-message`，禁止 `--output-schema`，不硬编码 model。实测 47 KiB/9 regions 在
+75s 被完整进程组终止；25 KiB/9 regions 约 45s 返回合法 JSON。child 曾提出三轮 fair-lock 同 TS
+删除窗口，但 parent 核对 owner 后发现 TiDB 新 TS 尚未写入 client-go committer，故判负。这证明新
+分工有效：child 负责反例形状，parent 负责 owner transfer 实锤。
+
+下一条且仅一条合法事务方向：`ASYNC_SECONDARY_SET_COMPLETENESS`。从当前源码追踪 async prewrite
+可能成功的完整 key set，核对 primary lock 的 secondaries 在过滤、分 batch、Region relocation、
+fallback、dedup 后是否仍 complete；先做 P/Q/F + highest consumer，不得先上 testbed。禁止重放
+shared-lock FK、pipelined exclusive-end、status-cache、primary relocation 和 PR-review finding。
