@@ -1590,6 +1590,12 @@ Status: issue-filed high, remote id2190003, upstream #69796. This is distinct fr
 missing state owner and terminal consumer; SQL forms, sleep durations, IDs, and gate shapes are
 blast radius.
 
+The scanner's only sibling hit, `planHint/planHintSet`, was retired by highest-consumer proof. Its
+consumers are statement summary, slow-log plan text, and plan-replayer diagnostics; no read reaches
+plan rebuild, execution, commit, or control-plane publication. This negative is important: pair
+omission raises a candidate, but C3 admission still requires a correctness-bearing terminal
+consumer. No runtime matrix is justified for diagnostic-only residue.
+
 ## S46: deferred terminal error return-slot ownership
 
 ```text
@@ -1612,4 +1618,26 @@ status:     validated/terminal - local rollback/error RED, real-TiKV finished pl
             GREEN; remote id2130003 high, upstream #69792.
 stop rule:  one root per terminal owner and return-slot mechanism. Input conflicts, index shapes,
             batch sizes, and retryable error strings are blast radius.
+```
+
+## S47: reference reset differential
+
+```text
+selector:   compare cleanup/restoration at the normal operation entry with cleanup/restoration at
+            retry entry, then follow every omitted dimension to its highest consumer
+born from:  id2190003 extraction plus two held-out negatives
+candidate:  ((normal reset or restore) minus (retry reset or restore)) intersect replay state
+prediction:
+  - explicit reset code is a compact specification of state ownership;
+  - omitted fields/maps/restorations reveal proof debt before runtime scheduling;
+  - a real bug needs both a correctness-bearing consumer and a product-reachable retry edge.
+oracle gate:
+  - retire diagnostic-only consumers before execution;
+  - retire test-only retry edges before injection;
+  - for admitted state, use zero-work or same-final-state controls plus the highest durable consumer.
+status:     validated as an incremental selector. It recovers id2190003, retires planHint as
+            diagnostic-only, and retires cross-statement SET_VAR replay because current TiDB forces
+            explicit transaction auto retry off.
+stop rule:  do not count a reset delta as a bug. Admit only after consumer, reachability, and exact-
+            owner controls pass.
 ```

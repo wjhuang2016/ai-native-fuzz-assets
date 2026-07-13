@@ -1037,7 +1037,7 @@ target:          target.txn.pessimistic-retry-last-insert-id-publication.v1
 reused:          S45 selector + post-evaluation fault + retry schedule
 new obligation:  successful attempt is the only publication owner
 new oracle:      zero affected rows + LAST_INSERT_ID + durable sink
-asset revisions: 313
+asset revisions: 314
 runs:            RED=68, GREEN=65, INVALID=12, INFO=1
 admission:       C3_DIRECT=23
 ```
@@ -1046,3 +1046,10 @@ This validates incremental asset reuse: the system did not invent a new broad re
 added one missing consumer edge, one zero-work matrix cell, and one durable downstream observer.
 Future retry scans should rank omitted value/flag pairs next to reset code and follow them through
 both re-entry and terminal publication.
+
+The immediate held-out pass added `REFERENCE_RESET_DIFFERENTIAL`: use normal entry cleanup as the
+reference specification, subtract retry cleanup, then require a correctness-bearing highest
+consumer and a product-reachable retry edge. This retired `planHint` without execution and retired a
+plausible cross-statement `SET_VAR` data-shape after a natural conflict proved explicit transaction
+auto retry is forced off. The store now has 316 asset revisions; run counts remain RED=68,
+GREEN=65, INVALID=12, INFO=1, with C3_DIRECT=23.

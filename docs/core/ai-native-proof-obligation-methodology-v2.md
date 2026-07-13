@@ -2980,3 +2980,26 @@ statement state but leaves UserVars outside R. A post-evaluation retry produced 
 while pre-evaluation and idempotent controls passed. A concurrent unique-key owner then converted the
 state leak into false success and committed row-image drift. Restoring only UserVars made the exact
 matrix GREEN. Discovery and ranking used current source only; history was opened only after RED.
+
+## Use normal entry as a reference reset
+
+Retry code rarely documents every state dimension it owns, but the normal operation entry often
+does. Treat that entry as a compact reference specification:
+
+```text
+N = fields, maps, caches, and external session values reset or restored at normal entry
+R = the same dimensions reset or restored before retry re-entry
+D = N minus R
+candidate = D intersect state written or consumed by replay
+```
+
+Do not execute every member of D. First trace the highest consumer; `planHint` was omitted by retry
+reset but reached only statement summary, slow log, and plan-replayer diagnostics. Then prove product
+reachability; `SetVarHintRestore` was absent from whole-transaction replay and had a plausible
+durable `sql_mode` consumer, but current TiDB forces `tidb_disable_txn_auto_retry=OFF` back to ON, so
+a natural user transaction cannot enter that replay path. Both candidates were retired before
+testbed use.
+
+Only after both gates pass should the matrix be built. Prefer a successful zero-work replay and a
+run beginning directly from the same final state. That isolates failed-attempt residue from ordinary
+zero-work semantics and was the decisive control for id2190003.
