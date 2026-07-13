@@ -3457,3 +3457,25 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   `assets/store/txn-savepoint-mutable-owner-results.jsonl`.
 - Pause gate: do not enumerate temporary-table schemas, limits, or payload sizes. Reopen only if the
   same root reaches a higher consumer or another mutable value owner is independently omitted.
+
+## id2310003 - Pessimistic retry retains a failed-attempt advisory lock
+
+- Target: `target.txn.pessimistic-retry-advisory-lock-capability.v1`.
+- Selector: `ATTEMPT_SCOPED_SIDE_EFFECT_ROLLBACK_CLOSURE` with external-capability consumer.
+- **P**: `StmtRollback` and `ResetForRetry` return a failed pessimistic statement attempt to
+  retry-entry state.
+- **Q**: a capability created only by the failed attempt cannot survive a successful zero-work
+  retry.
+- **F**: `GET_LOCK` mutates `session.advisoryLocks` and an independent internal transaction;
+  pessimistic retry restores statement KV and executor state but not either capability owner.
+- C3 oracle: natural unique-key conflict plus gate yields retry count one, success, and zero rows;
+  `IS_USED_LOCK` names the statement connection and a competitor gets 0. The same-final-state
+  no-retry control yields `NULL/1`; owner cleanup changes the RED competitor to 1.
+- Environment: local unistore and SQL-only testbed `8220955` with three real TiKV nodes and
+  `tidb_enable_metadata_lock=1`.
+- Status: **ISSUE-FILED**, remote `found_bug id2310003`, high consequence/low frequency, upstream
+  #69820.
+- Assets: `docs/method-cases/ai-native-id2310003-advisory-lock-retry-method-case.md` and
+  `assets/store/pessimistic-retry-advisory-lock-results.jsonl`.
+- Pause gate: lock names, DML forms, retry counts, conflict windows, and repeated-reference variants
+  are blast radius. Reopen only for another external capability owner or retry boundary.

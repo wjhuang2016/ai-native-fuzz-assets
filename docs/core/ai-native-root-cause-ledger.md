@@ -483,3 +483,17 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   success because validation ends before TiKV's atomic apply; it needs a different fix owner.
 - Counting rule: DDL types, delay sources, row counts, and index definitions are blast radius.
   Reopen only for a different validation horizon or irreversible semantic consumer.
+
+## 2026-07-14 update: id2310003
+
+- Remote `found_bug`: 116 surfaces, 93 distinct root causes, 39 high-severity rows.
+- New root: `pessimistic-retry-retains-failed-attempt-advisory-lock`.
+- Consequence: C3 liveness. A successful zero-row retry leaves an advisory lock owned only by its
+  failed internal attempt and denies an independent session until release or disconnect.
+- Distinctness: id2100003 affects UserVars consumed by re-entry; id2190003 affects terminal
+  `LAST_INSERT_ID` publication. This root is an external lock capability whose own internal
+  transaction remains live after statement completion.
+- Frequency calibration: high consequence for singleton-job or distributed-lock users, but low
+  trigger frequency because `GET_LOCK` must be evaluated inside retryable pessimistic DML.
+- Counting rule: lock names, SQL forms, reference counts, retry counts, and delay windows are blast
+  radius. Reopen only for another external capability owner or retry boundary.

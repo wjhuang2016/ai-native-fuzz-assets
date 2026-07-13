@@ -3058,6 +3058,36 @@ Only after both gates pass should the matrix be built. Prefer a successful zero-
 run beginning directly from the same final state. That isolates failed-attempt residue from ordinary
 zero-work semantics and was the decisive control for id2190003.
 
+## Retry closure includes external capabilities
+
+Retry analysis must not stop at values read by re-entry or fields published at statement
+completion. A failed attempt can create an independently live capability whose consumer is outside
+the retried statement:
+
+```text
+attempt mutation -> external/session capability owner -> independent competing consumer
+         |                    |
+         +-> primary rollback +-> omitted from retry closure
+```
+
+Examples include locks, leases, registrations, handles, reservations, and long-lived internal
+transactions. Compute `M`, `R`, and `C` over ownership effects, not only fields. For an external
+capability, the strong oracle has three layers: query the owner identity, perform a competing
+operation that must be denied or admitted, then remove the suspected residue and prove recovery.
+
+id2310003 is the calibration. A failed pessimistic RC attempt evaluated a row-dependent `GET_LOCK`
+before a natural unique-key conflict. The successful retry saw a newly committed gate, matched zero
+rows, and returned success. `StmtRollback` restored statement KV but not `session.advisoryLocks` or
+the dedicated internal lock transaction. With MDL enabled, local and real-TiKV runs showed retry
+count one, zero affected rows, `IS_USED_LOCK=owner`, and competing `GET_LOCK=0`; the same-final-state
+no-retry control showed `NULL/1`. This adds an **external capability consumer** to S45 alongside
+re-entry and terminal publication consumers.
+
+Do not repair only acquisition in a system that also supports release or bulk release. If inverse
+operations can block or fail, partial journaling is not a closed rollback owner. Conservatively
+declining transparent retry for the entire side-effect family may be safer than incomplete
+compensation.
+
 ## Compile source packets before delegating reasoning
 
 Do not ask a child agent to discover its own repository scope. The parent loop must first compile a

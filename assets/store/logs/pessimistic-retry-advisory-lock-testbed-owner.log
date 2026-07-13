@@ -1,0 +1,104 @@
+--------------
+set transaction_isolation='READ-COMMITTED'
+--------------
+
+Query OK, 0 rows affected (0.000 sec)
+
+--------------
+select now(6) as owner_start, connection_id() as owner_conn
+--------------
+
++----------------------------+------------+
+| owner_start                | owner_conn |
++----------------------------+------------+
+| 2026-07-13 21:06:42.699500 | 3397407484 |
++----------------------------+------------+
+1 row in set (0.000 sec)
+
+--------------
+begin pessimistic
+--------------
+
+Query OK, 0 rows affected (0.000 sec)
+
+--------------
+update retry_lock_t as t set u=1, v=get_lock(concat('ai_native_hidden_retry_lock_',t.id),0)+sleep(8) where id=1 and not exists (select 1 from retry_lock_gate g where g.id=t.id)
+--------------
+
+Query OK, 0 rows affected (8.005 sec)
+Rows matched: 0  Changed: 0  Warnings: 0
+
+--------------
+select row_count() as successful_attempt_rows, now(6) as after_retry
+--------------
+
++-------------------------+----------------------------+
+| successful_attempt_rows | after_retry                |
++-------------------------+----------------------------+
+|                       0 | 2026-07-13 21:06:50.705798 |
++-------------------------+----------------------------+
+1 row in set (0.000 sec)
+
+--------------
+commit
+--------------
+
+Query OK, 0 rows affected (0.001 sec)
+
+--------------
+select * from retry_lock_t order by id
+--------------
+
++----+------+------+
+| id | u    | v    |
++----+------+------+
+|  1 |   10 |    0 |
+|  2 |    1 |    0 |
++----+------+------+
+2 rows in set (0.001 sec)
+
+--------------
+select is_used_lock('ai_native_hidden_retry_lock_1') as hidden_lock_owner, connection_id() as owner_conn
+--------------
+
++-------------------+------------+
+| hidden_lock_owner | owner_conn |
++-------------------+------------+
+|        3397407484 | 3397407484 |
++-------------------+------------+
+1 row in set (0.000 sec)
+
+--------------
+select sleep(5)
+--------------
+
++----------+
+| sleep(5) |
++----------+
+|        0 |
++----------+
+1 row in set (5.000 sec)
+
+--------------
+select release_lock('ai_native_hidden_retry_lock_1') as cleanup_release, now(6)
+--------------
+
++-----------------+----------------------------+
+| cleanup_release | now(6)                     |
++-----------------+----------------------------+
+|               1 | 2026-07-13 21:06:55.709792 |
++-----------------+----------------------------+
+1 row in set (0.001 sec)
+
+--------------
+select sleep(3)
+--------------
+
++----------+
+| sleep(3) |
++----------+
+|        0 |
++----------+
+1 row in set (3.001 sec)
+
+Bye

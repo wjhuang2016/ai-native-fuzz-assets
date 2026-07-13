@@ -196,3 +196,15 @@ state. Distributed transactions concentrate exactly those obligations:
 This is a harder test of the methodology than another single-process DDL variant. It requires the AI
 to design observability and injection across repositories while preserving real client-go and TiKV
 safety behavior. The dedicated campaign is in `ai-native-transaction-cross-layer-campaign.md`.
+
+## 2026-07-14 Increment: Values Were Not The Full Retry Closure
+
+The MDL-on pass found id2310003 by retaining the earlier retry schedule but broadening the consumer
+graph. UserVars were re-entry state and `LAST_INSERT_ID` was terminal publication state. Advisory
+locks are different: the failed attempt creates an external exclusion capability with its own
+internal transaction, and that owner remains live even when the successful attempt does zero work.
+
+The decisive oracle was not an internal field. It combined retry count, zero affected rows,
+`IS_USED_LOCK`, a denied competitor, cleanup recovery, and a same-final-state no-retry control. This
+adds a general lesson: external capabilities are first-class retry state, and their highest consumer
+is often another actor rather than the retried statement.

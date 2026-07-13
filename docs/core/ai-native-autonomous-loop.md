@@ -1931,3 +1931,25 @@ availability, so it does not satisfy the severe queue.
 The async-secondary completeness pass completed negative in the same tick. A child packet's zero
 candidate result was accepted only after the parent closed predecessor, filtering, lifetime, and
 highest-consumer owners. This is now a packet-compiler gate for future cross-layer work.
+
+## MDL-on retry capability tick: hidden advisory lock, EXECUTED (2026-07-14)
+
+This tick kept metadata locking at its default enabled value and used no concurrent DDL. Candidate
+generation came from current-source retry ownership; issue and history search remained closed until
+local RED.
+
+```text
+P:           StmtRollback and ResetForRetry restore a failed pessimistic statement attempt.
+Q:           a capability owned only by that attempt cannot survive successful zero-work retry.
+F:           GET_LOCK owns session map state plus an internal txn outside retry rollback.
+LOCAL RED:   natural conflict; retry=1; success/zero rows; competitor GET_LOCK=0.
+LIVE RED:    real TiKV; retry=1; IS_USED_LOCK=owner; competitor=0; MDL=1.
+CONTROL:     same final state without failed attempt; IS_USED_LOCK=NULL; competitor=1.
+RECOVERY:    hidden owner RELEASE_LOCK changes competitor to 1.
+INTEGRATE:   id2310003 high-consequence/low-frequency; #69820; external-capability consumer.
+```
+
+Method improvement: retry side-effect inventory now follows capability ownership as well as values.
+The strong oracle is owner identity plus independent contention plus cleanup recovery. Row-dependent
+arguments prevent constant evaluation from polluting the zero-work control. Stop advisory-lock
+variants; generate the next target from a different external capability owner.

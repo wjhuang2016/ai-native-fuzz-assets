@@ -1596,6 +1596,28 @@ plan rebuild, execution, commit, or control-plane publication. This negative is 
 omission raises a candidate, but C3 admission still requires a correctness-bearing terminal
 consumer. No runtime matrix is justified for diagnostic-only residue.
 
+### S45 extension: external capability ownership after zero-work re-entry
+
+`id2310003` adds a third consumer class. The failed attempt's row-dependent `GET_LOCK` creates a
+session map entry and an independent internal pessimistic transaction. The successful retry sees a
+new gate, matches zero rows, and returns success, but neither `StmtRollback` nor `ResetForRetry`
+closes the capability. `IS_USED_LOCK` still names the statement connection and a competitor is
+denied.
+
+S45 generation now inventories three consumers:
+
+1. re-entry reads or actions;
+2. terminal publication values;
+3. external capability ownership observable by an independent actor.
+
+For class 3, require owner identity plus a competing operation and cleanup recovery. A scalar field
+or map-size assertion is insufficient. Use row-dependent expressions so a same-final-state
+zero-work control cannot be contaminated by constant evaluation. Local and testbed `8220955`
+matrices were RED with retry count one and MDL enabled; the direct zero-work control was GREEN.
+Status: issue-filed high as remote id2310003 and upstream #69820. Trigger frequency is low, so do
+not broaden frequency claims. Lock names, retry counts, conflicts, and sleep durations are blast
+radius; reopen only for a different capability owner or retry boundary.
+
 ## S46: deferred terminal error return-slot ownership
 
 ```text

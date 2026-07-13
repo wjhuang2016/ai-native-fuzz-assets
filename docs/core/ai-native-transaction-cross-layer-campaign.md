@@ -542,6 +542,25 @@ false-abort sibling; this root is 1PC false success with persistent wrong data. 
 delay-value expansion. The next transaction pass should reuse the validation-horizon selector on a
 different semantic owner or return to a different common commit/retry terminal owner.
 
+### MDL-on retry capability hit
+
+The next pass explicitly restored `tidb_enable_metadata_lock=DEFAULT` and verified `1` before any
+experiment. It did not use DDL concurrency. Reusing the current-source S45 owner graph, the pass
+ranked state outside statement KV and `StatementContext` by highest independent consumer.
+`GET_LOCK` exposed a distinct external capability owner: `session.advisoryLocks` plus a dedicated
+internal pessimistic transaction.
+
+A natural unique-key conflict forced one transparent RC retry after row-dependent lock acquisition.
+The retry saw a gate and completed with zero rows, but `IS_USED_LOCK` named the successful
+statement's connection and a competitor returned 0. Owner cleanup changed the competitor to 1. A
+run beginning from the same final state returned `NULL/1`. Local unistore and SQL-only real TiKV on
+testbed 8220955 agreed; the live slow log recorded retry count one and success.
+
+This produced `id2310003` and upstream #69820. It extends retry closure from values to external
+capabilities and shows why a competitor oracle is stronger than internal map inspection. Stop this
+root family. The next pass may reuse the capability-owner selector only on a different lock, lease,
+registration, or handle owner; it must not enumerate advisory-lock syntax or timing variants.
+
 ## Stop Rules
 
 - Stop after one root per terminal owner and protocol transition.

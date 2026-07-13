@@ -4,6 +4,32 @@
 
 ---
 
+**2026-07-14 MDL-on current-source pass 命中新的 high root `id2310003`:悲观 RC 透明重试会保留
+失败 attempt 获取的 advisory lock。** 本轮先把 testbed `8220955` 的
+`tidb_enable_metadata_lock` 从旧实验残留的 `0` 恢复为 `DEFAULT=1`,全程没有并发 DDL。候选来自
+S45 retry rollback owner 图,未使用 PR review/issue seed:`GET_LOCK` 修改
+`session.advisoryLocks` 并维持独立 internal pessimistic txn,而 `StmtRollback + ResetForRetry` 只恢复
+statement KV/executor/context。
+
+最小自然矩阵使用 row-dependent lock name 防止 constant evaluation。A 的 pessimistic RC UPDATE 先
+执行 `GET_LOCK+SLEEP`,B 在窗口内占用 unique key 并插入 gate;A 内部 retry=1,成功 attempt 因 gate
+变成 zero rows。local RED 后才进入 testbed。real-TiKV slow log 记录 `exec_retry_count=1,succ=1`,
+ROW_COUNT=0,但 `IS_USED_LOCK` 等于 A connection ID,竞争 session `GET_LOCK=0`;A cleanup release 后
+竞争变成 1。同 final DB state、无失败 attempt 的 control 为 `IS_USED_LOCK=NULL,competitor=1`。
+
+新方法增量是 **external capability consumer**:retry closure 不只审计 re-entry value 和 terminal
+publication,还要审计 lock/lease/registration/handle 等独立 owner;强 oracle 是 owner identity + competing
+denial + cleanup recovery + same-final-state control。远端 `found_bug id2310003` 已入库,当前 116
+surfaces、93 roots、39 high;上游 [#69820](https://github.com/pingcap/tidb/issues/69820) 已带
+`found-by-ai` 与 `severity/major`。资产入口:
+`assets/store/pessimistic-retry-advisory-lock-results.jsonl`、
+`docs/method-cases/ai-native-id2310003-advisory-lock-retry-method-case.md`、
+`docs/bug-drafts/ai-native-pessimistic-retry-advisory-lock-leak-draft.md`、
+`scaffolds/tidb-tests/manual/ai_native_pessimistic_retry_advisory_lock_test.go`。暂停 advisory lock 的 SQL、lock
+name、retry count、sleep/reference-count 变体;下一轮只能复用到不同 external capability owner。
+
+---
+
 **2026-07-14 current-source-only 命中新的 severe root `id2280003`: MDL 关闭时,1PC 的 schema
 校验只覆盖 prewrite 前的旧时刻,可在相关 DDL 完成后仍按旧 schema 原子提交。** 生成候选前没有使用
 PR review、issue 或历史修复;先从 fast-path validation point `V` 与 atomic apply point `H` 的证明差

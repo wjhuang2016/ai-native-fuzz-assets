@@ -1,0 +1,5 @@
+version	mdl
+8.0.11-TiDB-v9.0.0-beta.2.pre-1895-g5c9198e948	1
+time	query_time	exec_retry_count	succ	query
+2026-07-13 21:06:50.705442	8.005059245	1	1	update retry_lock_t as t set u=1, v=get_lock(concat('ai_native_hidden_retry_lock_',t.id),0)+sleep(8) where id=1 and not exists (select 1 from retry_lock_gate g where g.id=t.id);
+2026-07-13 21:06:53.212557	1.003737185	0	1	select get_lock('ai_native_hidden_retry_lock_1',0) as acquire_while_hidden, now(6);

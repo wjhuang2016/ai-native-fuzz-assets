@@ -1083,3 +1083,21 @@ outcome to `ErrResultUndetermined` and closes the connection instead of entering
 The remaining source debt is narrower: an Async Commit prewrite request fixes mode at send time, but
 its completion handler rereads mutable current mode after concurrent fallback. This is not admitted
 until TiKV mixed-lock cleanup and status owners are proved unable to dominate it.
+
+## 2026-07-14 external-capability retry increment
+
+The MDL-on pass reused S45's schedule and zero-work control but changed the asset type from scalar
+state to independently live ownership:
+
+```text
+target:          target.txn.pessimistic-retry-advisory-lock-capability.v1
+reused:          natural unique-key/gate retry schedule + same-final-state control
+new obligation:  failed-attempt external capabilities cannot survive successful retry
+new oracle:      retry count + owner identity + competing denial + cleanup recovery
+result:          id2310003 / #69820 / real-TiKV RED with MDL=1
+```
+
+This is the intended incremental behavior. The system did not restart from broad transaction fuzzing
+or mine an issue report. It changed one consumer edge in the stored owner graph, reused the schedule,
+and added an external-owner oracle. Future selectors should index retry boundaries by capability
+mutators and inverse-operation completeness. Advisory-lock variants are terminal for this root.
