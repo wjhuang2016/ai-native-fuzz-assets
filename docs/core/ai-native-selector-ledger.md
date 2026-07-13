@@ -1131,6 +1131,27 @@ stop rule: do not enumerate user variables, GET_LOCK, LAST_INSERT_ID, or other
            default mode promises full replay, or a different retry owner loses a
            state dimension outside the documented limitation.
 
+## S40: REPLAY_COMPENSATION_CLOSURE
+```text
+selector:   a rollback/cancel/undo path restores materialized state but does not truncate a retry
+            or resume log; before treating that as missing state, enumerate whether the log also
+            retains the compensating control event.
+born from:  current-source savepoint screen on TiDB 13282a8bd06b, with PR/review/issue/history
+            excluded from candidate generation.
+prediction: RED only when retry really occurs and the replay omits, reorders, or changes the owner
+            context of ROLLBACK TO; final committed state must then differ from no-retry control.
+observed:   GREEN. Failpoint-enabled retry replayed BEGIN, SAVEPOINT, INSERT(1), ROLLBACK TO,
+            INSERT(2), COMMIT in order. ExecRetryCount=1 and final rowset was only (2,20), equal to
+            the no-retry control.
+asset:      selector.replay-compensation-closure.v1;
+            oracle.retry-final-rowset-with-history-trace.v1;
+            schedule.txn-savepoint-retry-compensation.v1.
+refinement: snapshot-field inventory is necessary but insufficient for event-sourced owners.
+            Compute checkpoint + forward events + compensation events before admission.
+stop rule:  do not reopen savepoint-history snapshot variants unless the exact replay trace proves
+            a compensation edge is absent or interpreted under a different semantic owner.
+```
+
 ## Promoted from id30001 — S29: semantic proof gate with normalization asymmetry
 ```text
 selector:   a planner fast-path checker claims that an access path is safe by proving a semantic

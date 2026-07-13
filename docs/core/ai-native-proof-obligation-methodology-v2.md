@@ -2688,6 +2688,37 @@ that used range, and current source explicitly permits concurrent DML to use the
 lose monotonicity. A live duplicate would therefore be non-discriminating. Retire such candidates in
 source; require a consequence impossible in the no-stale-phase control before testbed admission.
 
+## Replay compensation closure proof
+
+A missing checkpoint field is only a candidate, not yet a missing effect. Before admitting it, model
+the retry/resume mechanism as an ordered event log and compute its effect closure:
+
+```text
+checkpoint restore
++ ordered replayed actions
++ ordered replayed compensation
+= final published state
+```
+
+For every rollback, cancel, undo, or release operation followed by retry/replay:
+
+1. enumerate the exact statements or events retained by the replay owner;
+2. mark both forward effects and compensating effects such as `ROLLBACK TO`, delete, release, or
+   tombstone;
+3. prove trigger evidence that replay actually happened;
+4. compare the final user-visible state with the no-replay control;
+5. only call RED when the compensation is omitted, reordered, or interpreted under a changed owner.
+
+The savepoint screen demonstrates why this gate matters. `TxnCtxNeedToRestore` does not snapshot
+`StmtHistory`, which initially looked like a rolled-back INSERT could resurrect after optimistic
+retry. The real retry trace was `SAVEPOINT -> INSERT(1) -> ROLLBACK TO -> INSERT(2)`. Replaying the
+compensating `ROLLBACK TO` removed row 1 again, and both retry and no-retry cells committed only row
+2. The source suspicion was real, but its effect was dominated by event-log compensation.
+
+Method change: field inventory remains the first pass, but event-history and compensation closure
+are now mandatory before a rollback-state omission receives C3 admission. The strong oracle is the
+final rowset plus the exact replay trace, never history length alone.
+
 ## Observer-signal interference proof
 
 For every stale, timeout, takeover, cleanup, or abort decision driven by heartbeat/lease/progress

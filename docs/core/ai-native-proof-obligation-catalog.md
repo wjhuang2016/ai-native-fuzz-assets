@@ -3231,6 +3231,25 @@ release/default/contract check. A candidate that reproduces a documented,
 opt-in semantic limitation is a reusable negative calibration, not a severe
 bug.
 
+## Negative Calibration: Savepoint Retry Replays Its Compensation
+
+2026-07-13:
+
+- Source suspicion: `ROLLBACK TO SAVEPOINT` restores MemDB and selected transaction context fields,
+  while `TxnCtxNeedToRestore` does not snapshot `StmtHistory`.
+- Reachability gate: explicit user transaction auto-retry is deprecated and forced off in current
+  configuration. The matrix injected retryability only to test the latent composition.
+- Trigger proof: with failpoints compiled in, `CouldRetry=true`, `ExecRetryCount=1`, and the retry
+  logger enumerated the full statement stream.
+- Result: GREEN. The stream included the compensating `ROLLBACK TO SAVEPOINT` after the rolled-back
+  INSERT, so retry committed the same final rowset as no retry: only `(2,20)`.
+- Classification: effect dominated by ordered replay compensation; no bug and no bug-db row.
+- New gate: for every apparent checkpoint omission, compute replay compensation closure before
+  admission. History length or missing fields alone are not oracles.
+- Assets: `selector.replay-compensation-closure.v1`,
+  `oracle.retry-final-rowset-with-history-trace.v1`, and
+  `schedule.txn-savepoint-retry-compensation.v1`.
+
 Non-DDL shortcut/extractor target cells:
 - virtual/system table, cache, or reuse path that replaces normal scalar evaluation with a custom prefilter.
 - string/time/collation/session-variable semantics where the SQL-visible predicate can be rechecked independently.

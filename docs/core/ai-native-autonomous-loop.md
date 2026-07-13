@@ -1649,3 +1649,24 @@ Method improvement: missing lineage metadata is not sufficient evidence. Follow 
 the highest consumer and jointly observe skipped current work plus the published artifact. Also link
 every obligation to selector, oracle, scenario, schedule, and fault assets; otherwise the database
 contains the pieces but an incremental agent cannot retrieve a complete executable pack.
+
+## Replay-compensation closure tick: savepoint retry, RETIRED GREEN (2026-07-13)
+
+This tick began from current source, without PR/review/issue/history input. Field inventory found
+that savepoint restore does not snapshot `StmtHistory`, suggesting a rolled-back write might be
+replayed after an optimistic commit retry.
+
+```text
+P:          ROLLBACK TO permanently excludes post-savepoint effects, including after retry.
+Q:          MemDB rollback is treated as sufficient although StmtHistory is not truncated.
+TRIGGER:    compile failpoints, inject retryability, fail exactly one commit.
+TRACE:      BEGIN -> SAVEPOINT -> INSERT(1) -> ROLLBACK TO -> INSERT(2) -> COMMIT.
+RESULT:     ExecRetryCount=1; final rows=[(2,20)], identical to no-retry control.
+CLASSIFY:   GREEN; replayed compensation dominates the apparent checkpoint omission.
+INTEGRATE:  S40, exact-history oracle, schedule, fault, probe, and two GREEN runs.
+```
+
+Method improvement: add **replay compensation closure** between source proof and admission. For an
+event-sourced owner, compute checkpoint restore plus forward replay plus compensating replay. A
+missing snapshot field earns a C3 matrix only when compensation is absent, reordered, or interpreted
+under changed semantic context. This prevents field-diff analysis from manufacturing false targets.

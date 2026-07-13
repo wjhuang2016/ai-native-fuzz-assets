@@ -20,7 +20,7 @@ It treats three things as first-class reusable assets:
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
 - `scaffolds/top-level/`: 62 top-level Python/shell/data scaffolds from the working directory.
 - `scaffolds/go-probes/`: 22 Go probe/source-scanner files plus `go.mod` and `go.sum`.
-- `scaffolds/tidb-tests/`: 19 TiDB-side AI-native test/probe files used as harness fixtures.
+- `scaffolds/tidb-tests/`: 20 TiDB-side AI-native test/probe files used as harness fixtures.
 - `scripts/`: asset refresh and bug-index generation helpers.
 
 Current snapshot size is about 41 MB.

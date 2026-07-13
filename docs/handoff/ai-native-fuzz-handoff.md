@@ -1706,3 +1706,15 @@ RED 后本地资产与四组 GitHub issue 搜索均无 exact root。远端 `foun
 发现过程没有使用 PR review finding,testbed 未使用。方法增量:缺 lineage field 只够产生候选,必须继续
 验证“跳过当前 work + 发布旧 lineage artifact”；同时 obligation 必须通过 typed links 连接 selector/
 oracle/scenario/schedule/fault,否则数据库无法支持下一轮增量执行。
+
+**2026-07-13 current-source-only savepoint retry 候选退休为 GREEN。** 本轮没有使用 PR
+review finding、issue 或历史修复生成候选。源码字段盘点发现 `ROLLBACK TO SAVEPOINT` 不会
+snapshot/truncate `StmtHistory`,初看可能让已回滚 INSERT 在透明重试中复活。隔离 worktree 中按
+TiDB 方式编译 failpoint,注入 retryability 并让 commit 恰好失败一次；trigger 证据为
+`CouldRetry=true`,`ExecRetryCount=1`。实际 replay 顺序是 BEGIN、SAVEPOINT、INSERT(1)、
+ROLLBACK TO、INSERT(2)、COMMIT；补偿动作也被重放,最终 retry/no-retry 都只有 `(2,20)`。
+因此不是 bug,不入远端 bug 库,也未使用 testbed。新 selector/gate:
+`REPLAY_COMPENSATION_CLOSURE`。发现 checkpoint 字段缺失后,必须继续计算“restore + forward
+events + compensation events”的完整 effect closure；只有补偿事件缺失、乱序或换了语义 owner
+才允许 C3 admission。私有资产库当前 243 revisions,RED=47/GREEN=47,C3_DIRECT=19,
+`next=null`。
