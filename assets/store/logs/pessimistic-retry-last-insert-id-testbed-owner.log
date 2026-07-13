@@ -1,0 +1,25 @@
+--------------
+begin
+--------------
+
+Query OK, 0 rows affected (0.02 sec)
+
+--------------
+insert into t values(2,1,0)
+--------------
+
+Query OK, 1 row affected (0.03 sec)
+
+--------------
+insert into gate values(1)
+--------------
+
+Query OK, 1 row affected (0.02 sec)
+
+--------------
+commit
+--------------
+
+Query OK, 0 rows affected (0.02 sec)
+
+Bye

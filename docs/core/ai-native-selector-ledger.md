@@ -1568,6 +1568,28 @@ second rejected an initially passing oracle where the runtime failpoint was conf
 source conversion had not been enabled. `id2160003` remains moderate/C2 because no wrong durable
 index state was proved; it calibrates the generator but does not satisfy the severe-bug gate.
 
+### S45 extension: terminal publication after zero-work re-entry
+
+`id2190003` adds a consumer that the original S45 wording underweighted. A failed attempt executes
+`LAST_INSERT_ID(99)` before a natural unique-key conflict. The rebuilt pessimistic RC executor sees
+a newly committed gate and matches zero rows, so it never reads or overwrites the survivor. Statement
+completion nevertheless publishes `StmtCtx.LastInsertID=99`, and the next INSERT persists it.
+
+S45 source generation and ranking now have two consumer classes:
+
+1. **re-entry consumer:** a survivor changes the rebuilt attempt's key, predicate, row image, action,
+   or terminal error;
+2. **terminal publication consumer:** the rebuilt attempt omits the operation, then completion
+   publishes a failed-attempt value/validity pair.
+
+Mandatory matrix addition: force the successful attempt to perform zero work, and compare it with a
+run that starts from the same final database state. For id2190003, the retry arm returned zero rows
+but published/persisted 99; the direct zero-match control published/persisted 7. Clearing only
+`LastInsertID` and `LastInsertIDSet` in `ResetForRetry` made the exact natural-conflict arm GREEN.
+Status: issue-filed high, remote id2190003, upstream #69796. This is distinct from id2100003 by
+missing state owner and terminal consumer; SQL forms, sleep durations, IDs, and gate shapes are
+blast radius.
+
 ## S46: deferred terminal error return-slot ownership
 
 ```text

@@ -436,3 +436,15 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: entry counts, index definitions, and retryable error forms are blast radius. Reopen
   only if the same root reaches wrong durable data, or for another receiver-state owner and terminal
   consumer.
+
+## 2026-07-13 update: id2190003
+
+- Remote `found_bug`: 112 surfaces, 89 distinct root causes, 36 high-severity rows.
+- New root: `pessimistic-retry-omits-last-insert-id-reset`.
+- Consequence: C3 direct wrong durable data. A successful zero-match retry publishes 99 from its
+  rolled-back attempt, and the next INSERT commits 99 instead of the statement-entry ID 7.
+- Distinctness: this reuses the id2100003 retry owner but not its state owner or consumer. The
+  survivor is `StatementContext.LastInsertID/LastInsertIDSet`; the successful attempt does not read
+  it, and terminal statement publication exposes it after zero work.
+- Counting rule: UPDATE forms, sleep windows, ID values, unique indexes, and gate predicates are
+  blast radius. Reopen only for another omitted publication-state owner or a different retry owner.

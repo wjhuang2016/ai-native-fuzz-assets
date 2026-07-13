@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 14:35:47 +0800
+Generated at: 2026-07-13 16:23:18 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -39,3 +39,4 @@ Generated at: 2026-07-13 14:35:47 +0800
 | 2070003 | issue-filed | high | wrong_result | SELECT | alternative logical plans / CorrelateSolver | `correlate-clone-breaks-active-access-path-alias` | Alternative logical plan can turn a non-empty aggregate IN subquery into TableDual and return no rows | [https://github.com/pingcap/tidb/issues/69790](https://github.com/pingcap/tidb/issues/69790) |
 | 2100003 | issue-filed | high | wrong_result | UPDATE | pessimistic statement retry / user-variable assignment | `pessimistic-retry-omits-user-var-side-effect-rollback` | Pessimistic DML retry can change a SETVAR-derived unique key and turn duplicate-key failure into success | [https://github.com/pingcap/tidb/issues/69791](https://github.com/pingcap/tidb/issues/69791) |
 | 2130003 | issue-filed | high | correctness/data-integrity | IMPORT INTO | global sort conflict resolution with on_duplicate_key=capture | `importinto-conflict-delete-commit-false-success` | IMPORT INTO can report success with inconsistent indexes after a transient conflict-deletion Commit error | [https://github.com/pingcap/tidb/issues/69792](https://github.com/pingcap/tidb/issues/69792) |
+| 2190003 | issue-filed | high | wrong_result | UPDATE | pessimistic retry last insert id | `pessimistic-retry-omits-last-insert-id-reset` | Pessimistic RC retry publishes LAST_INSERT_ID from a rolled-back attempt | [https://github.com/pingcap/tidb/issues/69796](https://github.com/pingcap/tidb/issues/69796) |

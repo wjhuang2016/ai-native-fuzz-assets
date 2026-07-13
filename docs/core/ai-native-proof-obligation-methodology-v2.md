@@ -130,6 +130,24 @@ Severity remains a separate gate. A deterministic panic or wrong repair count va
 selector, but it does not become severe without wrong durable data, terminal semantic inversion, or
 control-plane publication at the highest consumer.
 
+`id2190003` adds a second consumer class. Do not search only for state read during re-entry. Search
+also for failed-attempt state published after re-entry returns:
+
+```text
+retry reset omits value + valid/set/dirty flag
+  -> successful attempt performs zero work and never overwrites the pair
+  -> statement/task completion publishes the failed-attempt value
+  -> a next operation persists or acts on it
+```
+
+Add a **zero-work successful attempt** cell to retry matrices. Change concurrent state so the
+rebuilt executor skips the setter, then compare publication state with a run that starts directly
+from the same final state. This cell found `LastInsertID/LastInsertIDSet`: neighboring statement
+outputs and counters are reset, but these fields survived. Observing `LAST_INSERT_ID()=99` was not
+the highest oracle; inserting it into a sink table proved wrong durable data. Follow every retained
+`Set`, `Valid`, `Dirty`, `Changed`, or `Present` flag through terminal publication and one downstream
+consumer.
+
 ### Liveness lanes need a persistence gate
 
 For retry-classifier and DXF-style liveness families, a single red timeout is not

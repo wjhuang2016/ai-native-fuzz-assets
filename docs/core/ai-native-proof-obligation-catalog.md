@@ -3420,3 +3420,21 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
 - Assets: `docs/method-cases/ai-native-id2130003-deferred-return-slot-method-case.md` and
   `assets/store/import-into-conflict-delete-commit-results.jsonl`.
 - Pause gate: do not enumerate conflict inputs, index shapes, batches, or retryable error strings.
+
+## id2190003 - Pessimistic retry publishes failed-attempt LAST_INSERT_ID
+
+- Target: `target.txn.pessimistic-retry-last-insert-id-publication.v1`.
+- Selector: `ATTEMPT_SCOPED_SIDE_EFFECT_ROLLBACK_CLOSURE` with terminal-publication consumer.
+- **P**: `StmtRollback` and `ResetForRetry` undo the failed statement attempt before rebuilding.
+- **Q**: statement completion publishes only values produced by the successful attempt.
+- **F**: `LAST_INSERT_ID(expr)` sets `LastInsertID/LastInsertIDSet` before a lock conflict;
+  `ResetForRetry` omits both, and the zero-match retry leaves them untouched.
+- C3 oracle: concurrent unique-key owner plus gate makes UPDATE succeed with zero rows. Current
+  source publishes 99 and the next INSERT persists 99; a same-final-state control publishes and
+  persists 7 while the business row remains unchanged.
+- Counterfactual: clear the current-statement value and set flag in `ResetForRetry`; the exact
+  natural conflict publishes and persists 7.
+- Status: **ISSUE-FILED**, remote `found_bug id2190003`, high severity, upstream #69796.
+- Assets: `docs/method-cases/ai-native-id2190003-last-insert-id-retry-method-case.md` and
+  `assets/store/pessimistic-retry-last-insert-id-results.jsonl`.
+- Pause gate: do not enumerate SQL forms, ID values, gate shapes, or timing windows under this root.

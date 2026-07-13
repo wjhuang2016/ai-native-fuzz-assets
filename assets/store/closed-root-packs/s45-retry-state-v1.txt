@@ -3,3 +3,5 @@
 pkg/session/txn.go:retry
 pkg/ddl/backfilling_dist_scheduler.go:generatePlanForPhysicalTable
 pkg/executor/admin.go:cleanTableIndex
+pkg/executor/adapter.go:handlePessimisticLockError
+pkg/sessionctx/stmtctx/stmtctx.go:ResetForRetry

@@ -1,0 +1,100 @@
+--------------
+set tidb_txn_mode='pessimistic'
+--------------
+
+Query OK, 0 rows affected (0.02 sec)
+
+--------------
+set tx_isolation='READ-COMMITTED'
+--------------
+
+Query OK, 0 rows affected (0.01 sec)
+
+--------------
+set tidb_pessimistic_txn_fair_locking=0
+--------------
+
+Query OK, 0 rows affected (0.02 sec)
+
+--------------
+select last_insert_id(7) as initial_id
+--------------
+
++------------+
+| initial_id |
++------------+
+|          7 |
++------------+
+1 row in set (0.01 sec)
+
+--------------
+begin
+--------------
+
+Query OK, 0 rows affected (0.02 sec)
+
+--------------
+update t as x set u=1, v=last_insert_id(99 + sleep(20)) where id=1 and not exists (select 1 from gate as g where g.id=x.id)
+--------------
+
+Query OK, 0 rows affected (20.03 sec)
+Rows matched: 0  Changed: 0  Warnings: 0
+
+--------------
+select row_count() as affected, last_insert_id() as published_after_update
+--------------
+
++----------+------------------------+
+| affected | published_after_update |
++----------+------------------------+
+|        0 |                     99 |
++----------+------------------------+
+1 row in set (0.01 sec)
+
+--------------
+commit
+--------------
+
+Query OK, 0 rows affected (0.03 sec)
+
+--------------
+insert into sink values(last_insert_id())
+--------------
+
+Query OK, 1 row affected (0.02 sec)
+
+--------------
+select id,u,v from t order by id
+--------------
+
++----+------+------+
+| id | u    | v    |
++----+------+------+
+|  1 |   10 |    0 |
+|  2 |    1 |    0 |
++----+------+------+
+2 rows in set (0.03 sec)
+
+--------------
+select * from gate
+--------------
+
++----+
+| id |
++----+
+|  1 |
++----+
+1 row in set (0.05 sec)
+
+--------------
+select * from sink
+--------------
+
++------+
+| v    |
++------+
+|   99 |
++------+
+1 row in set (0.03 sec)
+
+Bye

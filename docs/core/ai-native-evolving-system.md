@@ -1025,3 +1025,24 @@ re-entry, and consumers after re-entry. Candidate generation can compute the mis
 the stored schedule supplies no-retry, pre/post mutation, idempotence, natural owner, and exact-fix
 cells. The SQL-only lift also shows how instrumentation becomes a temporary bridge: breakpoint to
 locate altitude, real lock owner to prove semantics, then a user-executable schedule without injection.
+
+## 2026-07-13 retry publication increment
+
+The next current-source pass reused S45 but changed the consumer question. Instead of asking only
+what re-entry reads, it compared fields omitted by `ResetForRetry` with values published after a
+successful zero-work attempt. That produced id2190003:
+
+```text
+target:          target.txn.pessimistic-retry-last-insert-id-publication.v1
+reused:          S45 selector + post-evaluation fault + retry schedule
+new obligation:  successful attempt is the only publication owner
+new oracle:      zero affected rows + LAST_INSERT_ID + durable sink
+asset revisions: 313
+runs:            RED=68, GREEN=65, INVALID=12, INFO=1
+admission:       C3_DIRECT=23
+```
+
+This validates incremental asset reuse: the system did not invent a new broad retry method. It
+added one missing consumer edge, one zero-work matrix cell, and one durable downstream observer.
+Future retry scans should rank omitted value/flag pairs next to reset code and follow them through
+both re-entry and terminal publication.

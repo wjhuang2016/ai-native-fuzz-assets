@@ -1,0 +1,83 @@
+--------------
+drop table if exists sink_control
+--------------
+
+Query OK, 0 rows affected, 1 warning (0.04 sec)
+
+--------------
+create table sink_control(v bigint)
+--------------
+
+Query OK, 0 rows affected (0.14 sec)
+
+--------------
+set tidb_txn_mode='pessimistic'
+--------------
+
+Query OK, 0 rows affected (0.06 sec)
+
+--------------
+set tx_isolation='READ-COMMITTED'
+--------------
+
+Query OK, 0 rows affected (0.09 sec)
+
+--------------
+select last_insert_id(7) as initial_id
+--------------
+
++------------+
+| initial_id |
++------------+
+|          7 |
++------------+
+1 row in set (0.02 sec)
+
+--------------
+begin
+--------------
+
+Query OK, 0 rows affected (0.04 sec)
+
+--------------
+update t as x set u=1, v=last_insert_id(99 + sleep(1)) where id=1 and not exists (select 1 from gate as g where g.id=x.id)
+--------------
+
+Query OK, 0 rows affected (0.03 sec)
+Rows matched: 0  Changed: 0  Warnings: 0
+
+--------------
+select row_count() as affected, last_insert_id() as published_after_update
+--------------
+
++----------+------------------------+
+| affected | published_after_update |
++----------+------------------------+
+|        0 |                      7 |
++----------+------------------------+
+1 row in set (0.04 sec)
+
+--------------
+commit
+--------------
+
+Query OK, 0 rows affected (0.05 sec)
+
+--------------
+insert into sink_control values(last_insert_id())
+--------------
+
+Query OK, 1 row affected (0.03 sec)
+
+--------------
+select * from sink_control
+--------------
+
++------+
+| v    |
++------+
+|    7 |
++------+
+1 row in set (0.03 sec)
+
+Bye

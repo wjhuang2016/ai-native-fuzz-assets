@@ -1,0 +1,15 @@
+diff --git a/pkg/executor/adapter.go b/pkg/executor/adapter.go
+--- a/pkg/executor/adapter.go
++++ b/pkg/executor/adapter.go
+@@ -1272,6 +1272,11 @@ func (a *ExecStmt) handlePessimisticDML(ctx context.Context, e exec.Executor) (e
+ 			}
+ 			continue
+ 		}
++		if _, fpErr := failpoint.Eval("github.com/pingcap/tidb/pkg/util/breakpoint/aiAfterDMLExecutionBeforeLock"); fpErr == nil {
++			if notify, ok := a.Ctx.Value(breakpoint.NotifyBreakPointFuncKey).(func(string)); ok {
++				notify("aiAfterDMLExecutionBeforeLock")
++			}
++		}
+ 
+ 		keys, err1 := txn.(pessimisticTxn).KeysNeedToLock()
+ 		if err1 != nil {

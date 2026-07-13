@@ -1,0 +1,95 @@
+{
+  "candidates": [
+    {
+      "path": "pkg/sessionctx/stmtctx/stmtctx.go",
+      "function": "ResetForRetry",
+      "line": 1229,
+      "receiver_type": "StatementContext",
+      "value_field": {
+        "name": "LastInsertID",
+        "line": 316,
+        "comment": "LastInsertID is the auto-generated ID in the current statement."
+      },
+      "flag_field": {
+        "name": "LastInsertIDSet",
+        "line": 318,
+        "comment": "LastInsertIDSet is true if the LastInsertId was set"
+      },
+      "reset_value": false,
+      "reset_flag": false,
+      "value_mutations": [
+        {
+          "path": "pkg/sessionctx/variable/session.go",
+          "function": "SetLastInsertID",
+          "line": 2749,
+          "kind": "assign",
+          "target": "s.StmtCtx.LastInsertID"
+        },
+        {
+          "path": "pkg/sessionctx/variable/session.go",
+          "function": "EncodeSessionStates",
+          "line": 3207,
+          "kind": "assign",
+          "target": "sessionStates.LastInsertID"
+        }
+      ],
+      "flag_mutations": [
+        {
+          "path": "pkg/executor/select.go",
+          "function": "ResetContextOfStmt",
+          "line": 1229,
+          "kind": "assign",
+          "target": "sc.LastInsertIDSet"
+        },
+        {
+          "path": "pkg/sessionctx/variable/session.go",
+          "function": "SetLastInsertID",
+          "line": 2748,
+          "kind": "assign",
+          "target": "s.StmtCtx.LastInsertIDSet"
+        }
+      ],
+      "same_function_write": true,
+      "score": 100
+    },
+    {
+      "path": "pkg/sessionctx/stmtctx/stmtctx.go",
+      "function": "ResetForRetry",
+      "line": 1229,
+      "receiver_type": "StatementContext",
+      "value_field": {
+        "name": "planHint",
+        "line": 375
+      },
+      "flag_field": {
+        "name": "planHintSet",
+        "line": 376
+      },
+      "reset_value": false,
+      "reset_flag": false,
+      "value_mutations": [
+        {
+          "path": "pkg/sessionctx/stmtctx/stmtctx.go",
+          "function": "SetPlanHint",
+          "line": 991,
+          "kind": "assign",
+          "target": "sc.planHint"
+        }
+      ],
+      "flag_mutations": [
+        {
+          "path": "pkg/sessionctx/stmtctx/stmtctx.go",
+          "function": "SetPlanHint",
+          "line": 990,
+          "kind": "assign",
+          "target": "sc.planHintSet"
+        }
+      ],
+      "same_function_write": true,
+      "score": 90
+    }
+  ],
+  "count": 2,
+  "scanner_schema": "retry-reset-publication-omission-v1",
+  "source_root": "/Users/bba/pc/tidb"
+}

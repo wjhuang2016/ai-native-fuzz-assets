@@ -1845,3 +1845,26 @@ receiver type and expands one level of field effects. Admission requires a post-
 execution requires an observed edge witness. The loop keeps consequence scoring independent: this
 hit proves the selector works but does not enter the severe queue because it did not prove wrong
 durable data.
+
+## Retry terminal-publication tick: LAST_INSERT_ID residue, EXECUTED (2026-07-13)
+
+This tick started from current source and S45's missing-state-owner rule. PR review findings,
+issues, fixes, and history remained closed until local and real-TiKV RED.
+
+```text
+P:           StmtRollback and ResetForRetry remove failed-attempt statement state.
+Q:           completion publishes values produced by the successful attempt only.
+F:           LAST_INSERT_ID(expr) sets LastInsertID/LastInsertIDSet; reset omits both.
+LOCAL RED:   natural unique conflict; retry hits zero rows; published/sink 99, row 1 unchanged.
+LIVE RED:    SQL-only pessimistic RC; affected=0, published=99, sink=99 on testbed 8220955.
+CONTROL:     same final gate/key state without a failed attempt; affected=0, published/sink 7.
+EXACT GREEN: clear the two fields in ResetForRetry; same conflict publishes/persists 7.
+INTEGRATE:   id2190003 high; #69796; six assets, eight links, four runs; C3_DIRECT.
+```
+
+Method improvement: retry residue does not need to influence re-entry. If the successful attempt
+does zero work, terminal publication can expose a value/validity pair that only the failed attempt
+set. Add zero-work re-entry to the small matrix, compare against the same final database state, and
+follow the published value through one downstream durable consumer. This reused S45's selector,
+fault boundary, and schedule while adding only the target-specific publication obligation and
+oracle.
