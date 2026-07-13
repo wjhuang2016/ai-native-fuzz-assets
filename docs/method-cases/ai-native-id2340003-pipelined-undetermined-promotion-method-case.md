@@ -1,5 +1,9 @@
 # id2340003: side-state semantic promotion bypass
 
+Remote bug DB: `found_bug id2340003`, issue-filed high severity; upstream
+[TiDB #69821](https://github.com/pingcap/tidb/issues/69821) carries `severity/critical` and
+`found-by-ai`.
+
 ## Starting proof obligation
 
 The transaction campaign started from `TXN_COMMIT_OUTCOME_TERMINAL_TRUTH`:

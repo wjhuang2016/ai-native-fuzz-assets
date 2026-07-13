@@ -18,6 +18,6 @@ VALUES
  'pipelined-commit-bypasses-undetermined-promotion',
  'client-go master 01bd8f99; nightly TiKV 7ecce12e; TiDB 5c9198e with MDL ON',
  1,
- 'confirmed',
- NULL,
- 'Discovered from current source and a bounded owner-graph source packet, without PR review or issue seeds. Post-RED searches found no exact client-go, TiDB, or found_bug root. Internal severity remains high for catalog consistency; consequence is critical data integrity. Frequency is lower because tidb_dml_type=BULK is opt-in and the fault must land after primary apply but before response delivery. Local RED/GREEN and current-nightly real-TiKV RED/GREEN are stored in the private asset repository.');
+ 'issue-filed',
+ 'https://github.com/pingcap/tidb/issues/69821',
+ 'Discovered from current source and a bounded owner-graph source packet, without PR review or issue seeds. Post-RED searches found no exact client-go, TiDB, or found_bug root. Internal severity remains high for catalog consistency; consequence is critical data integrity. Frequency is lower because tidb_dml_type=BULK is opt-in and the fault must land after primary apply but before response delivery. Local RED/GREEN and current-nightly real-TiKV RED/GREEN are stored in the private asset repository. Filed upstream as TiDB #69821 with a complete real-TiKV integration test.');

@@ -2042,7 +2042,9 @@ TiKV `7ecce12` 上，fresh txn 读到 committed value，而原 Commit 返回普�
 默认 DML type 为 STANDARD；目标只需 session 显式选择 BULK，未关闭 MDL。post-RED GitHub 与远端 bug
 库无 exact root。远端 `found_bug id2340003/high/confirmed` 入库后为 117 surfaces、94 roots、40 high、
 102 confirmed；后果记为 critical data integrity，但频率诚实限制在 opt-in BULK 加 after-apply response
-loss。新 selector `SIDE_STATE_SEMANTIC_PROMOTION_BYPASS`：下层写 side state、canonical finalizer 提升、
+loss。上游 issue 为 [TiDB #69821](https://github.com/pingcap/tidb/issues/69821)，带
+`severity/critical`、`component/tikv-client`、`sig/transaction` 和 `found-by-ai`。新 selector
+`SIDE_STATE_SEMANTIC_PROMOTION_BYPASS`：下层写 side state、canonical finalizer 提升、
 specialized path 绕过、另一安全消费者仍信任 side state、public error class 控制 retry/connection/cleanup。
 注入改进：按成功响应的语义高度选点，不能按“第一包”序号选点。资产入口：
 `assets/store/txn-pipelined-undetermined-promotion-results.jsonl`、

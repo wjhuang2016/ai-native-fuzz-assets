@@ -1,8 +1,9 @@
 # Pipelined DML can return a definite failure after its primary commit is durable
 
-Status: confirmed on current upstream client-go `01bd8f99f4da` with current nightly TiKV
-`7ecce12e7573`; remote `found_bug id2340003`. The authorized testbed `8220955` was used only to
-confirm the product gate: global and session metadata locking are both `ON` by default.
+Status: issue-filed as [TiDB #69821](https://github.com/pingcap/tidb/issues/69821), confirmed on
+current upstream client-go `01bd8f99f4da` with current nightly TiKV `7ecce12e7573`; remote
+`found_bug id2340003`. The authorized testbed `8220955` was used only to confirm the product gate:
+global and session metadata locking are both `ON` by default.
 
 ## User-visible consequence
 

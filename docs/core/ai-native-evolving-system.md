@@ -1113,7 +1113,7 @@ parent selector: TXN_COMMIT_OUTCOME_TERMINAL_TRUTH
 new selector:    SIDE_STATE_SEMANTIC_PROMOTION_BYPASS
 new fault:       drop first successful Commit response, not first response
 strong oracle:   successful-response witness + fresh real-TiKV read + terminal error class
-result:          id2340003 / current upstream RED / exact-promotion GREEN / MDL default ON
+result:          id2340003 / #69821 / current upstream RED / exact-promotion GREEN / MDL default ON
 ```
 
 The increment compounds three older assets: terminal-truth ranking selected the public consequence,

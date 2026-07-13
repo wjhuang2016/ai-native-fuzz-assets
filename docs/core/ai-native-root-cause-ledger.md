@@ -503,6 +503,8 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Remote `found_bug`: 117 surfaces, 94 distinct root causes, 40 high-severity rows, 102 confirmed
   rows.
 - New root: `pipelined-commit-bypasses-undetermined-promotion`.
+- Upstream: [TiDB #69821](https://github.com/pingcap/tidb/issues/69821), labeled
+  `severity/critical`, `component/tikv-client`, and `found-by-ai`.
 - Consequence: C3 critical data integrity. A successful primary Commit can be durable while
   pipelined DML returns an ordinary failure; the usable connection and ordinary class can induce a
   duplicate non-idempotent retry.
