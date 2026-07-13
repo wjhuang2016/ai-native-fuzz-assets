@@ -367,3 +367,14 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   importinto input lineage, CRR recoverable TS, or BR source-cluster artifact lineage.
 - Counting rule: one root only. Checkpoint driver, table schema, row count, and recreation mechanism
   are blast radius.
+
+## 2026-07-13 update: id1980003
+
+- Remote `found_bug`: 105 surfaces, 82 distinct root causes, 30 high-severity rows.
+- New root: `flashback-cluster-cache-side-state-exclusion`.
+- Consequence: C3 direct write unavailability. `FLASHBACK CLUSTER` reports synced/public and reads
+  still work, but cached-table DML fails before commit because its mandatory lock row is absent.
+- Distinctness: the older table-cache drop-database finding leaves an advisory orphan row. This root
+  restores a live capability bit while excluding a required owner, and reaches the DML commit path.
+- Counting rule: INSERT/UPDATE/DELETE and lease values are blast radius. Reopen only for another
+  restore-excluded owner with a distinct mandatory consumer.

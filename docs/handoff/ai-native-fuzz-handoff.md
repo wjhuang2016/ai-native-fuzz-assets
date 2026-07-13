@@ -1753,3 +1753,21 @@ query-latency 优化，不是数据正确性、副本安全或 required-path ava
 强度不能继承此前 finding 的严重性。私有资产 258 revisions，RED=50/GREEN=51/INVALID=10，目标
 retired=22，pack `open_gaps=[]`，`store.py next=null`。下一步只允许从当前源码产生新 C3 候选，
 PR/review finding、issue 和 fix history 继续禁止作为生成器。
+
+**2026-07-13 current-source-only 命中 id1980003/high：FLASHBACK CLUSTER 恢复 cached TableInfo，
+却排除其必需的 `mysql.table_cache_meta` side row。** 候选从 `getFlashbackKeyRanges` 的恢复域与
+cached-table DML consumer 对账产生，没有使用 PR review finding、issue、修复历史或 partition
+路径。local `-tags=intest` consumer 矩阵先证明：缺 row 时 SELECT 回退正常，INSERT 在 commit 前
+报 `table_cache_meta tid not exist`，仅补 row 后写恢复。随后 testbed `8220955` 在 commit
+`5c9198e948` 做无 failpoint SQL-only 实锤：CACHE 表 ID 5428，target TSO
+`467640514747564034`；NOCACHE 删除 row 后，FLASHBACK job 5432 `synced/public`，SHOW CREATE 恢复
+`CACHED ON`，row count 仍为 0；SELECT 返回 `(1,10)`，INSERT `(2,20)` 报 ERROR 1105，数据未写入；
+只补 `(5428,'NONE',0,0)` 后同一 INSERT 成功。环境已 NOCACHE、drop 测试库并恢复 TTL=ON。
+新 selector S41 `RESTORE_DOMAIN_COVERS_RUNTIME_DEPENDENCIES`：恢复必须覆盖被恢复 capability 的
+mandatory runtime dependency closure，或在发布前重建/对账。同期 FLASHBACK split 候选被校准为
+NOT_ADMITTED：mock 删除了 client-go 内层 backoff，且官方契约明确不可取消、持续重试。RED 后六组
+open/closed GitHub issue 搜索无 exact root。资产入口：
+`assets/store/ddl-flashback-cache-side-state-results.jsonl`、
+`docs/bug-drafts/ai-native-flashback-cluster-cache-side-row-draft.md`、
+`docs/method-cases/ai-native-id1980003-flashback-runtime-dependency-method-case.md`、
+`assets/store/logs/0084-flashback-cluster-cache-side-row-red.log`。

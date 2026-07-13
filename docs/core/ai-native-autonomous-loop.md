@@ -1710,3 +1710,24 @@ affinity semantics are experimental Region colocation for query latency, so this
 optimization but does not imply data corruption, replica weakening, or required-path unavailability.
 Selector reuse identifies a bug-rich ordering shape; it does not inherit severity from earlier S35
 hits. The target is retained as an execution-verified moderate asset and testbed work stops here.
+
+## Restore dependency-closure tick: FLASHBACK CLUSTER cache side state, EXECUTED (2026-07-13)
+
+This tick started from current source and did not use PR review findings, issues, history, or
+partition paths to generate the target. It compared Flashback's included user ranges with excluded
+system-table owners, then followed restored state bits to mandatory consumers.
+
+```text
+P:          restored CACHED ON TableInfo has exactly one usable table_cache_meta row.
+Q:          restoring user metadata while excluding mysql state preserves that dependency.
+LOCAL RED:  cached metadata + missing row; SELECT fallback green, INSERT commit terminal error.
+LIVE RED:   job 5432 synced/public; table 5428 CACHED ON; side rows=0; SELECT works; INSERT 1105.
+CONTROL:    replace only the missing row; identical INSERT succeeds and rowset becomes 1,2.
+INTEGRATE:  id1980003 high; S41 plus module/obligation/oracle/scenario/schedule/fault pack.
+```
+
+Method improvement: restore analysis must compute a **dependency closure**, not only enumerate
+special objects or restored key ranges. For every restored capability bit, trace its highest
+mandatory runtime consumer and ask whether all required owners are inside the restore domain or are
+reconciled before publication. Also preserve lower-layer recovery semantics in mocks: the rejected
+split hypothesis looked like a hot loop only after its bounded client backoff was removed.

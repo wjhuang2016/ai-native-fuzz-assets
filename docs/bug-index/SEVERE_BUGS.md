@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-13
 
-- Remote `found_bug`: `MAX(id)=1920003`, `COUNT(*)=103`, `COUNT(DISTINCT root_cause_id)=80`
-- High-severity entries: 28 total; 26 confirmed/issue-filed; 1 candidate; 1 known-root rediscovery
+- Remote `found_bug`: `MAX(id)=1980003`, `COUNT(*)=105`, `COUNT(DISTINCT root_cause_id)=82`
+- High-severity entries: 30 total; 28 confirmed/issue-filed; 1 candidate; 1 known-root rediscovery
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -39,6 +39,8 @@ Last verified: 2026-07-13
 | 1860003 | confirmed | disaster recovery | `crr-resume-state-unbound-lineage` | Reusing a CRR downstream bucket can make PITR trust a checkpoint from another upstream/task lineage. | [draft](../bug-drafts/ai-native-crr-resume-state-cross-lineage-draft.md) | [case](../method-cases/ai-native-id1860003-persisted-lineage-method-case.md) |
 | 1890003 | confirmed | data loss | `lightning-importinto-finished-checkpoint-unbound-input` | A retained finished checkpoint can make a new nonempty Lightning input return success with no IMPORT job. | [draft](../bug-drafts/ai-native-lightning-importinto-finished-checkpoint-lineage-draft.md) | [case](../method-cases/ai-native-id1890003-input-lineage-method-case.md) |
 | 1920003 | confirmed | data loss | `br-backup-checkpoint-unbound-source-cluster` | Retrying an interrupted backup after source-cluster replacement can publish old SST files and skip current ranges. | [draft](../bug-drafts/ai-native-br-backup-checkpoint-cluster-lineage-draft.md) | [case](../method-cases/ai-native-id1920003-backup-lineage-method-case.md) |
+| 1950003 | confirmed | data loss | `lightning-checkpoint-unbound-target-table-generation` | A retained classic Lightning checkpoint can skip all input after the target table is recreated. | [draft](../bug-drafts/ai-native-lightning-checkpoint-table-generation-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
+| 1980003 | confirmed | DDL availability | `flashback-cluster-cache-side-state-exclusion` | `FLASHBACK CLUSTER` can restore `CACHED ON` without its required lock row and make the table unwritable. | [draft](../bug-drafts/ai-native-flashback-cluster-cache-side-row-draft.md) | [case](../method-cases/ai-native-id1980003-flashback-runtime-dependency-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

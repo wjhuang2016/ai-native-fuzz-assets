@@ -1436,3 +1436,28 @@ status:     selector execution-validated; target source-retired before ADD INDEX
 stop rule:  do not enumerate more literals. Reopen only for a new admitted expression class or an
             independently evidenced remote/local semantic owner split.
 ```
+
+## S41: restore domain covers runtime dependencies
+
+```text
+selector:   restore publishes historical primary metadata while excluding a side owner required by
+            the restored capability's current mandatory consumer
+born from:  id1980003 (FLASHBACK CLUSTER restores CACHED ON but excludes table_cache_meta)
+prediction:
+  - restore code has an explicit include/exclude range or object boundary;
+  - a restored metadata bit selects a runtime protocol whose state lives outside that boundary;
+  - a supported post-target mutation removes or replaces the side owner;
+  - restore reports success without rebuilding or reconciling the dependency.
+oracle gate:
+  - jointly observe restore terminal state, primary metadata, and side owner;
+  - follow the state bit to its highest mandatory consumer, not only SHOW output;
+  - distinguish safe fallback consumers from terminal consumers;
+  - restore only the missing owner and repeat the same operation.
+negative calibration:
+  - FLASHBACK split retry was not admitted: the mock removed client-go backoff, and retry-until-
+    success is the documented product contract.
+status:     validated/terminal - local cached-table consumer RED, actual SQL-only FLASHBACK RED on
+            testbed 8220955, and one-row compensation GREEN; remote id1980003 high.
+stop rule:  one root for this restore boundary and mandatory owner. Do not enumerate DML verbs,
+            lease values, or CACHE syntax variants.
+```

@@ -1,0 +1,46 @@
+AI-native current-source-only validation
+Date: 2026-07-13
+Candidate generation excluded PR reviews, issues, fix history, and partition paths.
+
+Source proof, current master 13282a8bd06b
+- pkg/ddl/cluster.go:isFlashbackSupportedDDLAction allows ALTER CACHE/NOCACHE.
+- pkg/ddl/cluster.go:getFlashbackKeyRanges restores user DB metadata/data but excludes mysql schema ranges.
+- pkg/ddl/job_worker.go:finishDDLJob deletes mysql.table_cache_meta after successful NOCACHE.
+- pkg/table/tables/state_remote.go:loadRow requires exactly one row for cached TableInfo.
+- pkg/session/session.go:cachedTableRenewLease.start propagates the missing-row error before DML commit.
+
+Local consumer matrix
+Command: go test -tags=intest ./pkg/ddl -run '^TestCachedTableMissingSideRowBlocksWrites$' -count=1 -v
+State: cached TableInfo with its mysql.table_cache_meta row removed.
+READ: SELECT returned (1).
+WRITE RED: INSERT failed with "table_cache_meta tid not exist 116" and row 2 was absent.
+COMPENSATION GREEN: replacing only the missing side row made INSERT succeed and rows became (1,2).
+
+Authorized testbed 8220955, TiDB 5c9198e948
+Setup:
+- table ID 5428, SHOW CREATE contained CACHED ON
+- mysql.table_cache_meta had (5428,NONE,0,0)
+- target TSO 467640514747564034
+- ALTER TABLE ... NOCACHE removed the row and SHOW CREATE no longer contained CACHED ON
+
+Actual FLASHBACK CLUSTER:
+- job 5432: synced/public
+- SHOW CREATE restored /* CACHED ON */ for table ID 5428
+- mysql.table_cache_meta row count for 5428 remained 0
+- SELECT returned (1,10)
+- INSERT (2,20) failed: ERROR 1105 table_cache_meta tid not exist 5428
+- ordered rowset remained (1,10)
+
+Counterfactual and cleanup:
+- REPLACE only the missing side row; INSERT (2,20) succeeded
+- ALTER TABLE ... NOCACHE removed the row again
+- dropped the test database
+- restored globals: super_read_only=0, tidb_gc_enable=1, tidb_ttl_job_enable=1
+
+Post-RED dedup:
+- six open/closed GitHub issue searches over three exact query families returned no match.
+
+Rejected sibling hypothesis:
+- FLASHBACK split retry initially appeared to hot-loop in a mock store.
+- The mock omitted client-go's bounded internal backoff, and official FLASHBACK semantics explicitly promise non-cancellable retry-until-success.
+- Classified NOT_ADMITTED; no testbed fault was run for that hypothesis.
