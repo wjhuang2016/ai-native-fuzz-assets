@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 12:43:33 +0800
+Generated at: 2026-07-13 13:32:52 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -37,3 +37,4 @@ Generated at: 2026-07-13 12:43:33 +0800
 | 2010003 | confirmed | high | wrong_result | COM_STMT_PREPARE / SELECT | session prepare dedup cache and stale read | `prepare-dedup-stale-read-context-leak` | COM_STMT_PREPARE dedup can keep stale-read semantics after tidb_read_staleness is cleared |  |
 | 2040003 | issue-filed | high | wrong_result | ALTER TABLE ADD INDEX | distributed fast reorg / DXF read-index planning | `distributed-backfill-partial-plan-on-tso-error` | Distributed ADD INDEX can publish a partial index after a transient TSO error during plan generation | [https://github.com/pingcap/tidb/issues/69789](https://github.com/pingcap/tidb/issues/69789) |
 | 2070003 | issue-filed | high | wrong_result | SELECT | alternative logical plans / CorrelateSolver | `correlate-clone-breaks-active-access-path-alias` | Alternative logical plan can turn a non-empty aggregate IN subquery into TableDual and return no rows | [https://github.com/pingcap/tidb/issues/69790](https://github.com/pingcap/tidb/issues/69790) |
+| 2100003 | issue-filed | high | wrong_result | UPDATE | pessimistic statement retry / user-variable assignment | `pessimistic-retry-omits-user-var-side-effect-rollback` | Pessimistic DML retry can change a SETVAR-derived unique key and turn duplicate-key failure into success | [https://github.com/pingcap/tidb/issues/69791](https://github.com/pingcap/tidb/issues/69791) |

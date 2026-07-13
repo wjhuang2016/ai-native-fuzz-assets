@@ -412,3 +412,14 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   one clone, not cross-alternative sharing.
 - Counting rule: aggregate choices, SQL forms, index layouts, and cost factors are blast radius.
   Reopen only for a different clone owner or canonical/active producer-consumer pair.
+
+## 2026-07-13 update: id2100003
+
+- Remote `found_bug`: 109 surfaces, 86 distinct root causes, 34 high-severity rows.
+- New root: `pessimistic-retry-omits-user-var-side-effect-rollback`.
+- Consequence: C3 direct silent wrong data. A concurrent unique-key insert should make UPDATE fail,
+  but automatic retry changes the SETVAR-derived key, returns success, and commits another row image.
+- Distinctness: this is default/recommended pessimistic statement retry with SETVAR inside the
+  retried write, not deprecated optimistic whole-transaction replay of a read-only assignment.
+- Counting rule: DML forms, user-variable types, expressions, indexes, and conflict timing are blast
+  radius. Reopen only for a different retry owner or a different unrestored state owner.

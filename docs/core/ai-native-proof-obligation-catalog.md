@@ -3386,3 +3386,20 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
 - Assets: `docs/method-cases/ai-native-id2070003-cloned-view-identity-method-case.md` and
   `assets/store/correlate-clone-access-path-identity-results.jsonl`.
 - Pause gate: do not enumerate aggregate functions, indexes, or cost factors under this alias root.
+
+## id2100003 - Pessimistic retry consumes a failed SETVAR side effect
+
+- Target: `target.txn.pessimistic-retry-user-var-side-effect-replay.v1`.
+- Selector: `ATTEMPT_SCOPED_SIDE_EFFECT_ROLLBACK_CLOSURE`.
+- **P**: statement retry rolls back KV statement state and rebuilds the DML executor.
+- **Q**: every failed-attempt value consumed by the rebuilt executor equals statement-entry state.
+- **F**: SETVAR mutates `UserVars` before final `LockKeys`; accepted retry calls `StmtRollback`,
+  which cleans transaction state but does not restore user variables.
+- C3 oracle: concurrent owner commits unique key `u=1`; UPDATE must return duplicate key and retain
+  `(1,10)`. Current source returns success, leaves `@x=2`, and commits `(1,2)` beside `(2,1)`.
+- Controls: no conflict and pre-evaluation conflict produce 1/1; idempotent assignment produces 7/7.
+- Counterfactual: restore entry UserVars before accepted retry; injected and natural RED arms pass.
+- Status: **ISSUE-FILED**, remote `found_bug id2100003`, high severity, upstream #69791.
+- Assets: `docs/method-cases/ai-native-id2100003-retry-side-effect-closure-method-case.md` and
+  `assets/store/pessimistic-retry-user-var-side-effect-results.jsonl`.
+- Pause gate: do not enumerate DML syntax, variable types, conflict keys, or retry counts under this root.

@@ -1,0 +1,47 @@
+--- a/pkg/executor/adapter.go
++++ b/pkg/executor/adapter.go
+@@ -1202,6 +1202,10 @@
+ 		}
+ 	}()
+ 
++	userVarsBeforeStmt := sctx.GetSessionVars().UserVars.Clone().(*variable.UserVars)
++	restoreUserVarsForRetry := func() {
++		sctx.GetSessionVars().UserVars.Restore(userVarsBeforeStmt)
++	}
+ 	tryLockKeys := func(e exec.Executor, keys []kv.Key, shared bool) (exec.Executor, error) {
+ 		seVars := sctx.GetSessionVars()
+ 		keys = filterTemporaryTableKeys(seVars, keys)
+@@ -1242,6 +1246,7 @@
+ 			}
+ 			return nil, err
+ 		}
++		restoreUserVarsForRetry()
+ 		return e, nil
+ 	}
+ 	isFirstAttempt := true
+@@ -1274,6 +1279,7 @@
+ 				}
+ 				return err
+ 			}
++			restoreUserVarsForRetry()
+ 			continue
+ 		}
+ 		if _, fpErr := failpoint.Eval("github.com/pingcap/tidb/pkg/util/breakpoint/aiAfterDMLExecutionBeforeLock"); fpErr == nil {
+--- a/pkg/sessionctx/variable/session.go
++++ b/pkg/sessionctx/variable/session.go
+@@ -753,6 +753,15 @@
+ 	return cloned
+ }
+ 
++// Restore replaces the current user variables with a previously cloned state.
++func (s *UserVars) Restore(snapshot *UserVars) {
++	cloned := snapshot.Clone().(*UserVars)
++	s.lock.Lock()
++	defer s.lock.Unlock()
++	s.values = cloned.values
++	s.types = cloned.types
++}
++
+ // SetUserVarVal set user defined variables' value
+ func (s *UserVars) SetUserVarVal(name string, dt types.Datum) {
+ 	s.lock.Lock()

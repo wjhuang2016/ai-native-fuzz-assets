@@ -1,0 +1,9 @@
+testbed: 8220955
+attempt: use a constant-result SLEEP expression as the idempotent conflict control
+
+The UPDATE completed before the concurrent insert and processlist did not show the target
+post-evaluation window. No retry occurred, so this run cannot classify the obligation.
+
+verdict: INVALID
+lesson: timing-based controls require a positive boundary-landed observer. The deterministic local
+idempotent failpoint arm remains the valid GREEN control.

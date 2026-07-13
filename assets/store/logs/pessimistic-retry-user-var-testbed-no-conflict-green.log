@@ -1,0 +1,15 @@
+testbed: 8220955
+version: 8.0.11-TiDB-v9.0.0-beta.2.pre-1895-g5c9198e948
+storage: real TiKV
+
+SET @x=0;
+BEGIN;
+UPDATE t SET u=(@x:=@x+1) WHERE id=1;
+SELECT @x;
+COMMIT;
+
+@x = 1
+rows = [1 1]
+result: GREEN
+
+cleanup: database ai_setvar_retry_2100003 removed; schema count = 0

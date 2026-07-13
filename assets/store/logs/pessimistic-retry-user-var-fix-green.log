@@ -1,0 +1,12 @@
+commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa plus counterfactual
+counterfactual: snapshot UserVars at statement entry and restore before accepted retry
+backend: unistore, -tags=intest
+
+--- PASS: TestAIPessimisticRetryReplaysSetVarSideEffect
+--- PASS: TestAIPessimisticRetrySetVarControls
+--- PASS: TestAINaturalPessimisticRetryChangesUniqueKeyExpression
+PASS
+ok github.com/pingcap/tidb/pkg/sessiontxn
+
+The natural race now returns duplicate key and preserves rows [1 10], [2 1].
+This full snapshot proves sufficiency; it is not necessarily the production implementation.

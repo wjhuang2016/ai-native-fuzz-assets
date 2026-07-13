@@ -1822,3 +1822,17 @@ https://github.com/pingcap/tidb/issues/69790 带 `found-by-ai`/`severity/major`�
 revisions，RED=59/GREEN=57，新增 S44 `CLONED_CANONICAL_ACTIVE_VIEW_IDENTITY` 与 O54，pack
 `open_gaps=[]`。暂停 aggregate/index/cost 变体；下一轮继续只从当前源码 proof obligation 生成新 C3，
 PR review finding 仍只能在独立 RED 后去重。
+
+**2026-07-13 current-source-only 命中 id2100003/high：悲观 DML 自动重试会继承失败尝试的
+SETVAR 副作用，把本应出现的重复键错误变成成功并写入另一行像。** 候选从当前源码 retry acceptance、
+rollback owner 和 rebuilt-executor consumer 的差集产生；PR review finding、issue、fix/history 在独立
+RED 前全部禁用。local 矩阵：无冲突 1/1，SETVAR 前冲突 1/1，SETVAR 后冲突 2/2，幂等 `:=7` 为 7/7；
+自然 unistore 唯一键竞争中，并发会话提交 `(2,1)` 后，UPDATE 没有报重复键，反而提交 `(1,2)`。
+只在接受 retry 前恢复 statement-entry UserVars，两个 RED 同时转绿。testbed 8220955 用纯 SQL
+`SETVAR+SLEEP` 和真实 TiKV 无注入复现：A 成功、`@x=2`、rows=`(1,2),(2,1)`；无冲突控制为
+`@x=1,(1,1)`，测试库已删除。post-RED 去重无 exact root。远端 `found_bug` 为 109 rows/86 roots/34
+high；上游 https://github.com/pingcap/tidb/issues/69791 带 `found-by-ai`/`severity/major`。私有资产
+295 revisions，RED=62/GREEN=60/INVALID=11，新增 S45/O55，pack `open_gaps=[]`。新方法：对每个 retry
+点计算 `(pre-error mutations intersect post-reentry consumers) minus rollback owners`，先做 pre/post
+altitude 小矩阵，再用自然 owner 和 terminal-error+durable-state oracle 升级；不证明落点的 timing 控制
+必须记 INVALID。暂停本 root 的 DML/变量/索引/冲突时序变体，下一轮仍只从当前源码生成新的 C3。

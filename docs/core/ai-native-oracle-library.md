@@ -1518,3 +1518,25 @@ specificity: GOOD; rowset, plan altitude, adjacent repair-path control, and one-
              counterfactual isolate the clone graph.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O55 post_evaluation_retry_error_and_row_image_differential
+
+```text
+obligation:  transparent retry starts from statement-entry state for every value consumed by the
+             rebuilt operation, including side effects outside the primary transaction buffer.
+form:        run no-conflict, pre-side-effect conflict, post-side-effect conflict, idempotent side
+             effect, natural highest-consumer conflict, and exact state-restore cells. Observe the
+             retry terminal error and committed state in addition to session-local values.
+red:         post-SETVAR retry changes expected v/@x=1/1 to 2/2; a concurrent u=1 insert makes the
+             UPDATE return success and commit rows (1,2),(2,1) instead of returning duplicate key.
+green:       pre-SETVAR conflict remains 1/1; idempotent :=7 remains 7/7; restoring statement-entry
+             UserVars returns duplicate key and preserves rows (1,10),(2,1).
+catches:     missing rollback edges for session state, external state, counters, handles, tokens,
+             or other attempt-local inputs consumed after re-entry.
+blind to:    faults that do not land after the mutation, survivors with no later consumer, and
+             timing tests that do not prove the competing owner committed.
+sensitivity: EXECUTION-CONFIRMED on id2100003 locally and SQL-only on testbed 8220955.
+specificity: GOOD; error altitude, idempotence, terminal error, durable row image, and exact restore
+             isolate the missing state owner.
+status:      USED + EXECUTION-CONFIRMED.
+```

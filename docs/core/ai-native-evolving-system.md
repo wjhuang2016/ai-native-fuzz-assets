@@ -1004,3 +1004,24 @@ records when a downstream repair owner masks the defect. Future candidate genera
 current clone/copy routines for canonical and filtered views, then rank producer/consumer splits
 whose stale view feeds an empty, complete, cached, or fast-path decision. Upstream history remains a
 post-RED dedup channel only.
+
+## 2026-07-13 retry side-effect closure increment
+
+The system imported id2100003 from current-source retry and rollback ownership, without using a PR
+review finding as a candidate seed:
+
+```text
+target:          target.txn.pessimistic-retry-user-var-side-effect-replay.v1
+selector:        ATTEMPT_SCOPED_SIDE_EFFECT_ROLLBACK_CLOSURE
+oracle:          post-evaluation retry error plus committed row-image differential
+asset revisions: 295
+runs:            RED=62, GREEN=60, INVALID=11, INFO=1
+admission:       C3_DIRECT=22
+pack:            7 directly reusable assets, open_gaps=[]
+```
+
+The reusable increment is a graph over mutations before a retryable boundary, rollback owners before
+re-entry, and consumers after re-entry. Candidate generation can compute the missing rollback edges;
+the stored schedule supplies no-retry, pre/post mutation, idempotence, natural owner, and exact-fix
+cells. The SQL-only lift also shows how instrumentation becomes a temporary bridge: breakpoint to
+locate altitude, real lock owner to prove semantics, then a user-executable schedule without injection.

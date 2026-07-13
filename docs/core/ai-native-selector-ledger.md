@@ -1527,3 +1527,25 @@ status:     validated/terminal - local nine-cell matrix, exact identity-preservi
 stop rule:  one root per clone owner and alias graph. Aggregate functions, SQL forms, indexes, and
             cost values are blast radius; reopen only for a different producer/consumer view pair.
 ```
+
+## S45: attempt-scoped side-effect rollback closure
+
+```text
+selector:   an automatic retry can occur after the attempt mutates state outside the primary
+            transactional rollback owner, and the rebuilt operation can consume that survivor
+born from:  id2100003 (pessimistic DML retries after SETVAR but does not restore UserVars)
+prediction:
+  - an error before the side effect is GREEN while the same error after it is RED;
+  - non-idempotent side effects change a later key, predicate, row image, action, or terminal error;
+  - rolling back only KV/statement state is insufficient even when the executor is rebuilt;
+  - restoring the missing state dimension, or declining retry, preserves the original semantics.
+oracle gate:
+  - draw mutation, rollback, and retry-consumer edges around the retry point;
+  - compare no retry, pre-mutation error, post-mutation error, and idempotent mutation;
+  - lift internal state drift to terminal error plus durable state whenever possible;
+  - require a boundary-landed observer before accepting timing-based controls.
+status:     validated/terminal - local injected and natural unistore REDs, exact restore GREEN,
+            SQL-only real-TiKV RED on testbed 8220955; remote id2100003 high, upstream #69791.
+stop rule:  one root per retry owner and missing state owner. DML forms, variable types, expressions,
+            conflict keys, and retry counts are blast radius.
+```

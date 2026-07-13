@@ -1774,3 +1774,25 @@ Method improvement: clone analysis now carries an alias graph and a repair-path 
 copy can be simultaneously correct across alternatives and incorrect inside one alternative.
 Passing siblings that activate a rebuild owner are retained as mask evidence; the next matrix
 changes owner reachability before it changes syntax or data volume.
+
+## Retry side-effect closure tick: pessimistic SETVAR wrong data, EXECUTED (2026-07-13)
+
+This tick started from current-source retry acceptance and rollback ownership. PR review findings,
+issues, fixes, and history were excluded until after the independent local RED.
+
+```text
+P:          KV statement state is rolled back and the executor is rebuilt.
+Q:          every failed-attempt input consumed after re-entry is restored.
+F:          SETVAR mutates UserVars before a later LockKeys write conflict; rollback omits UserVars.
+LOCAL RED:  late conflict changes expected v/@x=1/1 to 2/2.
+CONTROLS:   pre-evaluation conflict=1/1; idempotent assignment=7/7.
+NATURAL RED: concurrent u=1 owner; UPDATE returns nil and commits (1,2),(2,1).
+EXACT GREEN: restore entry UserVars; duplicate key returns and rows stay (1,10),(2,1).
+LIVE RED:   SQL-only SETVAR+SLEEP race on testbed 8220955 with real TiKV.
+INTEGRATE:  id2100003 high; S45, O55, eight assets, seven runs, open_gaps=[].
+```
+
+Method improvement: retry analysis now builds a mutation/rollback/consumer graph and varies fault
+altitude around the mutation before varying syntax. A synthetic error is only the locator. The loop
+then replaces it with a natural competing owner and promotes severity only when terminal error plus
+durable state diverge. Timing controls without a boundary-landed observer are stored as INVALID.

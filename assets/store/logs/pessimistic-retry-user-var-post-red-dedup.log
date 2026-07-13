@@ -1,0 +1,13 @@
+Post-RED dedup only. Candidate generation and local RED/GREEN were already complete.
+
+$ gh search issues --repo pingcap/tidb --state open --match title,body '"user variable" "pessimistic" retry'
+<no results>
+
+$ gh search issues --repo pingcap/tidb --state open --match title,body 'setvar "write conflict"'
+<no results>
+
+$ gh search issues --repo pingcap/tidb --state open --match title,body '"session variable" retry duplicate'
+<no results>
+
+Exact asset search also found no current pessimistic statement-retry root. The retained optimistic
+whole-transaction retry boundary has a different retry owner and documented contract.

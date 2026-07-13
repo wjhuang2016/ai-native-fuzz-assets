@@ -1,0 +1,12 @@
+commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+backend: unistore, -tags=intest
+test: TestAINaturalPessimisticRetryChangesUniqueKeyExpression
+instrumentation: pause after DML evaluation and before final lock only
+natural owner: concurrent session inserts and commits (2,1)
+
+expected statement error: duplicate key
+actual statement error: nil
+expected rows: [1 10], [2 1]
+actual rows:   [1 2],  [2 1]
+
+--- FAIL: TestAINaturalPessimisticRetryChangesUniqueKeyExpression

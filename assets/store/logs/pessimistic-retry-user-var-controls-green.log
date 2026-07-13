@@ -1,0 +1,13 @@
+commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+backend: unistore, -tags=intest
+test: TestAIPessimisticRetrySetVarControls
+
+post-evaluation retry, idempotent assignment @x:=7:
+  row value = 7
+  @x = 7
+
+pre-evaluation write conflict, assignment @x:=@x+1:
+  row value = 1
+  @x = 1
+
+--- PASS: TestAIPessimisticRetrySetVarControls

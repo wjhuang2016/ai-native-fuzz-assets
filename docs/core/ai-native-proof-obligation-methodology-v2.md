@@ -2910,3 +2910,25 @@ planning consumed an active clone with empty ranges, and aggregate IN became `Ta
 was GREEN because correlation reached the leaf and rebuilt both views. Mapping active paths to the
 canonical clones kept Apply selected and made all nine cells GREEN. Discovery used current source
 only; post-RED dedup found no exact root, and testbed 8220955 reproduced the SQL-only wrong result.
+
+## Retry closure must include non-transactional attempt state
+
+For every automatic retry site, build three sets from current source:
+
+```text
+M = state mutated before a retryable error can occur
+R = state restored or rebuilt before re-entry
+C = state consumed by the retried operation
+candidate debt = (M intersect C) minus R
+```
+
+Rank a debt edge only after tracing its highest consumer. Session-local drift is weak; a survivor
+that controls a key, predicate, row image, external action, or terminal error is strong. The smallest
+matrix changes error altitude around the mutation: no error, error before M, the same error after M,
+an idempotent mutation, and an exact restore-or-decline-retry counterfactual.
+
+id2100003 is the calibration case. SETVAR enters M and C; pessimistic `StmtRollback` restores KV
+statement state but leaves UserVars outside R. A post-evaluation retry produced 2/2 instead of 1/1,
+while pre-evaluation and idempotent controls passed. A concurrent unique-key owner then converted the
+state leak into false success and committed row-image drift. Restoring only UserVars made the exact
+matrix GREEN. Discovery and ranking used current source only; history was opened only after RED.

@@ -1,0 +1,29 @@
+diff --git a/pkg/executor/adapter.go b/pkg/executor/adapter.go
+index b3a826f033..17d9fa7ff3 100644
+--- a/pkg/executor/adapter.go
++++ b/pkg/executor/adapter.go
+@@ -1216,7 +1216,11 @@ func (a *ExecStmt) handlePessimisticDML(ctx context.Context, e exec.Executor) (e
+ 		var lockKeyStats *util.LockKeysDetails
+ 		ctx = context.WithValue(ctx, util.LockKeysDetailCtxKey, &lockKeyStats)
+ 		startLocking := time.Now()
+-		err = txn.LockKeys(ctx, lockCtx, keys...)
++		if _, fpErr := failpoint.Eval("github.com/pingcap/tidb/pkg/executor/aiPessimisticLockErrorAfterDMLExecution"); fpErr == nil {
++			err = kv.ErrWriteConflict
++		} else {
++			err = txn.LockKeys(ctx, lockCtx, keys...)
++		}
+ 		a.phaseLockDurations[0] += time.Since(startLocking)
+ 		if e.RuntimeStats() != nil {
+ 			e.RuntimeStats().Record(time.Since(startLocking), 0)
+@@ -1272,6 +1276,11 @@ func (a *ExecStmt) handlePessimisticDML(ctx context.Context, e exec.Executor) (e
+ 			}
+ 			continue
+ 		}
++		if _, fpErr := failpoint.Eval("github.com/pingcap/tidb/pkg/util/breakpoint/aiAfterDMLExecutionBeforeLock"); fpErr == nil {
++			if notify, ok := a.Ctx.Value(breakpoint.NotifyBreakPointFuncKey).(func(string)); ok {
++				notify("aiAfterDMLExecutionBeforeLock")
++			}
++		}
+ 
+ 		keys, err1 := txn.(pessimisticTxn).KeysNeedToLock()
+ 		if err1 != nil {
