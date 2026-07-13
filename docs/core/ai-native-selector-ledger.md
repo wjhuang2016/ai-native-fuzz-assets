@@ -1676,10 +1676,32 @@ oracle gate:
   - place the fault by apply altitude, not by generic timeout call site;
   - observe SQL result, fresh-session row image, primary TxnStatus/commitTS, and duplicate replay;
   - distinguish before-apply loss from after-apply response loss.
-status:     CANDIDATE/HYPOTHESIS for the cross-layer transaction campaign. No exact target or RED.
+status:     VALIDATED by id2340003. Current client-go and real TiKV produced durable primary truth
+            plus an ordinary error; an exact semantic-promotion counterfactual made the same matrix
+            GREEN without changing durable state.
 stop rule:  one root per terminal conversion owner. Error strings, key counts, and retry counts are
             blast radius unless they change what can be known about durable outcome.
 ```
+
+### S48 extension: side-state semantic promotion bypass
+
+`id2340003` adds an executable refinement:
+
+```text
+child records semantic side state
+  -> canonical finalizer promotes raw result
+  -> specialized finalizer bypasses promotion
+  -> public consumer acts on the wrong terminal class
+```
+
+Generate candidates by comparing canonical and specialized owner graphs. Rank only when another
+safety consumer still trusts the side state and the terminal class controls retry, connection,
+cleanup, or publication. The fault must prove semantic apply altitude: dropping the ordinal first
+response is invalid because it may be a pre-apply rejection. In this case, the wrapper dropped only
+a successful Commit response, real TiKV supplied fresh MVCC truth, and TiDB's error mapping plus
+connection-close consumer supplied the highest consequence. Store as
+`SIDE_STATE_SEMANTIC_PROMOTION_BYPASS`; specialized path variants under the same promotion owner are
+blast radius.
 
 ## S49: transaction lock generation identity
 

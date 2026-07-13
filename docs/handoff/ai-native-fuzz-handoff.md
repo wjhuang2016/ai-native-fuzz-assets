@@ -2030,3 +2030,23 @@ pointer/cache/handle 必须把 container membership 与 value lifecycle 分开�
 临时验证改动已全部归位，pinned worktree clean；可复用 pack 已含 selector/obligation/oracle/natural
 fault/scenario/schedule 和三次验证运行，`open_gaps=[]`。下一轮继续追 severe：优先找同一 mutable-owner debt
 中能到达 key/predicate/row image/commit outcome/terminal truth 的 consumer，不围绕临时表大小做变体。
+
+**2026-07-14 MDL-on txn severe hit：`id2340003` 证明 pipelined DML 会在 primary Commit 已持久化后返回普通失败。**
+本轮不使用 PR/review/issue 选题，从 S48 current-source owner graph 比较普通 2PC 与 pipelined 专用终结路径：
+`actionCommit` 在 primary RPC 响应丢失时设置 `undeterminedErr`，普通 `commitTxn` 会提升成
+`ErrResultUndetermined`，但 `commitFlushedMutations` 直接返回 raw error。精确注入只丢第一条成功
+`CommitResponse`，随后令 Commit 通道不可用；current upstream client-go `01bd8f9` + current nightly
+TiKV `7ecce12` 上，fresh txn 读到 committed value，而原 Commit 返回普通
+`injected commit transport outage`。只补 side-state promotion 后，同一 real-TiKV durable truth 不变，
+错误变成 undetermined，RED/GREEN 成对闭合。testbed 8220955 只读确认 global/session MDL 都为 ON，
+默认 DML type 为 STANDARD；目标只需 session 显式选择 BULK，未关闭 MDL。post-RED GitHub 与远端 bug
+库无 exact root。远端 `found_bug id2340003/high/confirmed` 入库后为 117 surfaces、94 roots、40 high、
+102 confirmed；后果记为 critical data integrity，但频率诚实限制在 opt-in BULK 加 after-apply response
+loss。新 selector `SIDE_STATE_SEMANTIC_PROMOTION_BYPASS`：下层写 side state、canonical finalizer 提升、
+specialized path 绕过、另一安全消费者仍信任 side state、public error class 控制 retry/connection/cleanup。
+注入改进：按成功响应的语义高度选点，不能按“第一包”序号选点。资产入口：
+`assets/store/txn-pipelined-undetermined-promotion-results.jsonl`、
+`docs/bug-drafts/ai-native-pipelined-commit-undetermined-promotion-draft.md`、
+`docs/method-cases/ai-native-id2340003-pipelined-undetermined-promotion-method-case.md`、
+`scaffolds/client-go-tests/pipelined_undetermined_probe_test.go`。暂停门：不枚举 DML/error/timeout/key-count
+变体；下一轮迁移 selector 到另一个 specialized terminal owner。

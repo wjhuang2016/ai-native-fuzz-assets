@@ -1101,3 +1101,24 @@ This is the intended incremental behavior. The system did not restart from broad
 or mine an issue report. It changed one consumer edge in the stored owner graph, reused the schedule,
 and added an external-owner oracle. Future selectors should index retry boundaries by capability
 mutators and inverse-operation completeness. Advisory-lock variants are terminal for this root.
+
+## 2026-07-14 terminal-promotion increment
+
+The cross-layer transaction campaign's broad S48 hypothesis produced its first current-source
+severe hit:
+
+```text
+target:          target.txn.pipelined-commit-undetermined-promotion.v1
+parent selector: TXN_COMMIT_OUTCOME_TERMINAL_TRUTH
+new selector:    SIDE_STATE_SEMANTIC_PROMOTION_BYPASS
+new fault:       drop first successful Commit response, not first response
+strong oracle:   successful-response witness + fresh real-TiKV read + terminal error class
+result:          id2340003 / current upstream RED / exact-promotion GREEN / MDL default ON
+```
+
+The increment compounds three older assets: terminal-truth ranking selected the public consequence,
+the canonical 2PC path supplied the expected promotion, and the real-TiKV gate prevented a mock from
+owning durable truth. The new reusable operation is a differential finalizer graph over side-state
+producer, canonical promotion, specialized return, and highest public consumer. Candidate generation
+should now inventory specialized fast paths that call a shared child but skip the canonical result
+interpreter.

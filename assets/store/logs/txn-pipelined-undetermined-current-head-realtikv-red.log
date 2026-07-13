@@ -1,0 +1,60 @@
+=== RUN   TestPipelinedMemDB
+=== RUN   TestPipelinedMemDB/TestAINativePipelinedCommitResponseLossRED
+[2026/07/14 05:55:36.998 +08:00] [INFO] [service_discovery.go:1030] ["[pd] switch leader"] [new-leader=http://127.0.0.1:2379] [old-leader=]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [service_discovery.go:509] ["[pd] init cluster id"] [cluster-id=7662134525791537841]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [client.go:214] ["[tso] switch the tso leader serving url"] [new-url=http://127.0.0.1:2379]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [inner_client.go:173] ["[pd] tso provider changed to pd"]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [watcher.go:56] ["[pd] start the deadline watcher"] [source=tso]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [client.go:251] ["[tso] start tso connection contexts updater"]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [dispatcher.go:146] ["[tso] tso dispatcher created"]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [dispatcher.go:598] ["[tso] switching tso rpc concurrency"] [old=0] [new=1]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [inner_client.go:154] ["[pd] service mode changed"] [new-mode=PD_SVC_MODE]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [router_service_discovery.go:162] ["[router service] created router service discovery"] [cluster-id=7662134525791537841] [keyspace-id=4294967295] [default-discovery-key=/ms/7662134525791537841/router/registry/]
+[2026/07/14 05:55:36.998 +08:00] [INFO] [router_service_discovery.go:174] ["[router service] initializing router service discovery"] [max-retry-times=100] [retry-interval=1s]
+[2026/07/14 05:55:36.999 +08:00] [INFO] [router_service_discovery.go:260] ["[router service] update member sorted urls"] [new-sorted-urls="[]"]
+[2026/07/14 05:55:36.999 +08:00] [INFO] [router_service_discovery.go:245] ["[router service] updating nodes succeeded"] [urls="[]"] [clients-length=0]
+[2026/07/14 05:55:36.999 +08:00] [INFO] [inner_client.go:91] ["[pd] start router client initializer"]
+[2026/07/14 05:55:36.999 +08:00] [INFO] [client.go:585] ["[router] dispatcher is started"]
+[2026/07/14 05:55:36.999 +08:00] [INFO] [client.go:424] ["[router] connection daemon is started"]
+[2026/07/14 05:55:36.999 +08:00] [INFO] [client.go:509] ["[router] successfully established the leader router stream connection"] [url=http://127.0.0.1:2379]
+[2026/07/14 05:55:37.008 +08:00] [INFO] [pd.go:434] ["adaptive update ts interval state transition"] [configuredInterval=2ms] [prevAdaptiveUpdateInterval=2ms] [newAdaptiveUpdateInterval=2ms] [requiredStaleness=0s] [prevState=unknown(0)] [newState=unadjustable]
+[2026/07/14 05:55:37.009 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=127.0.0.1:20160] [from=unresolved] [to=resolved] [liveness-state=reachable]
+[2026/07/14 05:55:37.028 +08:00] [INFO] [txn.go:625] ["[pipelined dml] flushed memdb to kv store"] [startTS=467659584177438730] [generation=1] [session=0] [keys=1] [size=49B] ["flushed keys"=1] ["flushed size"=49B] ["take time"=6.250208ms]
+[2026/07/14 05:55:37.028 +08:00] [INFO] [txn.go:625] ["[pipelined dml] flushed memdb to kv store"] [startTS=467659584177438730] [generation=2] [session=0] [keys=0] [size=0B] ["flushed keys"=1] ["flushed size"=49B] ["take time"=3.333µs]
+[2026/07/14 05:55:37.028 +08:00] [INFO] [pipelined_flush.go:302] ["[pipelined dml] start to commit transaction"] [keys=1] [flush_wait_duration=6.30875ms] [total_duration=6.390916ms] ["memdb traversal cache hit"=0] ["memdb traversal cache miss"=1] [size=49B] [startTS=467659584177438730]
+[2026/07/14 05:55:37.528 +08:00] [INFO] [region_request.go:783] ["mark store's regions need be refill"] [id=1] [addr=127.0.0.1:20160] [error="injected commit transport outage"] [errorVerbose="injected commit transport outage\nintegration_tests_test.(*postApplyCommitResponseLossClient).SendRequest\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/integration_tests/pipelined_undetermined_probe_test.go:46\ngithub.com/tikv/client-go/v2/internal/locate.(*sendReqState).send\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/internal/locate/region_request.go:1161\ngithub.com/tikv/client-go/v2/internal/locate.(*sendReqState).next\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/internal/locate/region_request.go:1034\ngithub.com/tikv/client-go/v2/internal/locate.(*RegionRequestSender).SendReqCtx\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/internal/locate/region_request.go:1552\ngithub.com/tikv/client-go/v2/internal/locate.(*RegionRequestSender).SendReq\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/internal/locate/region_request.go:460\ngithub.com/tikv/client-go/v2/txnkv/transaction.actionCommit.handleSingleBatch\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/commit.go:127\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*twoPhaseCommitter).doActionOnBatches\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/2pc.go:1133\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*twoPhaseCommitter).doActionOnGroupMutations\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/2pc.go:1040\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*twoPhaseCommitter).doActionOnMutations\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/2pc.go:855\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*twoPhaseCommitter).commitMutations\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/commit.go:282\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*twoPhaseCommitter).commitFlushedMutations\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/pipelined_flush.go:328\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*twoPhaseCommitter).execute\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/2pc.go:1856\ngithub.com/tikv/client-go/v2/txnkv/transaction.(*KVTxn).Commit\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/txnkv/transaction/txn.go:898\nintegration_tests_test.(*testPipelinedMemDBSuite).TestAINativePipelinedCommitResponseLossRED\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/integration_tests/pipelined_undetermined_probe_test.go:78\nreflect.Value.call\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/reflect/value.go:581\nreflect.Value.Call\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/reflect/value.go:365\ngithub.com/stretchr/testify/suite.Run.func1\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/github.com/stretchr/testify@v1.11.1/suite/suite.go:196\ntesting.tRunner\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/testing/testing.go:1934\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"]
+[2026/07/14 05:55:37.528 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=127.0.0.1:20160] [from=resolved] [to=needCheck] [liveness-state=unknown]
+[2026/07/14 05:55:37.528 +08:00] [INFO] [store_cache.go:1099] ["store health status changed"] [storeID=1] [isSlow=true] [healthDetail="{ ClientSideSlowScore: 100, TiKVSideSlowScore: 1 }"]
+[2026/07/14 05:55:37.528 +08:00] [INFO] [region_request.go:1614] ["failed to handle send error: injected commit transport outage"] [req-ts=467659584177438730] [req-type=Commit] [region="{ region id: 4, ver: 5, confVer: 1 }"] [replica-read-type=leader] [stale-read=false] [request-sender="{rpcError:injected commit transport outage, replicaSelector: replicaSelectorV2{replicaReadType: leader, attempts: 4, cacheRegionIsValid: true, replicaStatus: [peer: 5, store: 1, isEpochStale: true, attempts: 4, attempts_time: 1.52ms, replica-epoch: 0, store-epoch: 1, store-state: needCheck, store-liveness-state: unknown]}}"] [total-round-stats="{total-backoff: 208ms, total-backoff-times: 3}"] [current-round-stats="{time: 500.5ms, backoff: 208ms, timeout: 30s, req-max-exec-timeout: 20s, retry-times: 3}"]
+[2026/07/14 05:55:37.529 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=127.0.0.1:20160] [from=needCheck] [to=resolved] [liveness-state=unknown]
+    pipelined_undetermined_probe_test.go:97:
+                Error Trace:        /Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/client-go.current-head/integration_tests/pipelined_undetermined_probe_test.go:97
+                Error:              Should be true
+                Test:               TestPipelinedMemDB/TestAINativePipelinedCommitResponseLossRED
+                Messages:           durable value is visible after Commit returned a non-undetermined error: injected commit transport outage
+[2026/07/14 05:55:37.534 +08:00] [INFO] [inner_client.go:96] ["[pd] exit router client initializer"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [resource_manager_client.go:341] ["[resource manager] exit resource token dispatcher"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [router_service_discovery.go:273] ["[router service] exit check member loop"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [client.go:606] ["[router] stop fetching the pending router requests due to context canceled"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [dispatcher.go:207] ["[tso] stop fetching the pending tso requests due to context canceled"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [client.go:587] ["[router] dispatcher is exiting"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [dispatcher.go:149] ["[tso] exit tso dispatcher"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [router_service_discovery.go:315] ["[router service] exit health check member loop"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [watcher.go:73] ["[pd] exit the deadline watcher"] [source=tso]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [client.go:430] ["[router] connection daemon is exiting"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [client.go:592] ["[router] dispatcher exited"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [service_discovery.go:562] ["[pd] exit member loop due to context canceled"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [router_service_discovery.go:287] ["[router service] closing router service discovery"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [router_service_discovery.go:303] ["[router service] is closed"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [client.go:155] ["[tso] closing tso client"]
+[2026/07/14 05:55:37.535 +08:00] [INFO] [client.go:160] ["[tso] close tso client"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [stream.go:366] ["tsoStream.recvLoop ended"] [stream=127.0.0.1:2379-1] [error="rpc error: code = Canceled desc = context canceled"] [errorVerbose="rpc error: code = Canceled desc = context canceled\ngithub.com/tikv/pd/client/clients/tso.(*tsoStream).recvLoop\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/github.com/tikv/pd/client@v0.0.0-20260708075407-4e05b9d2c2d3/clients/tso/stream.go:434\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"]
+[2026/07/14 05:55:37.535 +08:00] [INFO] [client.go:162] ["[tso] tso client is closed"]
+[2026/07/14 05:55:37.535 +08:00] [INFO] [service_discovery.go:653] ["[pd] close service discovery client"]
+[2026/07/14 05:55:37.534 +08:00] [INFO] [client.go:277] ["[tso] exit tso connection contexts updater"]
+[2026/07/14 05:55:37.535 +08:00] [INFO] [inner_client.go:275] ["[pd] close client successfully"]
+--- FAIL: TestPipelinedMemDB (0.54s)
+    --- FAIL: TestPipelinedMemDB/TestAINativePipelinedCommitResponseLossRED (0.54s)
+FAIL
+FAIL        integration_tests        1.265s
+FAIL

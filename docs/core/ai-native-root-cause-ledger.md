@@ -497,3 +497,19 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   trigger frequency because `GET_LOCK` must be evaluated inside retryable pessimistic DML.
 - Counting rule: lock names, SQL forms, reference counts, retry counts, and delay windows are blast
   radius. Reopen only for another external capability owner or retry boundary.
+
+## 2026-07-14 update: id2340003
+
+- Remote `found_bug`: 117 surfaces, 94 distinct root causes, 40 high-severity rows, 102 confirmed
+  rows.
+- New root: `pipelined-commit-bypasses-undetermined-promotion`.
+- Consequence: C3 critical data integrity. A successful primary Commit can be durable while
+  pipelined DML returns an ordinary failure; the usable connection and ordinary class can induce a
+  duplicate non-idempotent retry.
+- Distinctness: id2250003 crosses the async recovery proof horizon and depends on failed cleanup.
+  This root loses an already successful primary Commit response, records ambiguity correctly, but
+  bypasses the canonical terminal promotion in a specialized finalizer.
+- Frequency calibration: high catalog severity, critical consequence, lower frequency because
+  `tidb_dml_type=BULK` is opt-in and the loss must land after primary apply.
+- Counting rule: DML forms, transport errors, timeout lengths, key counts, and retry counts are
+  blast radius. Reopen only for a different side-state producer or semantic finalizer.

@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-14
 
-- Remote `found_bug`: `MAX(id)=2310003`, `COUNT(*)=116`, `COUNT(DISTINCT root_cause_id)=93`
-- High-severity entries: 39 total
+- Remote `found_bug`: `MAX(id)=2340003`, `COUNT(*)=117`, `COUNT(DISTINCT root_cause_id)=94`
+- High-severity entries: 40 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -50,6 +50,7 @@ Last verified: 2026-07-14
 | 2250003 | confirmed | atomicity | `async-commit-age-check-after-recovery-proof` | COMMIT can return an ordinary error while real TiKV later recovers the async write set as committed. | [draft](../bug-drafts/ai-native-client-go-async-commit-expired-error-committed-draft.md) | [case](../method-cases/ai-native-async-commit-post-proof-error-method-case.md) |
 | 2280003 | confirmed | consistency | `onepc-schema-check-before-prewrite-mdl-off` | 1PC can commit after related DDL with an obsolete keyset, causing missing index entries or obsolete table writes. | [draft](../bug-drafts/ai-native-onepc-schema-check-horizon-corruption-draft.md) | [case](../method-cases/ai-native-id2280003-onepc-schema-horizon-method-case.md) |
 | 2310003 | issue-filed | liveness | `pessimistic-retry-retains-failed-attempt-advisory-lock` | A successful zero-row retry can leave a hidden advisory lock and block singleton work until release or disconnect. | [issue](https://github.com/pingcap/tidb/issues/69820), [draft](../bug-drafts/ai-native-pessimistic-retry-advisory-lock-leak-draft.md) | [case](../method-cases/ai-native-id2310003-advisory-lock-retry-method-case.md) |
+| 2340003 | confirmed | atomicity / data integrity | `pipelined-commit-bypasses-undetermined-promotion` | Pipelined DML can return an ordinary failure after its primary commit is durable, allowing a non-idempotent retry to apply twice. | [draft](../bug-drafts/ai-native-pipelined-commit-undetermined-promotion-draft.md) | [case](../method-cases/ai-native-id2340003-pipelined-undetermined-promotion-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

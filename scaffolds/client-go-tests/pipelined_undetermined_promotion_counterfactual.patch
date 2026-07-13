@@ -1,0 +1,17 @@
+diff --git a/txnkv/transaction/pipelined_flush.go b/txnkv/transaction/pipelined_flush.go
+--- a/txnkv/transaction/pipelined_flush.go
++++ b/txnkv/transaction/pipelined_flush.go
+@@ -326,6 +326,13 @@ func (c *twoPhaseCommitter) commitFlushedMutations(bo *retry.Backoffer) error {
+ 	primaryMutation := NewPlainMutations(1)
+ 	primaryMutation.Push(c.pipelinedCommitInfo.primaryOp, c.primaryKey, nil, false, false, false, false)
+ 	if err = c.commitMutations(bo, &primaryMutation); err != nil {
++		if undeterminedErr := c.getUndeterminedErr(); undeterminedErr != nil {
++			logutil.Logger(bo.GetCtx()).Warn("[pipelined dml] commit result undetermined",
++				zap.Error(err),
++				zap.NamedError("rpcErr", undeterminedErr),
++				zap.Uint64("txnStartTS", c.startTS))
++			return errors.WithStack(tikverr.ErrResultUndetermined)
++		}
+ 		return errors.Trace(err)
+ 	}
+ 	c.mu.Lock()

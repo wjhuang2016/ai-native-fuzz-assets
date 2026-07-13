@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 05:13:08 +0800
+Generated at: 2026-07-14 06:04:14 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -43,3 +43,4 @@ Generated at: 2026-07-14 05:13:08 +0800
 | 2250003 | confirmed | high | atomicity | COMMIT | client-go async commit / transaction age limit | `async-commit-age-check-after-recovery-proof` | Async commit can return txn-too-old error and later recover as committed |  |
 | 2280003 | confirmed | high | consistency | ADD INDEX / TRUNCATE TABLE | TiDB 1PC / schema lease checker / metadata lock disabled | `onepc-schema-check-before-prewrite-mdl-off` | 1PC can commit with an obsolete schema after concurrent DDL and corrupt a newly added index when MDL is off |  |
 | 2310003 | issue-filed | high | liveness | UPDATE | pessimistic statement retry / advisory locks | `pessimistic-retry-retains-failed-attempt-advisory-lock` | Pessimistic retry can retain an advisory lock acquired by a rolled-back attempt | [https://github.com/pingcap/tidb/issues/69820](https://github.com/pingcap/tidb/issues/69820) |
+| 2340003 | confirmed | high | atomicity/data-integrity | BULK autocommit DML | client-go pipelined commit / undetermined promotion | `pipelined-commit-bypasses-undetermined-promotion` | Pipelined DML can return a definite failure after its primary commit is durable |  |

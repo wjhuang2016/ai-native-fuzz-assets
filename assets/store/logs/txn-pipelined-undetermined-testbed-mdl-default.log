@@ -1,0 +1,4 @@
+8.0.11-TiDB-v9.0.0-beta.2.pre-1895-g5c9198e948
+tidb_enable_metadata_lock	ON
+tidb_enable_metadata_lock	ON
+tidb_dml_type	STANDARD

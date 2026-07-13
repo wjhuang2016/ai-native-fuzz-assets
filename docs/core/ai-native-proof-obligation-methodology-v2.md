@@ -3251,3 +3251,28 @@ is part of the method, not reporting polish.
 Store the selector as `VALIDATION_HORIZON_COVERS_IRREVERSIBLE_APPLY`. Rank only debts reaching a
 keyset, predicate, row image, table identity, commit outcome, or terminal truth. Stop after one root
 per uncovered horizon; extra DDL types and delay values are blast radius.
+
+## Compare semantic finalizers, not only fast-path checks
+
+A specialized path can share the canonical child operation but bypass the finalizer that interprets
+its side state. Build a differential owner graph:
+
+```text
+producer -> raw result + semantic side state -> canonical promotion -> public result
+                                      `-----> specialized raw return -> public result
+```
+
+This is stronger than searching for ignored errors. The child can return an error correctly while
+the missing operation is semantic promotion: ambiguity to undetermined, partial progress to retry,
+or internal cause to a connection/cleanup policy. Require a sibling consumer that still trusts the
+side state; otherwise it may be stale diagnostics.
+
+The minimum matrix keeps durable truth fixed and changes only the promotion owner. For response-loss
+faults, select a successful response rather than the first call. Then use an independent durable
+consumer, such as a fresh real-TiKV transaction, and assert the public error class separately.
+
+`id2340003` calibrates the method. Primary Commit response loss set `undeterminedErr`; ordinary 2PC
+promoted it in `commitTxn`, but pipelined DML returned the raw `commitMutations` error. Real TiKV
+showed the value committed while the caller received an ordinary transport error. Adding only the
+missing promotion produced `ErrResultUndetermined` with the same durable value. Store this selector
+as `SIDE_STATE_SEMANTIC_PROMOTION_BYPASS`.
