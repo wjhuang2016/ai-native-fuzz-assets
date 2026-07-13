@@ -1,0 +1,28 @@
+{
+  "region_count": 2,
+  "accepted_prewrite_prefix": [
+    "region-1"
+  ],
+  "fallback_witness": true,
+  "duplicate_count": 1,
+  "keys": [
+    {
+      "key": "k1",
+      "visible": true,
+      "txn_status": "committed",
+      "mode": "2pc",
+      "commit_ts": 300,
+      "table_value": "v",
+      "index_value": "v"
+    },
+    {
+      "key": "k2",
+      "visible": true,
+      "txn_status": "committed",
+      "mode": "2pc",
+      "commit_ts": 300,
+      "table_value": "v",
+      "index_value": "v"
+    }
+  ]
+}

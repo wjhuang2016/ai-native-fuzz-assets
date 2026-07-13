@@ -1,0 +1,27 @@
+{
+  "apply_witness": true,
+  "response_suppressed": true,
+  "terminal": {
+    "kind": "failure",
+    "error": "definite retryable error"
+  },
+  "duplicate_count": 1,
+  "keys": [
+    {
+      "key": "row:1",
+      "visible": true,
+      "table_value": "v1",
+      "index_value": "v1",
+      "txn_status": "committed",
+      "commit_ts": 200
+    },
+    {
+      "key": "index:v1",
+      "visible": true,
+      "table_value": "v1",
+      "index_value": "v1",
+      "txn_status": "committed",
+      "commit_ts": 200
+    }
+  ]
+}

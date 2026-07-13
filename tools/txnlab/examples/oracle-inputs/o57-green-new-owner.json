@@ -1,0 +1,31 @@
+{
+  "old_lock": {
+    "key": "k1",
+    "start_ts": 100,
+    "for_update_ts": 110,
+    "lock_kind": "pessimistic",
+    "primary": "k1",
+    "mode": "2pc"
+  },
+  "new_lock_before_cleanup": {
+    "key": "k1",
+    "start_ts": 200,
+    "for_update_ts": 210,
+    "lock_kind": "pessimistic",
+    "primary": "k1",
+    "mode": "2pc"
+  },
+  "new_lock_witness_before_cleanup": true,
+  "cleanup_applied": true,
+  "lock_after_cleanup": {
+    "key": "k1",
+    "start_ts": 200,
+    "for_update_ts": 210,
+    "lock_kind": "pessimistic",
+    "primary": "k1",
+    "mode": "2pc"
+  },
+  "later_consumer": {
+    "committed": true
+  }
+}

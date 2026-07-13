@@ -1,5 +1,5 @@
 # AI-Native Cross-Layer Transaction Campaign
-> Prepared: 2026-07-13. Status: methodology and asset design complete; no exact bug target admitted yet.
+> Prepared: 2026-07-13. Status: methodology, assets, and experiment control plane complete; no exact bug target admitted yet.
 
 ## Mission
 
@@ -312,6 +312,24 @@ owners does it become an active S48/S50 target.
 
 Recorded negative asset:
 `negative.txn-undetermined-same-session-replay.v1`.
+
+### Tooling checkpoint
+
+`tools/txnlab` now makes an admitted transaction card executable without weakening the campaign
+gates. It pins the exact TiDB/client-go/TiKV commits in isolated worktrees, verifies exact failpoint
+images, double-gates testbed mutations, controls HTTP failpoints and run-labeled Chaos objects,
+captures structured evidence, and automatically removes faults and restores images. O56, O57, and
+O58 are executable and deliberately return `INVALID` when the critical ordering witness is absent.
+
+Read-only preflight passed on testbed 8220955 with one TiDB, three TiKV, and one PD. Both exact
+failpoint images are available. The official `PingCAP-QE/artifacts` generator was also exercised for
+the pinned TiDB and TiKV commits; its generated scripts contain `make failpoint-enable` and
+`make fail_release` respectively. A new source hook still requires the image-builder runtime and
+registry push credentials, but the current-source campaign can use the existing pinned images.
+
+This does **not** admit the current mode-fallback shape, authorize a testbed fault run, or prove a
+bug. The remaining work has moved from environment construction back to proof: close one owner
+graph, admit one P/Q/F card, and produce the transaction-scoped oracle input locally.
 
 ### Remaining work order
 

@@ -1,0 +1,111 @@
+schema_version = 1
+run_key = "prep.txn.testbed8220955.pinned"
+obligation_key = "obligation.txn-terminal-result-matches-durable-status.v1"
+selector = "TXN_COMMIT_OUTCOME_TERMINAL_TRUTH"
+module = "txn/cross-layer"
+environment = "testbed"
+evidence_root = "../../../runs"
+workspace_root = "../../../.txnlab"
+allow_mutation = false
+auto_cleanup = true
+restore_images_on_cleanup = true
+collect_logs = true
+
+[sources.tidb]
+repo = "../../../../tidb"
+commit = "5c9198e9484db852b8477ce0014e0422ff9ec6a9"
+git_url = "https://github.com/pingcap/tidb.git"
+git_ref = "master"
+
+[sources.client-go]
+repo = "../../../../client-go"
+commit = "661db4f5f4e85d1efe3a0f189fc80c564b7b573a"
+git_url = "https://github.com/tikv/client-go.git"
+git_ref = "master"
+
+[sources.tikv]
+repo = "../../../../tikv"
+commit = "bf73df27b9675a2f8e3cc0b4b921f3128c37d8a5"
+git_url = "https://github.com/tikv/tikv.git"
+git_ref = "master"
+
+[images.tidb]
+base = "us-docker.pkg.dev/pingcap-testing-account/hub/pingcap/tidb/images/tidb-server"
+tag = "master-5c9198e-failpoint"
+expected_commit = "5c9198e9484db852b8477ce0014e0422ff9ec6a9"
+
+[images.tikv]
+base = "us-docker.pkg.dev/pingcap-testing-account/hub/tikv/tikv/image"
+tag = "master-bf73df2-failpoint"
+expected_commit = "bf73df27b9675a2f8e3cc0b4b921f3128c37d8a5"
+
+[cluster]
+kubeconfig = "../../../../kubeconfig.yml"
+namespace = "testbed-tps-8220955-1-213"
+tc_name = "tc"
+mysql_service = "tc-tidb"
+enable_tidb_test_api = true
+rollout_timeout_seconds = 900
+
+[assets]
+store_py = "../../../assets/store/store.py"
+sqlite_db = "../../../assets/store/assets.sqlite3"
+auto_import = false
+
+[build]
+artifacts_repo = "../../../.txnlab/deps/artifacts"
+artifacts_commit = "5958dc44f5f39ad4cb90b711d98571aff1bf06b6"
+release_version = "v9.0.0-alpha"
+registry = "us-docker.pkg.dev/pingcap-testing-account/hub"
+os = "linux"
+arch = "amd64"
+profile = "failpoint"
+
+[metadata]
+used_assets = [
+  { asset_key = "selector.txn-commit-outcome-terminal-truth.v1", role = "selector" },
+  { asset_key = "obligation.txn-terminal-result-matches-durable-status.v1", role = "obligation" },
+  { asset_key = "oracle.txn-terminal-result-mvcc-truth.v1", role = "oracle" },
+  { asset_key = "scenario.txn-post-apply-response-loss.v1", role = "scenario" },
+  { asset_key = "fault.txn-after-apply-before-response.v1", role = "fault_point" },
+]
+
+# These actions document the exact control flow but remain inert until a P/Q/F
+# target card supplies a one-shot selector and the operator enables each step.
+[[actions]]
+name = "switch-to-pinned-failpoint-images"
+phase = "prepare"
+kind = "image_switch"
+components = ["tidb", "tikv"]
+enabled = false
+
+[[actions]]
+name = "arm-after-apply-boundary"
+phase = "arm"
+kind = "failpoint_arm"
+component = "tikv"
+pod = "tc-tikv-0"
+failpoint = "applied_cb_return_undetermined_err"
+value = "1*return"
+enabled = false
+
+[[actions]]
+name = "run-targeted-workload"
+phase = "workload"
+kind = "command"
+argv = ["python3", "target-workload.py"]
+timeout_seconds = 300
+enabled = false
+
+[[actions]]
+name = "wait-for-apply-witness"
+phase = "observe"
+kind = "wait_log"
+component = "tikv"
+pattern = "txnlab_apply_witness"
+timeout_seconds = 60
+enabled = false
+
+[oracle]
+name = "terminal_mvcc_truth"
+input_file = "oracle-input.json"

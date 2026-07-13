@@ -22,6 +22,8 @@ It treats three things as first-class reusable assets:
 - `scaffolds/go-probes/`: 22 Go probe/source-scanner files plus `go.mod` and `go.sum`.
 - `scaffolds/tidb-tests/`: 32 TiDB-side AI-native test/probe files used as harness fixtures.
 - `scripts/`: asset refresh and bug-index generation helpers.
+- `tools/txnlab/`: pinned cross-layer transaction experiment runner, strong oracles, fault control,
+  evidence capture, automatic cleanup, and asset-store writeback.
 
 Current snapshot size is about 41 MB.
 
@@ -54,6 +56,13 @@ Current snapshot size is about 41 MB.
 
 - `sync_assets.sh`: incrementally refreshes this repository from `/Users/bba/pc` or another `SOURCE_ROOT`.
 - `refresh_severe_bug_index.sh`: regenerates `docs/bug-index/SEVERE_BUGS_FROM_DB.md` from the remote `found_bug` table.
+
+`tools/txnlab/`
+
+- `README.md`: transaction experiment contract, safety gates, commands, and verified environment.
+- `runner.py`: prepare/arm/workload/observe/cleanup execution with evidence-first failure handling.
+- `oracles.py`: executable O56/O57/O58 transaction truth oracles.
+- `examples/`: exact testbed 8220955 pins, inert fault templates, Chaos example, and oracle inputs.
 
 ## Suggested Reading Order
 

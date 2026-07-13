@@ -1,1 +1,5 @@
 .DS_Store
+.txnlab/
+runs/
+__pycache__/
+*.pyc

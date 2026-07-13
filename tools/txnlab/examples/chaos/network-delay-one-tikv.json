@@ -1,0 +1,27 @@
+{
+  "apiVersion": "chaos-mesh.org/v1alpha1",
+  "kind": "NetworkChaos",
+  "metadata": {
+    "name": "txnlab-delay-one-tikv"
+  },
+  "spec": {
+    "action": "delay",
+    "mode": "one",
+    "selector": {
+      "namespaces": [
+        "testbed-tps-8220955-1-213"
+      ],
+      "labelSelectors": {
+        "app.kubernetes.io/component": "tikv",
+        "app.kubernetes.io/instance": "tc"
+      }
+    },
+    "delay": {
+      "latency": "100ms",
+      "correlation": "0",
+      "jitter": "10ms"
+    },
+    "duration": "10s",
+    "direction": "both"
+  }
+}
