@@ -1,0 +1,13 @@
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse/same_generation_resumes_completed_work
+[2026/07/13 08:16:35.651 +08:00] [INFO] [checkpoints.go:1166] ["open checkpoint file failed, going to create a new one"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeFileCheckpointRejectsTableGenerationReusesame_gener1885969159/001/checkpoint.pb] []
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse/fresh_current_generation_starts_loaded
+[2026/07/13 08:16:35.655 +08:00] [INFO] [checkpoints.go:1166] ["open checkpoint file failed, going to create a new one"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeFileCheckpointRejectsTableGenerationReusefresh_curr618765503/001/checkpoint.pb] []
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse/same_name_new_generation_cannot_inherit_completion
+[2026/07/13 08:16:35.656 +08:00] [INFO] [checkpoints.go:1166] ["open checkpoint file failed, going to create a new one"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeFileCheckpointRejectsTableGenerationReusesame_name_3043043026/001/checkpoint.pb] []
+--- PASS: TestAINativeFileCheckpointRejectsTableGenerationReuse (0.01s)
+    --- PASS: TestAINativeFileCheckpointRejectsTableGenerationReuse/same_generation_resumes_completed_work (0.00s)
+    --- PASS: TestAINativeFileCheckpointRejectsTableGenerationReuse/fresh_current_generation_starts_loaded (0.00s)
+    --- PASS: TestAINativeFileCheckpointRejectsTableGenerationReuse/same_name_new_generation_cannot_inherit_completion (0.00s)
+PASS
+ok  	github.com/pingcap/tidb/lightning/pkg/checkpoints	0.701s

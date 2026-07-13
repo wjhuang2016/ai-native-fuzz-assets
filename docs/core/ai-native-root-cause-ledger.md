@@ -355,3 +355,15 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   identity and final backupmeta, not CRR recoverable TS or Lightning job submission.
 - Counting rule: one root only. PD address forms, storage backends, range boundaries, and replacement
   mechanisms are blast radius.
+
+## 2026-07-13 update: id1950003
+
+- Remote `found_bug`: 104 surfaces, 81 distinct root causes, 29 high-severity rows.
+- New root: `lightning-checkpoint-unbound-target-table-generation`.
+- Consequence: C3 direct silent lost import. A retained completed checkpoint lets classic Lightning
+  exit 0 after same-name table recreation while the current nonempty input is absent from the new
+  target generation.
+- Distinctness: S39 is reused, but this is target-generation identity in classic Lightning, not
+  importinto input lineage, CRR recoverable TS, or BR source-cluster artifact lineage.
+- Counting rule: one root only. Checkpoint driver, table schema, row count, and recreation mechanism
+  are blast radius.

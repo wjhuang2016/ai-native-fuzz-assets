@@ -1670,3 +1670,22 @@ Method improvement: add **replay compensation closure** between source proof and
 event-sourced owner, compute checkpoint restore plus forward replay plus compensating replay. A
 missing snapshot field earns a C3 matrix only when compensation is absent, reordered, or interpreted
 under changed semantic context. This prevents field-diff analysis from manufacturing false targets.
+
+## Target-generation lineage tick: classic Lightning checkpoint, EXECUTED (2026-07-13)
+
+S39 was applied to a new owner after current-source inspection found a declared checkpoint hash fed
+by constant value 30 and a file-driver `TODO check if hash matches`.
+
+```text
+P:          completed status, engines, and chunks belong to the current target table generation.
+Q:          same table name and checkpoint path prove that generation.
+LOCAL RED:  expected ID=202/Loaded/0 engines; got ID=101/Analyzed/2 engines.
+LIVE RED:   first ID=5412 with 2 rows; recreate as ID=5415 empty; second Lightning exit=0,
+            ID=5415 remains empty and ADMIN CHECK is green.
+INVALID CF: a TableID-only guard collapses to 0==0 in TiDB backend.
+INTEGRATE:  id1950003 high; 6 target assets, 5 links, 4 runs, open_gaps=[].
+```
+
+Method improvement: split persisted lineage into source identity, target generation, configuration,
+and output artifacts. Then verify that the selected identity field is actually materialized by every
+backend. A locally plausible guard is not a fix proof when its live values collapse to a sentinel.

@@ -1718,3 +1718,15 @@ ROLLBACK TO、INSERT(2)、COMMIT；补偿动作也被重放,最终 retry/no-retr
 events + compensation events”的完整 effect closure；只有补偿事件缺失、乱序或换了语义 owner
 才允许 C3 admission。私有资产库当前 243 revisions,RED=47/GREEN=47,C3_DIRECT=19,
 `next=null`。
+
+**2026-07-13 current-source-only 命中 id1950003/high:经典 Lightning checkpoint 未绑定 target
+table generation。** 候选不是 PR/review finding 生成的。源码中 MySQL checkpoint 的 `hash`
+实际写常量 `CheckpointStatusLoaded(30)`,file driver 则留有 `TODO check if hash matches`,同名项
+会保留旧 TableID/status/engines/chunks。local RED 两格控制通过,跨 generation 得到旧
+`101/Analyzed/2 engines`,而不是当前 `202/Loaded/0`。testbed 8220955 用 current commit 和支持的
+`keep-after-success=origin`:第一次表 ID 5412 有两行；重建为 ID 5415 空表后,第二次 Lightning
+exit 0,当前表仍为空,ADMIN CHECK 仅证明空表内部一致。TableID-only 反事实 live 无效,因为 TiDB
+backend 的 checkpoint/current owner 都折叠为 0。上游 issue 搜索在 RED 后进行,无 exact root。
+远端 `found_bug` 当前 104 rows/81 roots/29 high；私有资产 249 revisions,RED=49/GREEN=48,
+INVALID=7,C3_DIRECT=20,pack open_gaps=[]。新方法增量:持久化 lineage 必须拆分 source、target
+generation、config、artifact 四个 owner,并验证 identity field 在每个 backend 真实 materialize。

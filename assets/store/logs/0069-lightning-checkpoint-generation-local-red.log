@@ -1,0 +1,33 @@
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse/same_generation_resumes_completed_work
+[2026/07/13 08:15:57.890 +08:00] [INFO] [checkpoints.go:1166] ["open checkpoint file failed, going to create a new one"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeFileCheckpointRejectsTableGenerationReusesame_gener2109339739/001/checkpoint.pb] []
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse/fresh_current_generation_starts_loaded
+[2026/07/13 08:15:57.893 +08:00] [INFO] [checkpoints.go:1166] ["open checkpoint file failed, going to create a new one"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeFileCheckpointRejectsTableGenerationReusefresh_curr2822306535/001/checkpoint.pb] []
+=== RUN   TestAINativeFileCheckpointRejectsTableGenerationReuse/same_name_new_generation_cannot_inherit_completion
+[2026/07/13 08:15:57.895 +08:00] [INFO] [checkpoints.go:1166] ["open checkpoint file failed, going to create a new one"] [path=/var/folders/zx/f9809dyn2m54rzv1vxmr52080000gn/T/TestAINativeFileCheckpointRejectsTableGenerationReusesame_name_2839335244/001/checkpoint.pb] []
+    ai_native_checkpoint_generation_test.go:141: 
+        	Error Trace:	/Users/bba/pc/.worktrees/tidb-lightning-checkpoint-generation/lightning/pkg/checkpoints/ai_native_checkpoint_generation_test.go:141
+        	Error:      	Not equal: 
+        	            	expected: struct { TableID int64; Status checkpoints.CheckpointStatus; Engines int }{TableID:202, Status:0x1e, Engines:0}
+        	            	actual  : struct { TableID int64; Status checkpoints.CheckpointStatus; Engines int }{TableID:101, Status:0xd2, Engines:2}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1,5 +1,5 @@
+        	            	 (struct { TableID int64; Status checkpoints.CheckpointStatus; Engines int }) {
+        	            	- TableID: (int64) 202,
+        	            	- Status: (checkpoints.CheckpointStatus) 30,
+        	            	- Engines: (int) 0
+        	            	+ TableID: (int64) 101,
+        	            	+ Status: (checkpoints.CheckpointStatus) 210,
+        	            	+ Engines: (int) 2
+        	            	 }
+        	Test:       	TestAINativeFileCheckpointRejectsTableGenerationReuse/same_name_new_generation_cannot_inherit_completion
+--- FAIL: TestAINativeFileCheckpointRejectsTableGenerationReuse (0.01s)
+    --- PASS: TestAINativeFileCheckpointRejectsTableGenerationReuse/same_generation_resumes_completed_work (0.00s)
+    --- PASS: TestAINativeFileCheckpointRejectsTableGenerationReuse/fresh_current_generation_starts_loaded (0.00s)
+    --- FAIL: TestAINativeFileCheckpointRejectsTableGenerationReuse/same_name_new_generation_cannot_inherit_completion (0.00s)
+FAIL
+FAIL	github.com/pingcap/tidb/lightning/pkg/checkpoints	0.708s
+FAIL

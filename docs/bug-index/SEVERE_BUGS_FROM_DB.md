@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 07:49:42 +0800
+Generated at: 2026-07-13 08:33:25 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -32,3 +32,4 @@ Generated at: 2026-07-13 07:49:42 +0800
 | 1860003 | confirmed | high | disaster_recovery | BR operator crr-checkpoint / log restore | CRR persisted resume state | `crr-resume-state-unbound-lineage` | CRR reuses an unbound resume checkpoint across replication lineages |  |
 | 1890003 | confirmed | high | data_loss | TiDB Lightning importinto backend | finished table checkpoint | `lightning-importinto-finished-checkpoint-unbound-input` | Lightning importinto can skip new input because of a finished checkpoint from an older run |  |
 | 1920003 | confirmed | high | data_loss | br backup full | backup checkpoint resume | `br-backup-checkpoint-unbound-source-cluster` | BR backup retry can publish SST files from a replaced source cluster |  |
+| 1950003 | confirmed | high | data_loss | tidb-lightning import | classic Lightning checkpoint resume | `lightning-checkpoint-unbound-target-table-generation` | TiDB Lightning can silently skip all data after the target table is recreated |  |
