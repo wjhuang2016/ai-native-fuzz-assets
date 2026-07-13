@@ -1,0 +1,44 @@
+diff --git a/pkg/executor/adapter.go b/pkg/executor/adapter.go
+index e5ea851a10..5c26fd0b30 100644
+--- a/pkg/executor/adapter.go
++++ b/pkg/executor/adapter.go
+@@ -1396,6 +1396,9 @@ func (a *ExecStmt) handlePessimisticLockError(ctx context.Context, lockErr error
+ 	if lockErr == nil {
+ 		return nil, nil
+ 	}
++	if a.Ctx.GetSessionVars().StmtCtx.SequenceSetValExecuted {
++		return nil, lockErr
++	}
+ 	failpoint.Inject("assertPessimisticLockErr", func() {
+ 		if terror.ErrorEqual(kv.ErrWriteConflict, lockErr) {
+ 			sessiontxn.AddAssertEntranceForLockError(a.Ctx, "errWriteConflict")
+diff --git a/pkg/expression/builtin_info.go b/pkg/expression/builtin_info.go
+index 88310d39c0..4e3e7cdb7f 100644
+--- a/pkg/expression/builtin_info.go
++++ b/pkg/expression/builtin_info.go
+@@ -1695,7 +1695,11 @@ func (b *builtinSetValSig) evalInt(ctx EvalContext, row chunk.Row) (int64, bool,
+ 	if isNull || err != nil {
+ 		return 0, isNull, err
+ 	}
+-	return sequence.SetSequenceVal(setValue)
++	value, alreadySatisfied, err := sequence.SetSequenceVal(setValue)
++	if err == nil && !alreadySatisfied {
++		vars.StmtCtx.SequenceSetValExecuted = true
++	}
++	return value, alreadySatisfied, err
+ }
+ 
+ func getSchemaAndSequence(sequenceName string) (string, string) {
+diff --git a/pkg/sessionctx/stmtctx/stmtctx.go b/pkg/sessionctx/stmtctx/stmtctx.go
+index 42982b6842..03148f5ec5 100644
+--- a/pkg/sessionctx/stmtctx/stmtctx.go
++++ b/pkg/sessionctx/stmtctx/stmtctx.go
+@@ -316,6 +316,8 @@ type StatementContext struct {
+ 	LastInsertID uint64
+ 	// LastInsertIDSet is true if the LastInsertId was set
+ 	LastInsertIDSet bool
++	// SequenceSetValExecuted is true after this attempt changes a sequence through SETVAL.
++	SequenceSetValExecuted bool
+ 	// InsertID is the given insert ID of an auto_increment column.
+ 	InsertID uint64
+ 
