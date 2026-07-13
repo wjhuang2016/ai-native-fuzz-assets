@@ -1881,3 +1881,26 @@ replay。远端 `found_bug` 已入库 id2130003，现为 110 rows/87 roots/35 hi
 https://github.com/pingcap/tidb/issues/69792 带 `found-by-ai`/`severity/major`。私有资产 303 revisions，
 RED=64/GREEN=62/INVALID=12，C3_DIRECT=22，`next=null`。暂停本 root 的 conflict/input/index/error
 变体；下一轮继续只从当前源码产生新的 C3 候选。
+
+**2026-07-13 txn current-source screen 与 L2 环境门更新：没有新 bug，新增 3 个负资产和一套
+可重复本地运行链。** 本轮继续保持 COLD_SOURCE、非 partition、testbed 先关闭。先后审计
+pipelined DML stale broadcast commitTS、shared-lock RPC envelope/resume、aggressive/fair lock 入口、
+TiKV async prewrite apply。它们分别被最高消费者不使用精确 commitTS、client-go 展开 multi-owner、
+入口显式拒绝、scheduler latch 覆盖 apply 等 guard 淘汰，没有把字段差异硬升为 bug。最强候选被压成
+FK 最高消费者矩阵：两个 child insert 同时持有 parent shared lock，parent DELETE 等待；holder1
+rollback 后仍须等待 holder2；holder2 rollback 控制要求 DELETE 成功，holder2 commit 目标要求
+DELETE 重试 FK 检查并失败。矩阵两格 GREEN，parent/child 与 ADMIN CHECK 都符合预期。
+
+第一次运行使用本机缓存的 `tiup nightly` TiKV `2d4737d`（build 2026-01-19），连仓库已有
+`TestSharedLockBlockExclusiveLock` 都阻塞，所以严格记为 `INVALID(environment)`。删除并重装 nightly 后
+得到 `7ecce12`（build 2026-07-13），官方 capability baseline 与新 FK 矩阵都通过；未触碰 testbed。
+`tools/txnlab/local.py` 新增 `refresh-nightly/local-build/local-verify/realtikvtest`：nightly lane 记录实际
+commit 且只声称 current-head capability，exact lane 校验 TiKV 二进制 SHA，runner 拒绝复用 2379、
+保存日志并清理自己启动的进程。19 个 txnlab 单测与端到端 nightly baseline 均通过。新 scaffold 是
+`scaffolds/tidb-tests/txn_shared_lock_parent_delete_revalidation_test.go`；资产 key 包括
+`negative.txn-shared-lock-parent-delete-revalidation.v1`、
+`negative.txn-pipelined-stale-broadcast-commit-ts.v1`、
+`negative.txn-async-apply-latch-ordering.v1`、
+`schedule.txn-feature-capability-before-candidate.v1`、`module.txnlab-local-runtime.v1`，均已导入
+`assets.sqlite3`。方法论新增两条硬门：候选前先过最高消费者+入口/capability；AI source scout 同时
+限制 command/source-region/token/wall-clock，不能再用“命令数少”伪装成低成本探索。

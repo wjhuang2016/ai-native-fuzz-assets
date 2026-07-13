@@ -42,6 +42,13 @@ The full retrospective is `ai-native-discovery-retrospective.md`. Its durable co
    validate a selector without qualifying as a severe product bug.
 8. **Store negative screens.** Downstream dominance, unreachable retries, diagnostic-only consumers,
    and faithful GREEN matrices prevent future rounds from restarting the same dead ends.
+9. **Calibrate the runtime before the candidate.** Record component commits and run a positive
+   feature baseline. A cached nightly that cannot execute the selected path makes the cell
+   `INVALID(environment)`, not RED or GREEN. Refreshed nightly is a capability lane; exact-source
+   attribution requires a matching binary.
+10. **Budget AI exploration by volume, not tool count.** A bounded scout needs simultaneous command,
+    source-region, token, and wall-clock ceilings. It must return owner-anchored claims and the
+    highest consumer, rather than a large source digest that merely used few shell commands.
 
 The practical AI speedup comes from semantic compression, not test-volume expansion.
 

@@ -7,6 +7,9 @@ does not choose a target by itself.
 ## Ready Surface
 
 - Exact source pins and isolated worktrees for TiDB, client-go, and TiKV.
+- Exact-SHA local TiKV build/verification and a self-cleaning `realtikvtest` runner.
+- Explicit refreshed-nightly mode that records the downloaded TiKV commit and limits the verdict to
+  capability/current-nightly coverage when it differs from the source pin.
 - Registry checks for exact TiDB/TiKV failpoint images, including OCI revision-label verification.
 - Read-only TidbCluster health, replica, RBAC, service, and pod snapshots.
 - Explicitly gated image switching, TiDB/TiKV HTTP failpoints, SQL workloads, and Chaos Mesh objects.
@@ -32,6 +35,29 @@ python3 -m tools.txnlab validate tools/txnlab/examples/testbed-8220955.toml
 python3 -m tools.txnlab preflight tools/txnlab/examples/testbed-8220955.toml
 python3 -m tools.txnlab prepare-worktrees tools/txnlab/examples/testbed-8220955.toml
 ```
+
+Refresh a stale TiUP TiKV nightly, then run a capability baseline and a target matrix:
+
+```bash
+python3 -m tools.txnlab refresh-nightly tikv
+python3 -m tools.txnlab realtikvtest tools/txnlab/examples/testbed-8220955.toml \
+  TestSharedLockBlockExclusiveLock --nightly
+python3 -m tools.txnlab realtikvtest tools/txnlab/examples/testbed-8220955.toml \
+  TestSharedLockReleaseOneHolderDoesNotAllowParentDelete --nightly
+```
+
+Nightly is a fast capability lane, not an exact-source oracle. For a revision-pinned L2 result:
+
+```bash
+python3 -m tools.txnlab local-build tools/txnlab/examples/testbed-8220955.toml tikv
+python3 -m tools.txnlab local-verify tools/txnlab/examples/testbed-8220955.toml tikv
+python3 -m tools.txnlab realtikvtest tools/txnlab/examples/testbed-8220955.toml \
+  TestName --timeout 300
+```
+
+The runner refuses to reuse port 2379, verifies exact binaries before startup, records both logs,
+and terminates only the playground process group it created. Always run a feature-specific baseline
+before interpreting a candidate result; a cached `nightly` alias can point to a months-old binary.
 
 Evaluate an oracle without touching a cluster:
 
@@ -133,7 +159,8 @@ experimental verdict.
 
 ## Remaining Target-Specific Work
 
-The environment is ready; the next work is scientific, not platform setup:
+The environment is ready with two explicit scopes: refreshed nightly for fast capability screening,
+and a source-pin build for exact L2 reproduction. The next work is scientific:
 
 - Complete one current-source P/Q/F card and admit one target only.
 - Add the smallest transaction-scoped selector if existing one-shot failpoints are too broad.

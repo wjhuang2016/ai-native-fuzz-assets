@@ -20,7 +20,7 @@ It treats three things as first-class reusable assets:
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
 - `scaffolds/top-level/`: 63 top-level Python/shell/data scaffolds from the working directory.
 - `scaffolds/go-probes/`: 22 Go probe/source-scanner files plus `go.mod` and `go.sum`.
-- `scaffolds/tidb-tests/`: 32 TiDB-side AI-native test/probe files used as harness fixtures.
+- `scaffolds/tidb-tests/`: TiDB-side AI-native test/probe files used as harness fixtures.
 - `scripts/`: asset refresh and bug-index generation helpers.
 - `tools/txnlab/`: pinned cross-layer transaction experiment runner, strong oracles, fault control,
   evidence capture, automatic cleanup, and asset-store writeback.
@@ -63,6 +63,8 @@ Current snapshot size is about 41 MB.
 - `runner.py`: prepare/arm/workload/observe/cleanup execution with evidence-first failure handling.
 - `oracles.py`: executable O56/O57/O58 transaction truth oracles.
 - `examples/`: exact testbed 8220955 pins, inert fault templates, Chaos example, and oracle inputs.
+- `local.py`: refreshed-nightly capability checks plus exact-SHA local TiKV build, verification, and
+  self-cleaning realtikvtest execution.
 
 ## Suggested Reading Order
 

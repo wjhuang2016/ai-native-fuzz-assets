@@ -84,12 +84,18 @@ P3  MINE_ORACLE     any open held-out FN ticket (a symptom class with no firing 
 P4  MINE_BUG        selector ledger has a live selector, the catalog queue has a C3_DIRECT or
                     C2_WITH_LIFT target, and novelty is healthy. Take the top admitted target
                     ordered consequence-first (see "How P4 orders targets" below), not just the
-                    top-ranked selector's next.
+                    top-ranked selector's next. Before the candidate, record runtime commits and
+                    pass a feature-specific positive capability baseline.
 P5  MINE_SELECTOR / EXTEND_BATTERY   novelty is falling or hits cluster on one selector.
 P6  SOURCE_TARGETS  the catalog queue is near-empty.
 ```
 
 The ordering encodes the core judgment: a loop that keeps mining with a broken or unverified oracle is the failure mode. P0-P2 are the guardrail that stops an unattended agent from scaling a bad instrument.
+
+A failed capability baseline terminates the tick as `INVALID(environment)`. The controller may
+refresh a cached nightly and rerun the baseline, or build the exact source pin. It must not interpret
+blocking, timeout, or a missing protocol path as candidate evidence. A refreshed nightly result is
+scoped to current-head screening unless its runtime commit equals the configured pin.
 
 ### How P4 orders targets (consequence-first, severity-gated)
 
@@ -208,6 +214,7 @@ consequence_mix        severity distribution of recent hits (share graded conseq
 admission_mix          share of P4 actions that were C3_DIRECT / C2_WITH_LIFT / NOT_ADMITTED;
                        any NOT_ADMITTED P4 action is a controller violation
 fn_pressure            open held-out FN tickets; trend of oracle false-negative findings
+environment_invalid    candidate cells rejected because runtime commit/capability was not proved
 ```
 
 Drift signals and the loop's automatic response:
@@ -221,6 +228,8 @@ consequence_mix -> no C3         severity drift -> block P4, SOURCE_TARGETS from
 admission_mix has NOT_ADMITTED   controller violation -> stop P4, classify the leaked target,
                                  then repair the queue/admission rule before another run
 fn_pressure rising               MINE_ORACLE: instruments are missing a whole class
+environment_invalid rising       stop candidate execution; refresh or pin the runtime and add a
+                                 reusable capability baseline before resuming P4
 ```
 
 These are the anti-drift backstop: the classic failure of autonomous fuzzers — quietly degrading into blast-radius grinding or noise — is made visible and self-correcting instead of silent.

@@ -313,6 +313,72 @@ owners does it become an active S48/S50 target.
 Recorded negative asset:
 `negative.txn-undetermined-same-session-replay.v1`.
 
+### Current-source screen checkpoint
+
+The next pass applied the same owner-transfer discipline to pipelined DML, shared locks, resumed
+pessimistic locking, and TiKV async apply. No severe bug was admitted. The useful result is a sharper
+screen, not a forced target:
+
+- Pipelined DML broadcasts the commit timestamp captured before a `CommitTsExpired` retry, but the
+  ordinary TiKV consumers inspected use the cache entry only as committed/ongoing membership. No
+  current TiDB wrong-result or atomicity consumer was found, so the field mismatch is retired for
+  this campaign rather than promoted from source shape alone.
+- TiKV returns multi-owner shared-lock envelopes, but current client-go prewrite, pessimistic-lock,
+  and GC paths expand the embedded owners before making owner-specific decisions. Ordinary reads
+  intentionally ignore shared locks. The apparent top-level zero owner is therefore not itself a
+  correctness bug.
+- TiKV's async-apply prewrite response occurs after Raft commit, while scheduler latches remain held
+  through apply. A same-key commit cannot overtake prewrite apply; an apply failure after the early
+  response takes the process-preserving panic path rather than publishing a false terminal result.
+- Aggressive/fair locking plus shared locks and resumed shared locks are rejected at the client-go
+  entry gate. Source-only exploration below that gate cannot produce a user-reachable schedule.
+
+This pass adds two admission gates ahead of expensive schedule design:
+
+1. **Highest-consumer gate:** name the public invariant that consumes the suspicious state before
+   building a fault schedule. A field difference that is logged or reduced to a boolean is not yet
+   a target.
+2. **Entry/capability gate:** prove that the exact product configuration reaches the lower-layer
+   path. Unsupported mode combinations and stale component binaries are environment results, not
+   bugs.
+
+The bounded AI source scout also exposed a budgeting error: limiting shell-command count did not
+limit source volume or reasoning cost. Future scouts need simultaneous command, token, wall-clock,
+and per-read-region budgets, and must return only owner-anchored claims.
+
+### Shared-lock highest-consumer matrix
+
+The strongest shared-lock concern was compressed into a parent/child FK matrix. Two pessimistic
+child inserts hold compatible shared locks on the same parent. A concurrent parent `DELETE` waits;
+after the first holder rolls back, it must still wait for the second owner. The only changed cell is
+whether the second owner rolls back or commits:
+
+| Cell | Second holder | Required result |
+| --- | --- | --- |
+| G1 | rollback | parent DELETE succeeds; no child remains |
+| G2 | commit | DELETE retries/revalidates, returns FK error; parent and committed child remain |
+
+The first run used a cached `tiup nightly` TiKV at commit `2d4737d`, built on 2026-01-19. Even the
+repository's existing `TestSharedLockBlockExclusiveLock` capability baseline blocked, so that run
+was `INVALID(environment)` and never became bug evidence. After removing and reinstalling the TiKV
+nightly component, TiKV was commit `7ecce12`, built on 2026-07-13. The existing baseline passed, and
+the new matrix passed both cells. No testbed mutation was performed.
+
+The holding guard is statement revalidation: the committed shared-lock owner makes the waiting
+parent DELETE conflict with a newer commit; TiDB's pessimistic DML loop advances `forUpdateTS`,
+rebuilds the executor, and reruns the FK check. This is stored as
+`negative.txn-shared-lock-parent-delete-revalidation.v1`, with the executable matrix in
+`scaffolds/tidb-tests/txn_shared_lock_parent_delete_revalidation_test.go`.
+
+Environment methodology is now two-lane:
+
+- **refreshed nightly:** fast capability and current-head screening; always record the actual commit
+  and do not claim exact source-pin coverage;
+- **exact-SHA local binary:** required when a RED must be attributed to the pinned TiKV source.
+
+`txnlab` now automates both lanes, refuses to reuse an unknown PD on port 2379, and cleans up the
+playground it starts. A capability baseline is mandatory before every feature-specific candidate.
+
 ### Tooling checkpoint
 
 `tools/txnlab` now makes an admitted transaction card executable without weakening the campaign
@@ -328,8 +394,8 @@ the pinned TiDB and TiKV commits; its generated scripts contain `make failpoint-
 registry push credentials, but the current-source campaign can use the existing pinned images.
 
 This does **not** admit the current mode-fallback shape, authorize a testbed fault run, or prove a
-bug. The remaining work has moved from environment construction back to proof: close one owner
-graph, admit one P/Q/F card, and produce the transaction-scoped oracle input locally.
+bug. The shared-lock FK matrix is GREEN. The remaining work stays at proof: close one owner graph,
+admit one P/Q/F card, and produce the transaction-scoped oracle input locally.
 
 ### Remaining work order
 
