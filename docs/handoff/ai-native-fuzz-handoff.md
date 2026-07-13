@@ -4,6 +4,37 @@
 
 ---
 
+**2026-07-14 current-source-only 命中新的 severe root `id2280003`: MDL 关闭时,1PC 的 schema
+校验只覆盖 prewrite 前的旧时刻,可在相关 DDL 完成后仍按旧 schema 原子提交。** 生成候选前没有使用
+PR review、issue 或历史修复;先从 fast-path validation point `V` 与 atomic apply point `H` 的证明差
+产生 P/Q/F。TiDB 在 `needCheckSchemaByDelta` 时安装 SchemaChecker;client-go 在
+`calculateMaxCommitTS` 里于 `beforePrewrite` 前检查,TiKV 1PC prewrite 直接生成 committed write,成功
+分支不会执行 2PC 的 actual-commitTS schema check。
+
+local TRUNCATE 矩阵先 RED:1PC 返回 nil、当前表空、旧 table ID 下有 committed value;2PC control
+安全重试。该 RED 没有直接升级,因为 INSERT 与 DDL 重叠,墙钟返回顺序不是 serialization oracle。live
+脚手架随后同时抓 DML `commit_ts` 与 DDL history `FinishedTS`;testbed `8220955` 真实 TiKV 证明
+`commit_ts > FinishedTS`。`ADD INDEX` 的 strongest cell 在 async commit 仍开启时实际 mode=`1pc`,
+table scan=`1:10`,FORCE INDEX=空,`ADMIN CHECK TABLE` 失败;同点 2PC 为 `1:10/1:10 + ADMIN green`。
+TRUNCATE sibling 是 INSERT success 但 replacement table 空。只在 `needCheckSchemaByDelta=true` 时
+设置 `Enable1PC=false` 的单变量反事实令 local 全绿。
+
+新 selector `VALIDATION_HORIZON_COVERS_IRREVERSIBLE_APPLY`:对 `V -> 可变世界 -> H` 计算
+“H 消费且 `(V,H]` 可变化、又无 lock/version/CAS/revalidation owner”的事实;最小矩阵是 fast/safe
+path x change altitude x highest consumer。新增硬门:重叠操作必须先用 commitTS/FinishedTS、epoch 或
+version 证明逻辑顺序,不能拿 response order 直接宣称数据丢失。post-RED 去重无 exact root;#24009
+只是旧 unstable skipped test 且称无 production impact;`id1440001` 是 async false abort,本条是 1PC
+false success + 持久索引/表 identity 错误。资产入口:
+`assets/store/txn-1pc-schema-horizon-results.jsonl`、
+`docs/method-cases/ai-native-id2280003-onepc-schema-horizon-method-case.md`、
+`docs/bug-drafts/ai-native-onepc-schema-check-horizon-corruption-draft.md`、
+`scaffolds/top-level/ai_native_onepc_schema_horizon_probe.sh`。暂停本 root 的 DDL/delay/row-count 变体;
+远端 `found_bug id2280003` 已入库为 confirmed/high,当前为 115 surfaces、92 distinct roots、38 high、
+100 confirmed。下一轮继续 common transaction,排除 SAVEPOINT、partition 和已退役的 1PC response
+ambiguity。
+
+---
+
 **2026-07-14 1PC response-ambiguity candidate 已由真实 TiKV 证伪并退役,不计新 bug。** current-source
 候选是首个 TryOnePc 已提交但 response 丢失,随后 Region split 令 retry 遇到 EpochNotMatch 并清除
 client-go 当前 1PC mode。本地 embedded mock 返回普通 write conflict,同时两 key 已可见且

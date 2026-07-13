@@ -2,11 +2,11 @@
 > Started 2026-07-03. The headline metric for this method is **distinct root causes**, not
 > `COUNT(found_bug)`. This ledger is the corrected scoreboard and the counting convention.
 
-## Current remote snapshot (2026-07-13)
+## Current remote snapshot (2026-07-14)
 
-`found_bug`: 113 surfaces, 90 distinct root causes, 36 high-severity rows, 98 confirmed rows,
-and 17 issue-filed rows. The newest entry is `id2220003`, a confirmed moderate root; it validates
-the mutable-value selector but does not raise the severe count.
+`found_bug`: 115 surfaces, 92 distinct root causes, 38 high-severity rows, and 100 confirmed rows.
+The newest entry is `id2280003`, a confirmed high root from the transaction validation-horizon
+campaign.
 
 ## Counting convention
 
@@ -459,3 +459,27 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   deliberately persistent map, not savepoint-stack semantics or retry residue.
 - Counting rule: table schemas, byte limits, and payload sizes are blast radius. Reopen only for a
   different mutable owner or a higher correctness-bearing consumer.
+
+## 2026-07-14 update: id2250003
+
+- Remote `found_bug`: 114 surfaces, 91 distinct root causes, 37 high-severity rows, 99 confirmed
+  rows.
+- New root: `async-commit-age-check-after-recovery-proof`.
+- Consequence: C3 terminal-truth contradiction. COMMIT returns an ordinary error, but real TiKV
+  recovery can later commit the complete write set.
+- Distinctness: the error occurs after the async recovery proof horizon; cleanup is only
+  best-effort and does not dominate the independent recovery owner.
+- Counting rule: age values, TTLs, cleanup failures, and key counts are blast radius. Reopen only
+  for another post-proof terminal owner or outcome class.
+
+## 2026-07-14 update: id2280003
+
+- Remote `found_bug`: 115 surfaces, 92 distinct root causes, 38 high-severity rows, 100 confirmed
+  rows.
+- New root: `onepc-schema-check-before-prewrite-mdl-off`.
+- Consequence: C3 direct persistent corruption. A successful 1PC INSERT ordered after ADD INDEX can
+  omit the new index key; the TRUNCATE sibling can commit to the obsolete table identity.
+- Distinctness: `id1440001` is async commit false abort under schema change. This root is 1PC false
+  success because validation ends before TiKV's atomic apply; it needs a different fix owner.
+- Counting rule: DDL types, delay sources, row counts, and index definitions are blast radius.
+  Reopen only for a different validation horizon or irreversible semantic consumer.

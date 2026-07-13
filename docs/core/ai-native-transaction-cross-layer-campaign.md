@@ -511,6 +511,37 @@ and run topology actors in a separate process from process-wide failpoints. The 
 must not revisit this 1PC shape; it should cover common pipelined/fast-commit proof horizons and
 their highest terminal consumers.
 
+### Second severe cross-layer hit: 1PC schema validation ends before atomic apply
+
+The bounded post-primary packet first returned zero candidates. Ordinary 2PC's apparent fallible
+post-primary worker could not return a production error, secondary commit errors had only transient
+lock consumers, pipelined post-primary work was background recovery, and explicit undetermined
+covered lost primary responses. Instead of widening the packet, the parent moved one proof stage
+earlier: validations performed before a fast path's irreversible apply.
+
+That pass produced `id2280003`. When MDL is off, TiDB's delta `SchemaChecker` is installed before
+commit. client-go calls it in `calculateMaxCommitTS`, then reaches `beforePrewrite`. A successful 1PC
+prewrite is already an atomic TiKV commit, and client-go returns without the actual-commitTS schema
+check used by 2PC. The compressed matrix paused only that interval and ran related DDL.
+
+Real-TiKV `ADD INDEX` evidence on testbed 8220955 was direct: 1PC `commit_ts` was later than DDL
+`FinishedTS`, the table scan returned `1:10`, the new index returned no row, and `ADMIN CHECK TABLE`
+failed. The same schedule with 2PC retried and returned `1:10` through both paths with ADMIN CHECK
+green. Async commit remained enabled in the strongest 1PC RED. A TRUNCATE sibling returned success
+with a later commitTS while the replacement table was empty. Disabling 1PC only when
+`needCheckSchemaByDelta` is true made the local oracle fully GREEN.
+
+This adds `VALIDATION_HORIZON_COVERS_IRREVERSIBLE_APPLY`: compute facts consumed at atomic apply that
+can change after validation, subtract downstream lock/version/revalidation owners, and compare fast
+and safe paths. For overlapping actors, wall-clock return order is an anti-oracle; the matrix must
+first prove logical order with commitTS/FinishedTS or an equivalent token.
+
+Post-RED dedup found no exact TiDB or client-go issue. Closed TiDB issue #24009 covers an unstable
+skipped test and explicitly says no production impact. Existing `id1440001` is the async-commit
+false-abort sibling; this root is 1PC false success with persistent wrong data. Stop DDL-shape and
+delay-value expansion. The next transaction pass should reuse the validation-horizon selector on a
+different semantic owner or return to a different common commit/retry terminal owner.
+
 ## Stop Rules
 
 - Stop after one root per terminal owner and protocol transition.

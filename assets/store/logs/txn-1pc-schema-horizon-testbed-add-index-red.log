@@ -1,0 +1,15 @@
+mode=1pc
+ddl_shape=add-index
+enable_async_commit=1
+writer_rc=0
+process_state=Query:0:insert into t values (1, 10)
+old_table_id=5582
+new_table_id=5582
+ddl_job_id=5584
+ddl_finished_ts=467658053819564034
+commit_ts=467658053871992836
+current_rows=1:10
+index_rows=<empty>
+admin_check_rc=1
+txn_info={"txn_scope":"global","start_ts":467658053649170437,"commit_ts":467658053871992836,"txn_commit_mode":"1pc","async_commit_fallback":false,"one_pc_fallback":false,"pipelined":false,"flush_wait_ms":0}
+verdict=RED

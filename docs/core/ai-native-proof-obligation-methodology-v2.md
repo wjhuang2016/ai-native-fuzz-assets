@@ -3185,3 +3185,39 @@ Fault ownership is part of the same proof. A process-wide retry failpoint can al
 topology helper that shares the process and deadlock the experiment. Run Region split, owner change,
 or independent recovery from a separate process when the target process is paused. Classify a
 shared-failpoint timeout as `INVALID(harness)`, never as product liveness evidence.
+
+## Require validation to cover the irreversible apply horizon
+
+A fast path can validate the right fact at the wrong time. Mark the validation point `V` and the
+irreversible apply point `H`, then inventory every semantic fact consumed at `H`:
+
+```text
+validation debt = facts consumed at H
+                  that can change in (V,H]
+                  minus lock/version/CAS/revalidation owners enforced at H
+```
+
+The strongest candidates have a safe-path sibling that validates later. Build a small matrix over
+fast versus safe path and state change before, inside, and after the uncovered interval. The fault
+should lengthen only `(V,H]`; it must not mock the validator, downstream apply result, or consequence
+oracle.
+
+Concurrent operations need a logical-order oracle. Invocation and response order do not establish
+serialization when operations overlap. Capture commit timestamps, DDL finished timestamps, epochs,
+versions, or another authoritative ordering token first. Judge the resulting state only after the
+operation is proved to be ordered after the state change.
+
+`id2280003` calibrates this selector. With MDL off, TiDB installed a delta schema checker and
+client-go ran it from `calculateMaxCommitTS` before prewrite. A related `ADD INDEX` then finished;
+TiKV selected a later 1PC commit timestamp and atomically committed the old mutation set. client-go's
+1PC branch returned immediately, while its 2PC sibling checked the actual commitTS and retried.
+On real TiKV, the 1PC table scan returned the row, the new index missed it, and `ADMIN CHECK TABLE`
+failed. The paired 2PC run was fully coherent. `TRUNCATE TABLE` supplied the table-identity sibling.
+
+The first local oracle almost overclaimed because it used response order around TRUNCATE. Comparing
+DML `commit_ts` with DDL `FinishedTS` converted it into a valid serialization claim. This correction
+is part of the method, not reporting polish.
+
+Store the selector as `VALIDATION_HORIZON_COVERS_IRREVERSIBLE_APPLY`. Rank only debts reaching a
+keyset, predicate, row image, table identity, commit outcome, or terminal truth. Stop after one root
+per uncovered horizon; extra DDL types and delay values are blast radius.

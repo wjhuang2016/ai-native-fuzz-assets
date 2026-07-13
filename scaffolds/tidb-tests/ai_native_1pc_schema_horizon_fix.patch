@@ -1,0 +1,14 @@
+diff --git a/pkg/sessiontxn/isolation/base.go b/pkg/sessiontxn/isolation/base.go
+index 3251b42b08..84255b26db 100644
+--- a/pkg/sessiontxn/isolation/base.go
++++ b/pkg/sessiontxn/isolation/base.go
+@@ -599,6 +599,9 @@ func (p *baseTxnContextProvider) SetOptionsBeforeCommit(
+ 	if sessVars.TxnCtx != nil {
+ 		needCheckSchemaByDelta = !sessVars.TxnCtx.EnableMDL
+ 	}
++	if needCheckSchemaByDelta {
++		txn.SetOption(kv.Enable1PC, false)
++	}
+ 
+ 	// TODO: refactor SetOption usage to avoid race risk, should detect it in test.
+ 	// The pipelined txn will may be flushed in background, not touch the options to avoid races.

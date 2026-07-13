@@ -4,10 +4,10 @@ This index tracks the high-severity bug assets that should guide future mining.
 
 Source of truth for status and severity is the remote `found_bug` table. This file is curated so each row also points to the most useful local asset in this repository.
 
-Last verified: 2026-07-13
+Last verified: 2026-07-14
 
-- Remote `found_bug`: `MAX(id)=1980003`, `COUNT(*)=105`, `COUNT(DISTINCT root_cause_id)=82`
-- High-severity entries: 30 total; 28 confirmed/issue-filed; 1 candidate; 1 known-root rediscovery
+- Remote `found_bug`: `MAX(id)=2280003`, `COUNT(*)=115`, `COUNT(DISTINCT root_cause_id)=92`
+- High-severity entries: 38 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -41,6 +41,14 @@ Last verified: 2026-07-13
 | 1920003 | confirmed | data loss | `br-backup-checkpoint-unbound-source-cluster` | Retrying an interrupted backup after source-cluster replacement can publish old SST files and skip current ranges. | [draft](../bug-drafts/ai-native-br-backup-checkpoint-cluster-lineage-draft.md) | [case](../method-cases/ai-native-id1920003-backup-lineage-method-case.md) |
 | 1950003 | confirmed | data loss | `lightning-checkpoint-unbound-target-table-generation` | A retained classic Lightning checkpoint can skip all input after the target table is recreated. | [draft](../bug-drafts/ai-native-lightning-checkpoint-table-generation-draft.md) | [selector](../core/ai-native-selector-ledger.md) |
 | 1980003 | confirmed | DDL availability | `flashback-cluster-cache-side-state-exclusion` | `FLASHBACK CLUSTER` can restore `CACHED ON` without its required lock row and make the table unwritable. | [draft](../bug-drafts/ai-native-flashback-cluster-cache-side-row-draft.md) | [case](../method-cases/ai-native-id1980003-flashback-runtime-dependency-method-case.md) |
+| 2010003 | confirmed | wrong result | `prepare-dedup-stale-read-context-leak` | A newly prepared SELECT can retain stale-read semantics after `tidb_read_staleness` is cleared. | [draft](../bug-drafts/ai-native-prepare-dedup-stale-read-context-leak-draft.md) | [case](../method-cases/ai-native-prepare-dedup-context-method-case.md) |
+| 2040003 | issue-filed | wrong result | `distributed-backfill-partial-plan-on-tso-error` | Distributed `ADD INDEX` can publish a partial index after a transient plan-generation TSO error. | [issue](https://github.com/pingcap/tidb/issues/69789) | [case](../method-cases/ai-native-id2040003-retry-payload-atomicity-method-case.md) |
+| 2070003 | issue-filed | wrong result | `correlate-clone-breaks-active-access-path-alias` | An alternative logical plan can turn a nonempty aggregate IN subquery into `TableDual`. | [issue](https://github.com/pingcap/tidb/issues/69790) | [case](../method-cases/ai-native-id2070003-cloned-view-identity-method-case.md) |
+| 2100003 | issue-filed | wrong result | `pessimistic-retry-omits-user-var-side-effect-rollback` | Pessimistic retry can change a SETVAR-derived key and turn duplicate-key failure into success. | [issue](https://github.com/pingcap/tidb/issues/69791) | [case](../method-cases/ai-native-id2100003-retry-side-effect-closure-method-case.md) |
+| 2130003 | issue-filed | data integrity | `importinto-conflict-delete-commit-false-success` | `IMPORT INTO` can report success with inconsistent indexes after a transient conflict-deletion commit error. | [issue](https://github.com/pingcap/tidb/issues/69792) | [case](../method-cases/ai-native-id2130003-deferred-return-slot-method-case.md) |
+| 2190003 | issue-filed | wrong result | `pessimistic-retry-omits-last-insert-id-reset` | Pessimistic retry can publish `LAST_INSERT_ID` from a rolled-back attempt and alter the next durable insert. | [issue](https://github.com/pingcap/tidb/issues/69796) | [case](../method-cases/ai-native-id2190003-last-insert-id-retry-method-case.md) |
+| 2250003 | confirmed | atomicity | `async-commit-age-check-after-recovery-proof` | COMMIT can return an ordinary error while real TiKV later recovers the async write set as committed. | [draft](../bug-drafts/ai-native-client-go-async-commit-expired-error-committed-draft.md) | [case](../method-cases/ai-native-async-commit-post-proof-error-method-case.md) |
+| 2280003 | confirmed | consistency | `onepc-schema-check-before-prewrite-mdl-off` | 1PC can commit after related DDL with an obsolete keyset, causing missing index entries or obsolete table writes. | [draft](../bug-drafts/ai-native-onepc-schema-check-horizon-corruption-draft.md) | [case](../method-cases/ai-native-id2280003-onepc-schema-horizon-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

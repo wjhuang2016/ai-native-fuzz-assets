@@ -1,0 +1,15 @@
+mode=2pc
+ddl_shape=add-index
+enable_async_commit=0
+writer_rc=0
+process_state=Query:0:insert into t values (1, 10)
+old_table_id=5588
+new_table_id=5588
+ddl_job_id=5590
+ddl_finished_ts=467658056217919489
+commit_ts=467658056296824837
+current_rows=1:10
+index_rows=1:10
+admin_check_rc=0
+txn_info={"txn_scope":"global","start_ts":467658056296824835,"commit_ts":467658056296824837,"txn_commit_mode":"2pc","async_commit_fallback":false,"one_pc_fallback":false,"pipelined":false,"flush_wait_ms":0}
+verdict=GREEN

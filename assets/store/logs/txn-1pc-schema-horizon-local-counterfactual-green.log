@@ -1,0 +1,6 @@
+    ai_native_1pc_schema_race_test.go:101: mode="2pc" commitErr=<nil> currentRows=[[1 10]] oldTableID=116 oldValueLen=0 oldValueErr=[kv:8021]Error: key not exist
+    ai_native_1pc_schema_race_test.go:101: mode="2pc" commitErr=<nil> currentRows=[[1 10]] oldTableID=120 oldValueLen=0 oldValueErr=[kv:8021]Error: key not exist
+--- PASS: TestAINative1PCSchemaCheckMustCoverPrewrite (1.01s)
+    --- PASS: TestAINative1PCSchemaCheckMustCoverPrewrite/1pc (0.32s)
+    --- PASS: TestAINative1PCSchemaCheckMustCoverPrewrite/2pc-control (0.32s)
+PASS

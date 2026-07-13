@@ -1,0 +1,15 @@
+mode=1pc
+ddl_shape=truncate
+enable_async_commit=0
+writer_rc=0
+process_state=Query:0:insert into t values (1, 10)
+old_table_id=5594
+new_table_id=5596
+ddl_job_id=5597
+ddl_finished_ts=467658059953733634
+commit_ts=467658060123865095
+current_rows=<empty>
+index_rows=not-applicable
+admin_check_rc=not-applicable
+txn_info={"txn_scope":"global","start_ts":467658059704696837,"commit_ts":467658060123865095,"txn_commit_mode":"1pc","async_commit_fallback":false,"one_pc_fallback":false,"pipelined":false,"flush_wait_ms":0}
+verdict=RED
