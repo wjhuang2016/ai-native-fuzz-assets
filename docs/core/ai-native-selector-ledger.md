@@ -1641,3 +1641,57 @@ status:     validated as an incremental selector. It recovers id2190003, retires
 stop rule:  do not count a reset delta as a bug. Admit only after consumer, reachability, and exact-
             owner controls pass.
 ```
+
+## S48: transaction commit outcome terminal truth
+
+```text
+selector:   an RPC may have durably applied before its response is lost, while an upper layer
+            converts uncertainty into definite success, retry, rollback, or ordinary failure
+prediction:
+  - primary status and fresh-session data disagree with the public terminal classification; or
+  - replay after an undetermined result duplicates or inverts a non-idempotent logical action.
+oracle gate:
+  - place the fault by apply altitude, not by generic timeout call site;
+  - observe SQL result, fresh-session row image, primary TxnStatus/commitTS, and duplicate replay;
+  - distinguish before-apply loss from after-apply response loss.
+status:     CANDIDATE/HYPOTHESIS for the cross-layer transaction campaign. No exact target or RED.
+stop rule:  one root per terminal conversion owner. Error strings, key counts, and retry counts are
+            blast radius unless they change what can be known about durable outcome.
+```
+
+## S49: transaction lock generation identity
+
+```text
+selector:   cleanup proves a rich lock identity, but carries a strict subset across a layer and can
+            delete, roll back, or wake a newer/different lock generation
+identity:   key + startTS + forUpdateTS + lock kind + primary/mode, narrowed only with proof
+prediction:
+  - a delayed rollback/resolve action arrives after the same transaction reacquires at a newer
+    forUpdateTS, or after ownership changes;
+  - cleanup removes the current lock or writes a rollback record that blocks the valid generation.
+oracle gate:
+  - inspect lock identity before and after the delayed action;
+  - require a later commit or writer to consume the supposedly preserved generation;
+  - keep a no-reacquire and different-owner control.
+status:     CANDIDATE/HYPOTHESIS for the cross-layer transaction campaign. No exact target or RED.
+stop rule:  do not count raw lock differences without a behavioral consumer.
+```
+
+## S50: transaction commit-mode fallback atomicity
+
+```text
+selector:   client-go changes 1PC/Async Commit mode after a nonempty prefix of region prewrites,
+            but TiKV locks and recovery owners still encode the prior protocol state
+prediction:
+  - local fallback clears mode, key-set, minCommitTS, onePCCommitTS, secondaries, or primary state;
+  - persisted locks across regions retain a mixed protocol interpretation;
+  - status recovery, cleanup, or terminal publication permits partial/mixed outcome.
+oracle gate:
+  - use at least three keys across multiple regions;
+  - record mode and apply witness per batch;
+  - require all-or-none fresh-session visibility plus coherent primary/secondary status;
+  - include ordinary 2PC and single-region protocol controls.
+status:     CANDIDATE/HYPOTHESIS for the cross-layer transaction campaign. No exact target or RED.
+stop rule:  one root per fallback owner and persisted mode transition. Region/key counts are blast
+            radius after the minimum cross-region obligation is established.
+```

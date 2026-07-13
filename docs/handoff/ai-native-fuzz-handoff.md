@@ -1,6 +1,26 @@
-# AI-Native DDL Test Framework — Session 交接文档
+# AI-Native Bug Discovery Framework — Session 交接文档
 > 最后更新:2026-07-13。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
 > 更详细的逐 session 流水账见项目记忆 `~/.claude/projects/-Users-bba-pc-tidb/memory/ai-native-test-framework.md`。
+
+---
+
+**2026-07-13 方法复盘与事务跨层 campaign 已完成准备，尚未 admit 新 bug target。** 历程不再按 bug
+编号堆叠，而是按方法演进整理在 `docs/core/ai-native-discovery-retrospective.md`：早期广泛语义扫描验证了
+AI 的源码理解和快速构造能力，但容易跨模块漂移、产出 wrong-error/中等级问题；后期高质量命中主要来自
+跨阶段/跨 owner 信息保真、最高 consumer oracle、单变量反事实、自然 reachability 和强负例筛选。核心
+方法文档已经明确三种 provenance mode：当前 severe lane 为 `COLD_SOURCE`，独立 local RED 和 exact-owner
+GREEN 前禁止用 issue、PR review finding、fix/history 生成候选；这些来源只允许在 RED 后去重。
+
+下一阶段入口为 `docs/core/ai-native-transaction-cross-layer-campaign.md`，范围是 TiDB/client-go/TiKV，继续
+排除 partition。已登记三个 hypothesis selector：S48 commit outcome terminal truth、S49 lock generation
+identity、S50 1PC/Async Commit fallback atomicity；对应 O56/O57/O58、场景、fault altitude 和 schedule
+已入 `assets/store/transaction-cross-layer-campaign-assets.jsonl`。导入后资产库 332 revisions，执行计数仍为
+RED=68/GREEN=65/INVALID=12/INFO=1，`admitted_active_targets=0`。这表示 campaign 基础设施已就位，但没有
+把方向假设冒充 bug。首轮 `undeterminedErr` owner graph 已用 TiDB 精确 pin 的 client-go revision 完成：
+TiDB 对 unknown outcome 直接断链，不会在同一 session replay，该方向已作为 negative 退役。唯一合法
+下一步：继续证明并发 prewrite 的 request-mode/current-mode 差异能否穿过 TiKV mixed-lock cleanup、
+`CheckTxnStatus` 和 ResolveLock；只有完整 P/Q/F + severe oracle + exact counterfactual 后才能入队，local
+RED 前不使用 testbed。
 
 ---
 

@@ -1,12 +1,12 @@
 # AI-Native Bug Hunting Methodology v2
-> Last updated: 2026-07-12. This document records the improved proof-obligation methodology for using AI to find bugs efficiently. It is intentionally separate from per-bug method-case notes.
+> Last updated: 2026-07-13. This document records the improved proof-obligation methodology for using AI to find bugs efficiently. It is intentionally separate from per-bug method-case notes.
 
 ## One-Sentence Version
 
 AI should not "try more cases". AI should find where code is making a semantic proof on behalf of the system, then break that proof with a tiny counterexample matrix and a strong oracle.
 
 ```text
-Find a proof obligation in source/history
+Find a proof obligation in current source or an executable product contract
 → write a P/Q/D/F/O/R/S audit card
 → compress it into a small matrix
 → validate red cells with a strong oracle
@@ -16,6 +16,34 @@ Find a proof obligation in source/history
 → score every selector in a ledger by what it actually predicts
 → use the ledger to choose the next target
 ```
+
+For the independent severe-bug lane, issues, PRs, fixes, and historical bug descriptions remain
+closed until an independent local RED and exact-owner counterfactual exist. A declared held-out or
+historical-replay experiment is a separate methodology-evaluation mode and must not be counted as
+cold discovery.
+
+## What The Discovery Journey Changed
+
+The full retrospective is `ai-native-discovery-retrospective.md`. Its durable corrections are:
+
+1. **Campaign scope is an input.** Declare module boundary, provenance mode, and consequence target
+   before reading candidates. Crossing a boundary is allowed only as an explicit campaign decision.
+2. **Source smells are proof debt, not bugs.** An omitted field, strong comment, early return, or
+   unchecked-looking RPC is admitted only after consumer, reachability, and owner proof.
+3. **Choose the highest-consumer oracle first.** Injection and logging are ways to reach or observe
+   the contract; they are not candidate seeds.
+4. **Build an owner graph.** Track who mutates, rolls back, retries, persists, and publishes every
+   semantic dimension across durable boundaries.
+5. **Use one-dimensional matrices.** Fault altitude, owner generation, protocol mode, context, or
+   final state changes one at a time while the oracle remains fixed.
+6. **Require an exact counterfactual.** The same schedule becomes GREEN after changing only the
+   suspected owner, return slot, reset edge, alias, or compensation edge.
+7. **Natural reachability and severity are separate gates.** A deterministic internal failure can
+   validate a selector without qualifying as a severe product bug.
+8. **Store negative screens.** Downstream dominance, unreachable retries, diagnostic-only consumers,
+   and faithful GREEN matrices prevent future rounds from restarting the same dead ends.
+
+The practical AI speedup comes from semantic compression, not test-volume expansion.
 
 ## Core Model
 
@@ -392,6 +420,25 @@ Stop rule:
 ## Target Sourcing
 
 Selection rules evaluate a candidate; this section is where candidates come from. Maintain these as standing queues, not one-off searches, so the next target is pulled from a queue instead of re-derived from inspiration.
+
+Every campaign declares one provenance mode before it fills those queues:
+
+```text
+COLD_SOURCE:
+  current source + executable contracts only before RED
+  history/issues/PRs/fixes open only for post-RED dedup and root accounting
+
+HELDOUT_REPLAY:
+  historical cases are intentionally hidden/evaluated to measure method recall
+  findings validate selectors or harnesses, not independent discovery
+
+REVIEW_ASSISTED:
+  diffs or review findings are explicit seeds
+  useful for regression design, but never mixed into cold-discovery yield
+```
+
+The active severe-bug campaign uses `COLD_SOURCE`. Items 4 and 5 below are available only in a
+declared replay/review lane, or after an independent RED.
 
 1. **Prover name patterns.** Sweep the codebase for functions whose boolean answer gates a path/skip/block decision: `Check*`, `CanUse*`, `Imply*`, `Prune*`, `Derive*`, `Rewrite*`, `IsSafe*`, `Need*`, and fast-path guards. Every match is a candidate `P_check`. Enumerating them once gives the queue a denominator: audited / total.
 2. **Semantic replacement patterns.** Code that replaces general evaluation with a cheaper form: prefilters that drop the original predicate, custom extractors, normalization (lowercasing, regex compilation, key hashing), conversion into a narrower backend request domain, caches that reuse earlier results, prepared ASTs that reuse earlier validation, or table/object-name snapshots that stand in for later filtered queries. The obligation is always "the replacement is neither wider nor narrower than the original semantics." For caches, also ask whether the cache key includes every semantic dimension consumed by the extractor/shortcut, or whether the hit path rechecks the missing dimensions. For prepared statements, ask whether a session variable consumed by preprocessor/validator at `PREPARE` time is revalidated under the current session at `EXECUTE` time, or whether direct current-session SQL provides a stronger reference.

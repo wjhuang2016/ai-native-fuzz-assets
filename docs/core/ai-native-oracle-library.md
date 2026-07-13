@@ -1540,3 +1540,45 @@ specificity: GOOD; error altitude, idempotence, terminal error, durable row imag
              isolate the missing state owner.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O56 transaction_terminal_result_and_mvcc_truth
+
+```text
+obligation:  the client's terminal result is coherent with the durable primary status and the
+             fresh-session visibility of every logical mutation.
+form:        classify response loss before/after server apply; record SQL result, primary status,
+             commitTS, fresh row/index image, and the result of one duplicate-sensitive replay.
+red:         definite rollback/failure with committed data, success with absent/partial data, or a
+             retry that duplicates/inverts an operation whose first commit was merely undetermined.
+green:       terminal result and durable status agree, or uncertainty is resolved without duplicate
+             logical effect.
+blind to:    traces without an apply witness, single-session reads, and single-key cases that cannot
+             expose incomplete secondary ownership.
+status:      HYPOTHESIS; registered for S48, not yet execution-validated.
+```
+
+## O57 lock_generation_survival_and_consumer
+
+```text
+obligation:  delayed cleanup removes only the lock generation it proved it owns.
+form:        acquire F1, optionally reacquire F2 or change owner, release delayed F1 cleanup, inspect
+             lock identity, then commit or write through the surviving owner.
+red:         F2/different-owner lock disappears, gains a blocking rollback record, or cannot commit.
+green:       F1-only cleanup removes F1; F2 and different-owner controls survive and commit normally.
+blind to:    raw lock deltas with no later consumer and schedules that never prove F2 preceded cleanup.
+status:      HYPOTHESIS; registered for S49, not yet execution-validated.
+```
+
+## O58 transaction_atomic_keyset_and_protocol_truth
+
+```text
+obligation:  2PC, 1PC, Async Commit, and fallback all publish one atomic logical outcome across the
+             complete mutation key set.
+form:        distribute primary and at least two secondaries across regions; vary only protocol and
+             one post-prefix fault altitude; observe every key, index view, lock/status, and commitTS.
+red:         mixed modes, partial visibility, divergent primary/secondary status, or duplicate effect
+             after retry.
+green:       all keys absent or all keys visible under one coherent transaction outcome.
+blind to:    one-region controls and tests that infer atomicity from a nil/error return alone.
+status:      HYPOTHESIS; registered for S50, not yet execution-validated.
+```

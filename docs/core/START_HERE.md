@@ -16,6 +16,7 @@ This tells you what was last confirmed, which hypotheses were retired, and which
 Read:
 
 - `ai-native-proof-obligation-methodology-v2.md`
+- `ai-native-discovery-retrospective.md`
 - `ai-native-ddl-methodology.md`
 - `ai-native-ddl-github-heldout-methodology.md`
 
@@ -52,3 +53,12 @@ Prefer this sequence:
 2. Reuse an existing oracle if one already captures the consequence you care about.
 3. Only then add a new probe or cluster-side harness.
 4. After a hit, write both a bug draft and a compact method case.
+
+## 6. Current campaign
+
+For the TiDB/client-go/TiKV transaction campaign, read:
+
+- `ai-native-transaction-cross-layer-campaign.md`
+
+It defines the current-source provenance gate, cross-layer audit card, initial severe selectors,
+observer stack, and the rule that the testbed stays closed until an admitted local RED.

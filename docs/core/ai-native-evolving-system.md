@@ -1053,3 +1053,33 @@ consumer and a product-reachable retry edge. This retired `planHint` without exe
 plausible cross-statement `SET_VAR` data-shape after a natural conflict proved explicit transaction
 auto retry is forced off. The store now has 316 asset revisions; run counts remain RED=68,
 GREEN=65, INVALID=12, INFO=1, with C3_DIRECT=23.
+
+## 2026-07-13 retrospective and cross-layer transaction campaign
+
+The discovery history is now organized by method evolution in
+`ai-native-discovery-retrospective.md`. The main correction is that bug count is evidence, while the
+compounding assets are selectors, proof obligations, oracles, schedules, owner graphs, and negative
+screens. The cold severe-bug lane now explicitly keeps PRs, issues, fixes, and historical findings
+closed until independent local RED plus exact counterfactual.
+
+The next campaign is defined in `ai-native-transaction-cross-layer-campaign.md`. It registers three
+hypothesis families without pretending they are active bug targets:
+
+```text
+S48 transaction commit outcome terminal truth
+S49 transaction lock generation identity
+S50 transaction commit-mode fallback atomicity
+```
+
+The execution ladder starts from a current-source owner graph across TiDB, the TiDB-pinned client-go
+revision, and TiKV. The first source pass follows `undeterminedErr` and commit outcome conversion.
+Only one exact target may be admitted at a time, and the testbed remains closed until local RED and
+owner attribution exist. The campaign imported 15 hypothesis assets, one current-source negative
+screen, and 14 links; the store now has 332 revisions while run counts remain RED=68, GREEN=65,
+INVALID=12, INFO=1 and admitted active targets remain zero.
+
+The first pinned-source pass already closed one false direction: TiDB maps an unresolved client-go
+outcome to `ErrResultUndetermined` and closes the connection instead of entering same-session retry.
+The remaining source debt is narrower: an Async Commit prewrite request fixes mode at send time, but
+its completion handler rereads mutable current mode after concurrent fallback. This is not admitted
+until TiKV mixed-lock cleanup and status owners are proved unable to dominate it.
