@@ -1,0 +1,27 @@
+TiDB commit: 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+Discovery boundary: current source and local assets only; upstream search started after RED.
+
+Edge validity gate
+------------------
+The first run with only -tags=intest passed but had no RunInNewTxn retry warning. It was classified
+INVALID because TiDB failpoint source conversion had not been enabled.
+
+Large-batch current-source RED (20001 dangling index entries)
+------------------------------------------------------------
+[INFO] [admin.go:666] ["clean up dangling index"] [count=20000]
+[WARN] [txn.go:167] [RunInNewTxn] ["retry txn"=...] [error="[kv:8022]Error: KV error safe to retry"]
+runtime error: index out of range [20000] with length 20000
+--- FAIL: TestAdminCleanupIndexRetryStateOracle
+
+Small-batch current-source RED (3 dangling index entries)
+---------------------------------------------------------
+[WARN] [txn.go:167] [RunInNewTxn] ["retry txn"=...] [error="[kv:8022]Error: KV error safe to retry"]
+expected: "[3]\n"
+actual:   "[9]\n"
+--- FAIL: TestAdminCleanupIndexRetryStateOracle
+
+Receiver-state reset counterfactual GREEN
+-----------------------------------------
+At callback entry restore lastIdxKey/removeCnt to the committed batch start and clear scanRowCnt,
+batchKeys, and idxValues. The small-batch run observed the same retry warning and passed with count
+3. The 20001-entry run observed retry warnings, reported 20001, and ADMIN CHECK INDEX passed.

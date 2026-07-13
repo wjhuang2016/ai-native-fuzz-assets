@@ -100,6 +100,36 @@ crash/panic                this input cannot reach this assert        process de
 performance                this path does bounded work                quantitative differential     sibling loop; see below
 ```
 
+### Retry probes need typed effects and an edge witness
+
+Direct closure assignments are only the first layer of retry analysis. A callback can look clean
+while `e.fetch()` advances a receiver cursor, appends a batch, or increments a publishable count.
+For direct captured receiver calls, bind the receiver type and expand one level of method effects:
+
+```text
+retry callback
+  -> direct captured receiver call
+  -> concrete receiver method
+  -> field writes / increments / appends / mutable field calls
+  -> post-mutation retryable edge
+  -> next-attempt or terminal consumer
+```
+
+Do not admit on mutation alone. `id2160003` and its negative siblings produced three gates:
+
+1. **type binding:** do not join methods only by names such as `Update` or `Close`;
+2. **post-mutation edge reachability:** an error before the mutation cannot replay its residue;
+3. **edge witness:** logs/counters must prove the retry actually occurred.
+
+The witness is essential for failpoint-driven tests. A configured failpoint, compiled test tag, or
+expected code location is not evidence that the branch ran. The first cleanup-index oracle passed
+only because failpoint source conversion was absent; it became a valid RED only after the output
+showed `RunInNewTxn` accepting a retryable error.
+
+Severity remains a separate gate. A deterministic panic or wrong repair count validates the
+selector, but it does not become severe without wrong durable data, terminal semantic inversion, or
+control-plane publication at the highest consumer.
+
 ### Liveness lanes need a persistence gate
 
 For retry-classifier and DXF-style liveness families, a single red timeout is not

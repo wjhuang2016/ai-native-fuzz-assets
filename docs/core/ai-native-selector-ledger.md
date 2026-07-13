@@ -1550,6 +1550,24 @@ stop rule:  one root per retry owner and missing state owner. DML forms, variabl
             conflict keys, and retry counts are blast radius.
 ```
 
+### S45 calibration: typed receiver effects and edge witnesses
+
+`id2160003` extends S45 from direct closure assignments to state changes hidden behind receiver
+methods. `CleanupIndexExec.cleanTableIndex` looked like three ordinary method calls until a typed
+one-level effect summary expanded them into `lastIdxKey`, `scanRowCnt`, `batchKeys`, `idxValues`, and
+`removeCnt` mutations. A retryable Commit error rolls back index deletes but not those fields: 3
+dangling entries report 9, while 20001 entries panic at the fixed 20000-entry buffer boundary.
+
+Two precision gates are now mandatory:
+
+1. **post-mutation edge reachability:** prove a retryable call or Commit can fail after mutation;
+2. **edge witness:** test output must prove the injected retry edge actually ran.
+
+The first gate retired `Deleter.gatherKeysToDelete`, whose only error is before buffer mutation. The
+second rejected an initially passing oracle where the runtime failpoint was configured but TiDB's
+source conversion had not been enabled. `id2160003` remains moderate/C2 because no wrong durable
+index state was proved; it calibrates the generator but does not satisfy the severe-bug gate.
+
 ## S46: deferred terminal error return-slot ownership
 
 ```text

@@ -1823,3 +1823,25 @@ The same round improved scanner precision with two source-proven negatives. Down
 outputs that every attempt authoritatively overwrites before use, and downgrade attempt-entry reset
 plus fixed-source replay when the outer frontier advances only after success. Those rules retired
 auto-ID allocation and nonpartition DDL backfill before execution.
+
+## Typed retry-effect tick: ADMIN CLEANUP INDEX state replay, EXECUTED (2026-07-13)
+
+This tick was generated from current-source retry callbacks. PR reviews, issues, fixes, and history
+were unavailable until the independent local RED.
+
+```text
+P:          RunInNewTxn rolls back a failed cleanup transaction.
+Q:          the next attempt starts from the same committed batch state.
+F:          fetch/delete helpers mutate executor fields outside KV rollback ownership.
+SMALL RED:  3 dangling entries plus Commit retry report 9.
+BOUNDARY:   20001 entries plus retry panic at idxValsBufs[20000].
+INVALID:    configured failpoint without source conversion produced no retry witness.
+GREEN:      restore receiver state at attempt entry; exact counts and ADMIN CHECK pass.
+INTEGRATE:  id2160003 moderate/C2; S45 typed-effect and edge-witness calibration.
+```
+
+Method improvement: source generation now resolves direct captured receiver calls by concrete
+receiver type and expands one level of field effects. Admission requires a post-mutation retry edge;
+execution requires an observed edge witness. The loop keeps consequence scoring independent: this
+hit proves the selector works but does not enter the severe queue because it did not prove wrong
+durable data.

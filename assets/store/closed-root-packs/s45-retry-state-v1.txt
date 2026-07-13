@@ -1,0 +1,5 @@
+# Exact retry-state roots already terminal or validated under S45/S43.
+# Format: repository-relative path:function-name.
+pkg/session/txn.go:retry
+pkg/ddl/backfilling_dist_scheduler.go:generatePlanForPhysicalTable
+pkg/executor/admin.go:cleanTableIndex

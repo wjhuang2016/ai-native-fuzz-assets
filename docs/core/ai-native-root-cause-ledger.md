@@ -423,3 +423,16 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   retried write, not deprecated optimistic whole-transaction replay of a read-only assignment.
 - Counting rule: DML forms, user-variable types, expressions, indexes, and conflict timing are blast
   radius. Reopen only for a different retry owner or a different unrestored state owner.
+
+## 2026-07-13 update: id2160003
+
+- Remote `found_bug`: 111 surfaces, 88 distinct root causes after insertion.
+- New root: `admin-cleanup-index-retry-state-survives-rollback`.
+- Consequence: C2. Three dangling entries are repaired but reported as nine; more than the fixed
+  20000-entry batch can panic after an internal transaction retry. No wrong durable index state was
+  proved, so the row is moderate and excluded from the severe queue.
+- Distinctness: this reuses S45 but has a different retry owner and missing state owner from
+  id2100003. The survivor is executor batch/cursor state, not session user variables.
+- Counting rule: entry counts, index definitions, and retryable error forms are blast radius. Reopen
+  only if the same root reaches wrong durable data, or for another receiver-state owner and terminal
+  consumer.

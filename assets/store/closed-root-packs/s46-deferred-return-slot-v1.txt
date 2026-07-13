@@ -1,0 +1,5 @@
+# Exact current-source roots already terminal under S46 or its direct predecessor.
+# Format: repository-relative path:function-name. Receiver names are intentionally omitted.
+pkg/dxf/importinto/conflictedkv/deleter.go:deleteBufferedKeys
+pkg/executor/importer/engine_process.go:ProcessChunk
+pkg/executor/importer/engine_process.go:ProcessChunkWithWriter
