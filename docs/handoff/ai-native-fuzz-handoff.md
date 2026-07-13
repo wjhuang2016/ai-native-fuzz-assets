@@ -1730,3 +1730,26 @@ backend 的 checkpoint/current owner 都折叠为 0。上游 issue 搜索在 RED
 远端 `found_bug` 当前 104 rows/81 roots/29 high；私有资产 249 revisions,RED=49/GREEN=48,
 INVALID=7,C3_DIRECT=20,pack open_gaps=[]。新方法增量:持久化 lineage 必须拆分 source、target
 generation、config、artifact 四个 owner,并验证 identity field 在每个 backend 真实 materialize。
+
+**2026-07-13 current-source-only partial-index pushdown 候选退休为 GREEN。** Fast ADD INDEX 在
+完整 condition 可下推且只构建一个 index 时跳过 TiDB 本地 checker。候选 P/Q/F 完全来自当前
+源码，没有使用 PR/review/issue/history。第一版 `CONNECTION_ID()` reference 被 constant-fold 后
+仍下推，判 INVALID；修正为带行级 side effect 的 `LAST_INSERT_ID(id)` wrapper 后，计划明确形成
+`cop[tikv] Selection` 对 root TiDB `Selection`。当前 grammar 的 15 个 signed/unsigned、ENUM/SET、
+collation/PAD SPACE、decimal/float、DST/time、BIT/YEAR 边界全部 rowset 相同，因此不允许继续升到
+ADD INDEX 或 testbed。新方法资产 S40 `PUSHDOWN_EQUIVALENCE_DOMINATES_RECHECK_ELISION`：pushable
+只证明能力；跳过本地语义 owner 前必须先构造 root-only equivalent oracle 并验证 owner altitude。
+资产库随后为 253 revisions，目标终态，禁止靠增加 literals 重开。
+
+**2026-07-13 current-source-only TRUNCATE affinity 得到 moderate RED，并纠正严重性准入。** S35
+从 `onTruncateTable` 找到 external owner 顺序。前三次使用现有 failpoint 的实验均 INVALID：源码
+确认该点在 affinity create/delete 之前。隔离 worktree 增加精确 post-affinity、pre-schema-version
+注入后，job 119 经支持的 ADMIN CANCEL 终止；InfoSchema 仍为旧 TableID 116 且声明
+`AFFINITY='table'`，PD 旧组 `_tidb_t_116` 已消失。正常 TRUNCATE GREEN；仅按 committed TableInfo
+重建 group 后 owner coherence GREEN。这个是真 bug，但官方承诺是实验性的 Region colocation/
+query-latency 优化，不是数据正确性、副本安全或 required-path availability，因此从错误的
+`C3_DIRECT` 修正为 `NOT_ADMITTED/moderate`，不做 testbed lift、不进入严重 bug 库。新增 LOOP gate:
+故障注入前先把 external owner 追到最高 consumer，并用当前官方用户承诺校准 consequence；selector
+强度不能继承此前 finding 的严重性。私有资产 258 revisions，RED=50/GREEN=51/INVALID=10，目标
+retired=22，pack `open_gaps=[]`，`store.py next=null`。下一步只允许从当前源码产生新 C3 候选，
+PR/review finding、issue 和 fix history 继续禁止作为生成器。

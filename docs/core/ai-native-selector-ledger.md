@@ -1320,6 +1320,13 @@ oracle gate:
   - include normal publication and counterfactual controls.
 status:     validated/terminal - three independent DDL handlers produced local and real-owner RED;
             remote id1710003, id1800003, and id1830003 high.
+severity calibration:
+  - TRUNCATE affinity produced the same owner split locally, but the highest consumer is an
+    experimental Region-colocation optimization. Missing the group silently disables the declared
+    latency optimization; it does not weaken replica safety or corrupt data. Keep it as a moderate
+    RED and retire it from the severe queue.
+  - Before injection, trace each external owner to the official user promise. Selector reuse proves
+    where to look; it does not inherit the consequence class of earlier hits.
 stop rule:  reuse the selector across durable owners, but require a new handler-specific obligation
             and owner-coherence oracle. Values and policy options are blast radius.
 ```
@@ -1405,4 +1412,27 @@ status:     validated/terminal - service returns 100 over current upstream 10 wi
             and PITR max-recoverable consumer also returns 100; remote id1860003 high.
 stop rule:  do not enumerate task names or storage schemes. Reopen for another state owner only when
             the missing lineage dimensions or highest consumer are distinct.
+```
+
+## S40: pushdown equivalence dominates recheck elision
+
+```text
+selector:   successful serialization/pushability disables a local semantic checker
+born from:  current-source partial-index fast-reorg screen
+prediction:
+  - the remote engine and local checker disagree on an admitted type boundary;
+  - one-index fast reorg skips the local checker;
+  - the disagreement becomes a missing or extra durable index key.
+oracle gate:
+  - name both semantic owners;
+  - use an equivalent reference that cannot be partially pushed;
+  - verify owner altitude in both plans;
+  - lift only a semantic RED to FORCE/IGNORE and physical-index consistency oracles.
+negative calibration:
+  - CONNECTION_ID() folded to a constant and made the first reference INVALID;
+  - LAST_INSERT_ID(id) kept the corrected reference in root;
+  - 15/15 current partial-index grammar boundary cells were GREEN.
+status:     selector execution-validated; target source-retired before ADD INDEX.
+stop rule:  do not enumerate more literals. Reopen only for a new admitted expression class or an
+            independently evidenced remote/local semantic owner split.
 ```

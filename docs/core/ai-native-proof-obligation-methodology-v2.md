@@ -521,6 +521,18 @@ calibration or negative result, not a public high-severity finding. In particula
 `Close`/cleanup errors need a follow-up proof of residual data, a failed retry, a blocked DDL, or
 another user-visible consequence. A skipped terminal action by itself is not a serious bug.
 
+Run a **user-promise calibration before fault injection**, not after a convenient RED. Trace the
+state owner to its highest actual consumer, then state the current official product promise in
+plain user terms. Names such as placement, policy, affinity, checkpoint, and replica do not carry a
+severity class by themselves. Ask what directly changes: row correctness, durability, constraint
+enforcement, cross-session isolation, required-path availability, replica safety, or only an
+experimental/advisory performance optimization. `C3_DIRECT` requires the first group plus an
+observer. `C2_WITH_LIFT` requires an executable oracle that could reach it. A metadata/runtime split
+whose highest promised consumer is performance-only is `NOT_ADMITTED`, even when S35 proves a real
+rollback-coherence bug. Record that RED as a lower-severity method asset and stop before a costly
+testbed lift. The TRUNCATE-affinity cancel screen is the calibration case: exact owner split, but an
+experimental Region-colocation promise rather than data or availability failure.
+
 ## Strong Oracle Patterns
 
 Prefer oracles that compare behavior, not implementation detail:

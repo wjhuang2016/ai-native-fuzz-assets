@@ -1689,3 +1689,24 @@ INTEGRATE:  id1950003 high; 6 target assets, 5 links, 4 runs, open_gaps=[].
 Method improvement: split persisted lineage into source identity, target generation, configuration,
 and output artifacts. Then verify that the selected identity field is actually materialized by every
 backend. A locally plausible guard is not a fix proof when its live values collapse to a sentinel.
+
+## External-owner severity calibration: TRUNCATE affinity, MODERATE RED (2026-07-13)
+
+This tick used current source only and reused S35 without using PR review findings. The first three
+runs were INVALID because the existing failpoint was before, not after, affinity mutation. A new
+test-only fault at the exact boundary produced the intended local RED.
+
+```text
+P:          new affinity group created and old group deleted before local schema publication.
+Q:          cancellation is assumed to restore the external owner for the still-committed old ID.
+RED:        ADMIN CANCEL; InfoSchema old TableID + AFFINITY=table; old PD group absent.
+CONTROL:    normal TRUNCATE coherent; rebuild from committed TableInfo restores the old group.
+CLASSIFY:   real bug, moderate, NOT_ADMITTED for the severe queue.
+```
+
+Method improvement: insert **user-promise calibration before fault injection**. Follow the owner to
+the highest consumer and classify the direct promise before spending on a live lift. Official
+affinity semantics are experimental Region colocation for query latency, so this split disables an
+optimization but does not imply data corruption, replica weakening, or required-path unavailability.
+Selector reuse identifies a bug-rich ordering shape; it does not inherit severity from earlier S35
+hits. The target is retained as an execution-verified moderate asset and testbed work stops here.

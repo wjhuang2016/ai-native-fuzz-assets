@@ -1,0 +1,87 @@
+diff --git a/pkg/ddl/table.go b/pkg/ddl/table.go
+--- a/pkg/ddl/table.go
++++ b/pkg/ddl/table.go
+@@
+ 	if oldTblInfo.Affinity != nil {
+ 		if err := deleteTableAffinityGroupsInPD(jobCtx, oldTblInfo, nil); err != nil {
+ 			logutil.DDLLogger().Error("failed to delete old affinity groups from PD", zap.Error(err), zap.Int64("tableID", oldTblInfo.ID))
+ 		}
+ 	}
++	failpoint.Inject("aiNativeTruncateAfterAffinityMutation", func() {
++		failpoint.Return(ver, errors.New("ai native truncate post-affinity error"))
++	})
+ 
+ 	ver, err = updateSchemaVersion(jobCtx, job)
+
+diff --git a/pkg/ddl/affinity_test.go b/pkg/ddl/affinity_test.go
+--- a/pkg/ddl/affinity_test.go
++++ b/pkg/ddl/affinity_test.go
+@@
++func TestAINativeCancelledTruncateKeepsCommittedAffinityOwner(t *testing.T) {
++	store, dom := testkit.CreateMockStoreAndDomain(t)
++	tk := testkit.NewTestKit(t, store)
++	tkTruncate := testkit.NewTestKit(t, store)
++	tkCancel := testkit.NewTestKit(t, store)
++	tk.MustExec("use test")
++	tkTruncate.MustExec("use test")
++	tkCancel.MustExec("use test")
++	tk.MustExec("create table t_ai_truncate_affinity(a int) affinity = 'table'")
++
++	oldTable, err := dom.InfoSchema().TableByName(
++		context.Background(), ast.NewCIStr("test"), ast.NewCIStr("t_ai_truncate_affinity"))
++	require.NoError(t, err)
++	oldTableID := oldTable.Meta().ID
++	oldGroupID := ddl.GetTableAffinityGroupID(oldTableID)
++	groups, err := affinity.GetGroups(context.Background(), []string{oldGroupID})
++	require.NoError(t, err)
++	require.Contains(t, groups, oldGroupID)
++
++	fp := "github.com/pingcap/tidb/pkg/ddl/aiNativeTruncateAfterAffinityMutation"
++	require.NoError(t, failpoint.Enable(fp, "return(true)"))
++	defer func() { require.NoError(t, failpoint.Disable(fp)) }()
++
++	var jobID atomic.Int64
++	testfailpoint.EnableCall(t, "github.com/pingcap/tidb/pkg/ddl/beforeRunOneJobStep", func(job *model.Job) {
++		if job.Type == model.ActionTruncateTable && job.TableID == oldTableID {
++			jobID.Store(job.ID)
++		}
++	})
++
++	truncateErrCh := make(chan error, 1)
++	go func() {
++		truncateErrCh <- tkTruncate.ExecToErr("truncate table t_ai_truncate_affinity")
++	}()
++
++	require.Eventually(t, func() bool {
++		if jobID.Load() == 0 {
++			return false
++		}
++		groups, err := affinity.GetGroups(context.Background(), []string{oldGroupID})
++		return err == nil && groups[oldGroupID] == nil
++	}, 10*time.Second, 20*time.Millisecond)
++
++	tkCancel.MustQuery(fmt.Sprintf("admin cancel ddl jobs %d", jobID.Load()))
++	select {
++	case truncateErr := <-truncateErrCh:
++		require.Error(t, truncateErr)
++	case <-time.After(10 * time.Second):
++		t.Fatal("cancelled TRUNCATE TABLE did not return")
++	}
++
++	currentTable, err := dom.InfoSchema().TableByName(
++		context.Background(), ast.NewCIStr("test"), ast.NewCIStr("t_ai_truncate_affinity"))
++	require.NoError(t, err)
++	require.Equal(t, oldTableID, currentTable.Meta().ID)
++	require.NotNil(t, currentTable.Meta().Affinity)
++
++	groups, err = affinity.GetGroups(context.Background(), []string{oldGroupID})
++	require.NoError(t, err)
++	require.NotContains(t, groups, oldGroupID)
++
++	committedGroups, err := ddl.BuildAffinityGroupDefinitionsForTest(store.GetCodec(), currentTable.Meta(), nil)
++	require.NoError(t, err)
++	require.NoError(t, affinity.CreateGroupsIfNotExists(context.Background(), committedGroups))
++	groups, err = affinity.GetGroups(context.Background(), []string{oldGroupID})
++	require.NoError(t, err)
++	require.Contains(t, groups, oldGroupID)
++}
