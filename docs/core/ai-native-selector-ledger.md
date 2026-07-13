@@ -1461,3 +1461,25 @@ status:     validated/terminal - local cached-table consumer RED, actual SQL-onl
 stop rule:  one root for this restore boundary and mandatory owner. Do not enumerate DML verbs,
             lease values, or CACHE syntax variants.
 ```
+
+## S42: derived execution context must be keyed or rebuilt
+
+```text
+selector:   a cache key proves raw payload identity, but the hit path copies derived semantic state
+            whose session/config/time/identity producers are absent from the key
+born from:  id2010003 (COM_STMT_PREPARE dedup copies an old stale-read evaluator)
+prediction:
+  - the cached object contains an evaluator, folded value, semantic flag, or owner token;
+  - its producer reads context not represented by the key;
+  - a hit either skips the owning build stage or overwrites fresh analysis with the cached field;
+  - identical payload under changed context reaches a different semantic consumer.
+oracle gate:
+  - keep payload identity fixed and change exactly one context owner;
+  - compare fast-path hit against same-payload bypass;
+  - observe a semantic result, not only a cache-hit marker;
+  - replace only the derived owner for counterfactual GREEN.
+status:     validated/terminal - local wrong-result RED, same-SQL dedup-off GREEN, fresh-evaluator
+            GREEN, and real COM_STMT_PREPARE RED on testbed 8220955; remote id2010003 high.
+stop rule:  one root per cache layer and derived owner. SQL forms, staleness durations, and client
+            libraries are blast radius; audit sibling copied fields without counting them anew.
+```

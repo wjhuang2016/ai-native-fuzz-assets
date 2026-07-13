@@ -1731,3 +1731,25 @@ special objects or restored key ranges. For every restored capability bit, trace
 mandatory runtime consumer and ask whether all required owners are inside the restore domain or are
 reconciled before publication. Also preserve lower-layer recovery semantics in mocks: the rejected
 split hypothesis looked like a hot loop only after its bounded client backoff was removed.
+
+## Derived-context cache tick: PREPARE dedup stale read, EXECUTED (2026-07-13)
+
+This tick was generated from current-source fast-path proof obligations. PR reviews, issues, fixes,
+and history were excluded until an independent local RED existed.
+
+```text
+P:          SQL, parse context, database, and schema version match the dedup key.
+Q:          every prepare-time semantic derivative is safe to reuse.
+F:          fresh Preprocess runs, but cached SnapshotTSEvaluator overwrites its current result.
+LOCAL RED:  warm at read_staleness=-1; clear; update 1->2; same SQL dedup hit returns 1.
+CONTROL:    same SQL with only dedup disabled returns 2.
+COUNTERFACTUAL: use ret.SnapshotTSEvaluator; full matrix returns 2 and passes.
+LIVE RED:   real COM_STMT_PREPARE on testbed 8220955 returns dedup-on=1, dedup-off=2.
+INTEGRATE:  id2010003 high; S42, O52, module/obligation/scenario/schedule/fault assets.
+```
+
+Method improvement: cache analysis must inventory **derived fields and all of their producers**, not
+only visible key inputs. Give extra priority to hit paths that perform fresh analysis and then
+overwrite part of it from the template: the discarded fresh value supplies a precise counterfactual
+before testing. Provenance must also be enforced by actual worker behavior; a discovery worker that
+opens review/history tools invalidates the entire generation round even when its prompt said not to.

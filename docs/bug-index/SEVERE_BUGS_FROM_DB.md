@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-13 09:49:48 +0800
+Generated at: 2026-07-13 10:40:44 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -34,3 +34,4 @@ Generated at: 2026-07-13 09:49:48 +0800
 | 1920003 | confirmed | high | data_loss | br backup full | backup checkpoint resume | `br-backup-checkpoint-unbound-source-cluster` | BR backup retry can publish SST files from a replaced source cluster |  |
 | 1950003 | confirmed | high | data_loss | tidb-lightning import | classic Lightning checkpoint resume | `lightning-checkpoint-unbound-target-table-generation` | TiDB Lightning can silently skip all data after the target table is recreated |  |
 | 1980003 | confirmed | high | ddl-availability | FLASHBACK CLUSTER after ALTER TABLE NOCACHE | cached table runtime metadata | `flashback-cluster-cache-side-state-exclusion` | FLASHBACK CLUSTER can restore a cached table without its lock row and block all writes |  |
+| 2010003 | confirmed | high | wrong_result | COM_STMT_PREPARE / SELECT | session prepare dedup cache and stale read | `prepare-dedup-stale-read-context-leak` | COM_STMT_PREPARE dedup can keep stale-read semantics after tidb_read_staleness is cleared |  |

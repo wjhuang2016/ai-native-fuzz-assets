@@ -1457,3 +1457,23 @@ sensitivity: EXECUTION-CONFIRMED on id1860003 in service and restore-consumer pa
 specificity: GOOD; two lineage controls isolate identity from ordinary resume behavior.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O52 prepare_after_staleness_clear_latest_row
+
+```text
+obligation:  after a session clears tidb_read_staleness, a newly prepared ordinary SELECT reads the
+             latest committed row rather than a snapshot evaluator captured by an older prepare.
+form:        on one physical connection, warm identical SQL under read_staleness=-1; clear the
+             variable; commit v=1 -> v=2; prepare and execute the same SQL with dedup on, then with
+             only dedup off.
+red:         dedup-on returns 1 while dedup-off and current committed state are 2.
+green:       both same-SQL prepares return 2, or replacing only the cached evaluator with the fresh
+             Preprocess evaluator makes the matrix pass.
+catches:     cache-key context omissions, copied stale evaluator functions, fresh-analysis overwrite.
+blind to:    tests using different physical sessions, SQL PREPARE instead of COM_STMT_PREPARE, or an
+             initial row version too new for the requested historical timestamp.
+sensitivity: EXECUTION-CONFIRMED on id2010003 locally and testbed 8220955.
+specificity: GOOD; same SQL, same session, dedup-only bypass, and one-field counterfactual isolate
+             the owner.
+status:      USED + EXECUTION-CONFIRMED.
+```

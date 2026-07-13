@@ -1771,3 +1771,23 @@ open/closed GitHub issue 搜索无 exact root。资产入口：
 `docs/bug-drafts/ai-native-flashback-cluster-cache-side-row-draft.md`、
 `docs/method-cases/ai-native-id1980003-flashback-runtime-dependency-method-case.md`、
 `assets/store/logs/0084-flashback-cluster-cache-side-row-red.log`。
+
+**2026-07-13 current-source-only 命中 id2010003/high：COM_STMT_PREPARE dedup 在清空
+`tidb_read_staleness` 后仍复用旧 snapshot evaluator。** 候选由 fast-path P/Q/F 证明义务产生，
+PR review、issue、fix/history 在独立 local RED 前完全禁用。`PrepareDedupCacheKey` 绑定 SQL、
+charset/collation、DB、SQL mode 和 schema version，但 `rebuildFromPrepareCache` fresh Preprocess
+之后仍用 `cached.Stmt.SnapshotTSEvaluator` 覆盖当前 `ret.SnapshotTSEvaluator`；旧 evaluator 捕获
+了 prepare 时的 `ReadStaleness=-1s`。local 矩阵：先在 `-1` 下 warm，同 session 清空变量并把
+`v=1` 更新为 `2`，相同 SQL 的新 prepared statement 返回旧值 `1`；仅关闭 dedup fast path 的
+同 SQL 返回 `2`；只把 evaluator 改为 fresh owner 后全绿。testbed `8220955` 用单物理连接、真实
+go-sql-driver `COM_STMT_PREPARE` 无 failpoint 复现 `dedup_on=1 / dedup_off=2`。官方 stale-read
+契约明确清空变量后读取最新数据；dedup 开关默认 OFF 限制 reachability，但不降低 silent wrong
+result consequence。post-RED 本地资产和三组 upstream issue 搜索无 exact root。远端 `found_bug`
+现为 106 rows/83 roots，id2010003 confirmed high；私有库 272 revisions，RED=54/GREEN=53、
+C3_DIRECT=21。新增 S42 `DERIVED_EXECUTION_CONTEXT_MUST_BE_KEYED_OR_REBUILT` 与 O52：cache 审计
+必须盘点 derived field 的所有语义 producer；若 hit path fresh 分析后又被 cached derivative 覆盖，
+该 discarded fresh value 是优先级很高的候选和精确反事实。资产入口：
+`assets/store/prepare-dedup-stale-read-context-results.jsonl`、
+`docs/bug-drafts/ai-native-prepare-dedup-stale-read-context-leak-draft.md`、
+`docs/method-cases/ai-native-prepare-dedup-context-method-case.md`、
+`scaffolds/go-probes/prepare_dedup_staleness_repro.go`。
