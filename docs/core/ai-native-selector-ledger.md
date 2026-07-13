@@ -1695,3 +1695,25 @@ status:     CANDIDATE/HYPOTHESIS for the cross-layer transaction campaign. No ex
 stop rule:  one root per fallback owner and persisted mode transition. Region/key counts are blast
             radius after the minimum cross-region obligation is established.
 ```
+
+## S51: savepoint mutable-value owner closure
+
+```text
+selector:   compare the savepoint state graph with the rollback restore graph, then traverse mutable
+            values behind maps, interfaces, pointers, caches, and handles to later consumers
+born from:  id2220003 (local temporary table membership survives by design, but its mutable dirty-
+            size value also survives and rejects a valid post-rollback INSERT)
+candidate:  (mutable(savepoint state) intersect post-rollback consumers) minus restored state
+prediction:
+  - the visible KV/row buffer returns to the savepoint;
+  - an auxiliary value mutated after the savepoint does not;
+  - a later admission, key, predicate, row image, action, or publication consumes the stale value.
+oracle gate:
+  - classify container membership separately from value lifecycle;
+  - prove the visible state was restored before testing the highest consumer;
+  - restore exactly one omitted mutable value as the counterfactual.
+status:     validated/moderate. id2220003 is local RED, exact field-level GREEN, SQL-only testbed RED,
+            and post-RED public issue dedup found no exact root.
+stop rule:  temporary-table shapes and payload sizes are blast radius. Reopen for a different mutable
+            owner or a higher consequence, not another field behind the same value.
+```

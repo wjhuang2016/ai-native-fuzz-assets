@@ -1905,3 +1905,29 @@ whose async prewrite may be accepted is represented in the primary lock's second
 filtering, batching, Region relocation, fallback, and duplicate-key handling. Do not revisit shared
 locks, pipelined exclusive-end cleanup, status-cache classification, or primary Region relocation
 unless a new owner or higher consumer appears.
+
+## Savepoint mutable-value tick: local temporary size residue, EXECUTED (2026-07-13)
+
+This tick started from current-source restoration ownership. Issues, fixes, history, and PR review
+findings remained closed through local RED and exact counterfactual.
+
+```text
+P:           ROLLBACK TO SAVEPOINT restores MemDB; the temporary table is empty.
+Q:           later size admission observes savepoint-equivalent transaction-local state.
+F:           TemporaryTables survives, and its mutable value retains post-savepoint dirty size.
+LOCAL RED:   roll back 1.2 MB; COUNT(*)=0; one-byte INSERT returns error 1114.
+CONTROL:     empty table without the rolled-back segment accepts the one-byte INSERT.
+EXACT GREEN: restore only per-table dirty size; the same RED arm succeeds.
+LIVE RED:    SQL-only reproduction on testbed 8220955 at TiDB 5c9198e9484d.
+INTEGRATE:   id2220003 moderate; S51, proof catalog, logs, method case, and asset graph.
+```
+
+Method improvement: restoration analysis now traverses mutable values behind containers and
+interfaces. Container membership and value lifecycle are separate proof obligations. The loop also
+keeps discovery quality separate from severity: this current-source, counterfactual-closed,
+testbed-reproduced hit validates the selector, but its highest consumer is transaction-local write
+availability, so it does not satisfy the severe queue.
+
+The async-secondary completeness pass completed negative in the same tick. A child packet's zero
+candidate result was accepted only after the parent closed predecessor, filtering, lifetime, and
+highest-consumer owners. This is now a packet-compiler gate for future cross-layer work.

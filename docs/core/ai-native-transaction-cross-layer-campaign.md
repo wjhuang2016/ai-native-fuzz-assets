@@ -1,5 +1,6 @@
 # AI-Native Cross-Layer Transaction Campaign
-> Prepared: 2026-07-13. Status: methodology, assets, and experiment control plane complete; no exact bug target admitted yet.
+> Prepared: 2026-07-13. Status: methodology, assets, and experiment control plane complete; one
+> moderate savepoint bug confirmed, but no new severe cross-layer target admitted yet.
 
 ## Mission
 
@@ -441,12 +442,31 @@ transfers -> only then admit`.
    status semantics at TiKV. **Completed as negative: durable mixed-mode marker forces sync.**
 4. Trace `ASYNC_SECONDARY_SET_COMPLETENESS`: every accepted async-prewrite key must be represented by
    the primary's recovery set after filtering, batching, Region relocation, fallback, and dedup.
-5. Admit exactly one target with a complete card, then execute locally first. The testbed remains
-   closed until an independently admitted local RED.
+   **Completed as negative after client-go/TiKV owner closure.**
+5. Admit exactly one target with a complete card, then execute locally first. **Completed for
+   id2220003 at moderate severity; the severe cross-layer gate remains open.**
 
 The default first source pass is commit-outcome terminal truth because it has the cleanest severe
 user promise and the strongest cross-layer oracle. If source ownership proves complete, record the
 negative and move to lock generation identity rather than forcing an artificial RED.
+
+### Async closure and mutable-value checkpoint
+
+The async-secondary owner graph closed negative. client-go walks every accepted mutation, excludes
+only primary and `CheckNotExists`, carries the full secondary set only on the primary request, and
+rebuilds primary identity by key after Region relocation. TiKV stores that set on the primary and
+forces synchronous recovery when a secondary is not async. Mixed fallback therefore did not yield
+an accepted key omitted from recovery ownership. The bounded scout returned zero candidates, and
+the parent added predecessor/filter/lifetime owners before accepting the result.
+
+The adjacent savepoint owner pass did produce `id2220003`. `TemporaryTables` correctly survives as
+a container, but a mutable dirty-size field inside each value is neither restored nor monotonic.
+The minimal matrix proved empty rows plus a one-byte error 1114, and restoring only that field made
+the test GREEN. Testbed 8220955 reproduced the SQL-only RED on exact TiDB commit `5c9198e9484d`.
+
+This changes the next campaign compiler: packet generation must close predecessor and lifetime
+owners, and restoration differentials must traverse mutable values rather than stopping at field or
+container classification. It does not lower the severe admission bar; id2220003 remains moderate.
 
 ## Stop Rules
 

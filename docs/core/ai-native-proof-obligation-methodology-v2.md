@@ -3087,3 +3087,44 @@ context and snapshot state first; client-go received the new timestamp only in t
 `LockKeys`. The cleanup therefore retained the older threshold, and TiKV's comparison protected the
 newer lock. This is the desired division of labor: the child finds a sharp counterexample shape;
 the parent verifies every owner transfer before admission.
+
+### Packet completeness is a proof obligation
+
+A packet result of zero candidates means only "zero candidates inside this compiled owner graph."
+Before accepting that negative, the parent must close four packet boundaries:
+
+```text
+predecessor producers -> stored state -> transfer/filter owners -> highest consumers
+```
+
+Include the owner that created the value, every filter or representation change that can discard
+information, lifetime/reset owners, and the highest correctness-bearing consumer. The first async
+secondary packet was internally correct but underrepresented predecessor and lifetime owners; the
+parent pass had to add them before the negative could be retired. Packet compilation is therefore
+part of the proof, not prompt plumbing.
+
+## Restore mutable values, not only containers
+
+Reference-reset and retry-closure differentials must traverse reachable mutable state:
+
+```text
+N = state graph present at normal entry or savepoint creation
+R = state graph restored at rollback or retry
+C = state graph consumed afterward
+debt = (mutable(N) intersect C) minus R
+```
+
+For every map, slice, interface, pointer, cache, or handle, classify container membership and value
+lifecycle separately. A map may correctly survive rollback while a mutable field inside one of its
+values remains attempt- or savepoint-scoped. Follow each such field to its highest consumer before
+building a matrix.
+
+`id2220003` calibrates this extension. `TemporaryTables` membership intentionally lives outside
+`TxnCtxNeedToRestore`, but each value owns a mutable transaction dirty-size counter. Two 600000-byte
+writes raised that counter above a 1 MiB limit; `ROLLBACK TO SAVEPOINT` made the table visibly empty
+without restoring the counter, so a one-byte INSERT returned error 1114. Restoring only per-table
+size made the exact local matrix GREEN, and the SQL-only RED reproduced on the pinned testbed.
+
+This is strong selector evidence but only a moderate bug: the highest consumer rejects a valid
+transaction-local write; no durable wrong data, cross-session corruption, or limit bypass was
+shown. Keep method validation and consequence ranking as independent gates.

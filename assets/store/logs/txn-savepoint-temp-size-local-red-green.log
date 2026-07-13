@@ -1,0 +1,22 @@
+TiDB source: 5c9198e9484db852b8477ce0014e0422ff9ec6a9
+Test: TestRollbackToSavepointRestoresLocalTemporaryTableSize
+Command: go test -tags=intest ./pkg/executor/test/txn -run TestRollbackToSavepointRestoresLocalTemporaryTableSize -count=1 -v
+
+Current-source RED:
+  setup: tidb_tmp_table_max_size=1048576, local temporary table (id, longblob)
+  transaction: SAVEPOINT sp; insert 600000 bytes; insert 600000 bytes; ROLLBACK TO sp
+  row oracle after rollback: empty
+  next operation: INSERT one-byte value
+  result: [table:1114] The table 'tmp' is full
+
+Observed size owner during calibration:
+  after first insert:  600033
+  after second insert: 1200066
+  after rollback:      1200066
+
+One-variable counterfactual GREEN:
+  snapshot TemporaryTable.GetSize() in TxnCtxNeedToRestore
+  restore each current TemporaryTable.SetSize(snapshot[id]) in RestoreBySavepoint
+  exact test result: PASS
+
+All temporary TiDB source edits were removed after evidence capture.

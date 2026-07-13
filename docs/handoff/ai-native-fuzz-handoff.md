@@ -1923,3 +1923,31 @@ JSON-only + `--output-last-message`，禁止 `--output-schema`，不硬编码 mo
 可能成功的完整 key set，核对 primary lock 的 secondaries 在过滤、分 batch、Region relocation、
 fallback、dedup 后是否仍 complete；先做 P/Q/F + highest consumer，不得先上 testbed。禁止重放
 shared-lock FK、pipelined exclusive-end、status-cache、primary relocation 和 PR-review finding。
+
+**2026-07-13 txn mutable-value checkpoint：命中一个新的 moderate bug id2220003，并把 packet
+closure 与恢复所有权方法各推进一层，但尚未找到新的 severe cross-layer bug。** 先完成既定的
+`ASYNC_SECONDARY_SET_COMPLETENESS`：client-go 对 accepted mutations 构造完整 secondaries，只在
+primary request 携带全集，Region relocation 按 key 重建 primary；TiKV 将全集保存在 primary lock，
+遇到非 async secondary 会强制走同步恢复。当前源码下没有找到“async success 但 accepted key 不在
+recovery set”的路径。这里的重要修正是：child 返回 0 candidate 只对 packet 内闭包有效，parent 必须
+再补 predecessor producer、filter/representation、lifetime/reset 和 highest consumer，才能接纳负结论。
+
+随后从 savepoint restore differential 发现 `id2220003`：`TransactionContext.TemporaryTables` 作为
+容器放在 `TxnCtxNoNeedToRestore` 本身可以成立，但 map value 内的 transaction dirty-size 是 mutable、
+非单调且属于 savepoint window。设置 1 MiB 限制，在 savepoint 后写入两个 600000-byte 行再 rollback，
+`COUNT(*)=0`，但下一条 1-byte INSERT 报 `ERROR 1114 table full`。只 snapshot/restore per-table size 的
+本地反事实使同一矩阵 GREEN；testbed 8220955 在 exact TiDB `5c9198e9484d` 上 SQL-only RED。公开 issue
+三组 post-RED 去重无 exact root，远端 `found_bug id2220003` 已入库；当前 113 surfaces、90 roots、
+36 high、98 confirmed。质量必须诚实：这是自然可达、强 oracle、精确反事实、exact-commit live RED，
+所以发现质量高；但最高后果只是事务内合法写入被拒绝，没有 durable wrong data、跨会话 corruption
+或 limit bypass，因此 severity=moderate，不计入 severe 命中。
+
+方法新增 S51 `SAVEPOINT_MUTABLE_VALUE_OWNER_CLOSURE`：对 normal/savepoint graph `N`、restore graph
+`R`、post-restore consumers `C`，计算 `(mutable(N) intersect C) minus R`；对 map/slice/interface/
+pointer/cache/handle 必须把 container membership 与 value lifecycle 分开审计。资产入口：
+`assets/store/txn-savepoint-mutable-owner-results.jsonl`、
+`docs/method-cases/ai-native-id2220003-savepoint-mutable-value-method-case.md`、
+`docs/bug-drafts/ai-native-savepoint-local-temp-size-stale-draft.md` 及两份 RED/GREEN/live 日志。TiDB
+临时验证改动已全部归位，pinned worktree clean；可复用 pack 已含 selector/obligation/oracle/natural
+fault/scenario/schedule 和三次验证运行，`open_gaps=[]`。下一轮继续追 severe：优先找同一 mutable-owner debt
+中能到达 key/predicate/row image/commit outcome/terminal truth 的 consumer，不围绕临时表大小做变体。

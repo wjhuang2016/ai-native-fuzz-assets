@@ -2,11 +2,11 @@
 > Started 2026-07-03. The headline metric for this method is **distinct root causes**, not
 > `COUNT(found_bug)`. This ledger is the corrected scoreboard and the counting convention.
 
-## Current remote snapshot (2026-07-12)
+## Current remote snapshot (2026-07-13)
 
-`found_bug`: 90 surfaces, 67 distinct root causes, 15 high-severity rows, 65 confirmed rows,
-and 9 issue-filed rows. `id30001` is now `issue-filed/high` with upstream issue #69779; its
-hint and no-hint observations remain one root, `partial-index-implication`.
+`found_bug`: 113 surfaces, 90 distinct root causes, 36 high-severity rows, 98 confirmed rows,
+and 17 issue-filed rows. The newest entry is `id2220003`, a confirmed moderate root; it validates
+the mutable-value selector but does not raise the severe count.
 
 ## Counting convention
 
@@ -448,3 +448,14 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   it, and terminal statement publication exposes it after zero work.
 - Counting rule: UPDATE forms, sleep windows, ID values, unique indexes, and gate predicates are
   blast radius. Reopen only for another omitted publication-state owner or a different retry owner.
+
+## 2026-07-13 update: id2220003
+
+- Remote `found_bug`: 113 surfaces, 90 distinct root causes, 36 high-severity rows, 98 confirmed rows.
+- New root: `savepoint-omits-local-temp-table-dirty-size-restore`.
+- Consequence: moderate wrong error. The table is visibly empty after rollback, but stale dirty-size
+  accounting rejects a valid one-byte INSERT with error 1114.
+- Distinctness: savepoint restores MemDB correctly. The missing owner is a mutable value behind a
+  deliberately persistent map, not savepoint-stack semantics or retry residue.
+- Counting rule: table schemas, byte limits, and payload sizes are blast radius. Reopen only for a
+  different mutable owner or a higher correctness-bearing consumer.

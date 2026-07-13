@@ -1,0 +1,25 @@
+Testbed: 8220955
+TiDB version: v9.0.0-beta.2.pre-1895-g5c9198e948
+TiDB commit: 5c9198e9484db852b8477ce0014e0422ff9ec6a9
+Store: tikv
+
+SQL:
+  SET SESSION tidb_tmp_table_max_size=1048576;
+  CREATE TEMPORARY TABLE ai_savepoint_tmp (id INT PRIMARY KEY, v LONGBLOB);
+  BEGIN;
+  SAVEPOINT sp;
+  INSERT INTO ai_savepoint_tmp VALUES (1, REPEAT('x',600000));
+  INSERT INTO ai_savepoint_tmp VALUES (2, REPEAT('y',600000));
+  SELECT COUNT(*), SUM(LENGTH(v)) FROM ai_savepoint_tmp;
+  ROLLBACK TO SAVEPOINT sp;
+  SELECT COUNT(*) FROM ai_savepoint_tmp;
+  INSERT INTO ai_savepoint_tmp VALUES (3,'z');
+
+Observed:
+  before rollback: rows=2, bytes=1200000
+  after rollback: rows=0
+  final INSERT: ERROR 1114 (HY000): The table 'ai_savepoint_tmp' is full
+  final rows: 0
+
+The reproduction changes only a session-local temporary table. The transaction was rolled back and
+the session closed; no persistent test database, fault, image, or cluster configuration was used.

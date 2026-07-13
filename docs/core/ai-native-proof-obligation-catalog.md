@@ -3438,3 +3438,22 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
 - Assets: `docs/method-cases/ai-native-id2190003-last-insert-id-retry-method-case.md` and
   `assets/store/pessimistic-retry-last-insert-id-results.jsonl`.
 - Pause gate: do not enumerate SQL forms, ID values, gate shapes, or timing windows under this root.
+
+## id2220003 - Savepoint rollback leaves local temporary table size stale
+
+- Target: `target.txn-savepoint-local-temp-size-stale.v1`.
+- Selector: `SAVEPOINT_MUTABLE_VALUE_OWNER_CLOSURE`.
+- **P**: rollback restores the transaction MemDB checkpoint, and the local temporary table is empty.
+- **Q**: later size admission observes the same transaction-local table state as the savepoint.
+- **F**: `TemporaryTables` is outside `TxnCtxNeedToRestore`; its mutable table value keeps dirty size
+  accumulated after the savepoint even though MemDB rows are removed.
+- Oracle: under a 1 MiB limit, roll back two 600000-byte rows, prove `COUNT(*)=0`, then insert one
+  byte. Current source returns error 1114; a no-large-write control succeeds.
+- Counterfactual: snapshot and restore only each temporary table's dirty size; the exact RED passes.
+- Status: **CONFIRMED**, remote `found_bug id2220003`, moderate severity. Local RED, field-level
+  GREEN, and SQL-only testbed 8220955 RED are complete; post-RED issue search found no exact root.
+- Assets: `docs/method-cases/ai-native-id2220003-savepoint-mutable-value-method-case.md`,
+  `docs/bug-drafts/ai-native-savepoint-local-temp-size-stale-draft.md`, and
+  `assets/store/txn-savepoint-mutable-owner-results.jsonl`.
+- Pause gate: do not enumerate temporary-table schemas, limits, or payload sizes. Reopen only if the
+  same root reaches a higher consumer or another mutable value owner is independently omitted.
