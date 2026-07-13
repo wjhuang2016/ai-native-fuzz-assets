@@ -1549,3 +1549,27 @@ status:     validated/terminal - local injected and natural unistore REDs, exact
 stop rule:  one root per retry owner and missing state owner. DML forms, variable types, expressions,
             conflict keys, and retry counts are blast radius.
 ```
+
+## S46: deferred terminal error return-slot ownership
+
+```text
+selector:   a deferred Commit/Close/Flush/publish action writes an error variable that is not the
+            function's actual returned error slot
+born from:  id2130003 (IMPORT conflict-deletion Commit error is assigned after return nil fixes an
+            unnamed result)
+prediction:
+  - the terminal action is reached and its error is assigned, so a shallow review looks correct;
+  - an unnamed result or shadowed variable prevents that assignment from changing the public error;
+  - a retry/task owner consumes nil and publishes success without durable completion;
+  - naming or explicitly owning the result exposes the same fault to the existing recovery path.
+oracle gate:
+  - resolve language-level return slots and shadowing, not only variable names;
+  - inject one transient fault before durable publication and prove the action did not commit;
+  - run a same-process no-fault control after the one-shot fault is consumed;
+  - lift to terminal status plus exact durable semantic consistency.
+status:     validated/terminal - local rollback/error RED, real-TiKV finished plus PRIMARY/unique/
+            secondary 2/1/2 and ADMIN 8223, no-fault 1/1/1 GREEN, named-return one-retry 1/1/1
+            GREEN; remote id2130003 high, upstream #69792.
+stop rule:  one root per terminal owner and return-slot mechanism. Input conflicts, index shapes,
+            batch sizes, and retryable error strings are blast radius.
+```

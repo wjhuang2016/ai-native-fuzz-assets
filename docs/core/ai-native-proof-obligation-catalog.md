@@ -3403,3 +3403,20 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
 - Assets: `docs/method-cases/ai-native-id2100003-retry-side-effect-closure-method-case.md` and
   `assets/store/pessimistic-retry-user-var-side-effect-results.jsonl`.
 - Pause gate: do not enumerate DML syntax, variable types, conflict keys, or retry counts under this root.
+
+## id2130003 - IMPORT conflict deletion loses a deferred Commit error
+
+- Target: `target.importinto.conflict-delete-commit-false-success.v1`.
+- Selector: `DEFERRED_TERMINAL_ERROR_RETURN_SLOT_OWNERSHIP`.
+- **P**: all conflict-key deletes were staged without an earlier error.
+- **Q**: nil returned to `RunWithRetry` proves the deletion transaction committed.
+- **F**: `return nil` fixes an unnamed error result before the defer assigns `txn.Commit(ctx)` to a
+  local `err`; that assignment cannot change the public result.
+- C3 oracle: one transient Commit failure still produces a finished import, but PRIMARY, unique,
+  and secondary paths contain 2/1/2 rows and `ADMIN CHECK TABLE` returns 8223.
+- Controls: same process after the one-shot fault is 1/1/1 and ADMIN green. Naming the error result
+  exposes one retry, then also produces 1/1/1 and ADMIN green.
+- Status: **ISSUE-FILED**, remote `found_bug id2130003`, high severity, upstream #69792.
+- Assets: `docs/method-cases/ai-native-id2130003-deferred-return-slot-method-case.md` and
+  `assets/store/import-into-conflict-delete-commit-results.jsonl`.
+- Pause gate: do not enumerate conflict inputs, index shapes, batches, or retryable error strings.

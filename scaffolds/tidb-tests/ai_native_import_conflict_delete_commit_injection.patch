@@ -1,0 +1,29 @@
+diff --git a/pkg/dxf/importinto/conflictedkv/deleter.go b/pkg/dxf/importinto/conflictedkv/deleter.go
+index 39de0661d0..f24ab8a9a3 100644
+--- a/pkg/dxf/importinto/conflictedkv/deleter.go
++++ b/pkg/dxf/importinto/conflictedkv/deleter.go
+@@ -16,6 +16,8 @@ package conflictedkv
+ 
+ import (
+ 	"context"
++	"os"
++	"sync/atomic"
+ 	"time"
+@@ -43,6 +45,8 @@ const (
+ )
+ 
+ var (
++	aiNativeConflictDeleteCommitFailed atomic.Bool
++
+ 	// BufferedKeySizeLimit is the max size of keys buffered before delete.
+@@ -162,6 +166,10 @@ func (d *Deleter) deleteBufferedKeys(ctx context.Context, keys []tidbkv.Key) err
+ 		return errors.Trace(err)
+ 	}
+ 	defer func() {
++		if err == nil && os.Getenv("AI_NATIVE_FAIL_CONFLICT_DELETE_COMMIT") == "1" &&
++			aiNativeConflictDeleteCommitFailed.CompareAndSwap(false, true) {
++			err = errors.New("injected random error: ai-native conflict delete commit failed")
++		}
+ 		if err == nil {
+ 			err = txn.Commit(ctx)
+

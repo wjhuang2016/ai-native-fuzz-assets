@@ -1,0 +1,48 @@
+Target: current TiDB 13282a8bd06bd33324a4dbfd3c1c03685f3cd9aa
+Environment: authorized QA testbed 8220955, real PD and three TiKV stores
+Mode: IMPORT INTO global sort, ON_DUPLICATE_KEY='capture', CHECKSUM_TABLE='off'
+Input: (1,1,10), (1,1,10), (2,1,20), (3,3,30)
+Fault: one retryable error before the first conflict-delete transaction Commit; the transaction is rolled back
+
+CURRENT-SOURCE RED, job 180001
+terminal status: finished
+Imported_Rows: 1
+Result_Message: 3 conflicted rows.
+PRIMARY rows:   (2,1,20), (3,3,30)
+unique u rows:  (3,3,30)
+secondary rows: (2,1,20), (3,3,30)
+ADMIN CHECK TABLE: ERROR 8223, index u, handle 2
+retry warning: none; the first Commit error was hidden from RunWithRetry
+
+SAME-PROCESS NO-FAULT CONTROL, job 180002
+The one-shot fault had already been consumed.
+terminal status: finished
+Imported_Rows: 1
+PRIMARY rows:   (3,3,30)
+unique u rows:  (3,3,30)
+secondary rows: (3,3,30)
+ADMIN CHECK TABLE: success
+
+NAMED-RETURN COUNTERFACTUAL GREEN, job 150001
+Same one-shot fault, input, object store, and real TiKV.
+TiDB log: one RunWithRetry warning at retry-count=0 with
+  "injected random error: ai-native conflict delete commit failed"
+terminal status: finished after retry
+Imported_Rows: 1
+PRIMARY rows:   (3,3,30)
+unique u rows:  (3,3,30)
+secondary rows: (3,3,30)
+ADMIN CHECK TABLE: success
+
+INVALID cells excluded from the result:
+- local-sort IMPORT rejected ON_DUPLICATE_KEY='capture' before execution
+- first green process failed startup because its temporary-storage lock was still owned
+- one disconnected import was cancelled as job 90002 and fully reverted by restoring its executor ID
+
+Cleanup verified:
+- TidbCluster tc spec.tidb.replicas=1 and readyReplicas=1
+- original tc-tidb-0 Ready
+- all ai_conflict_delete* databases removed
+- temporary MinIO service/pods removed
+- sdkserver has no experimental TiDB process or input/binary files
+- job 90002 status cancelled

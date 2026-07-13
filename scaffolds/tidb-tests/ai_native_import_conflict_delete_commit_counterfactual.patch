@@ -1,0 +1,14 @@
+diff --git a/pkg/dxf/importinto/conflictedkv/deleter.go b/pkg/dxf/importinto/conflictedkv/deleter.go
+index 39de0661d0..52a0929131 100644
+--- a/pkg/dxf/importinto/conflictedkv/deleter.go
++++ b/pkg/dxf/importinto/conflictedkv/deleter.go
+@@ -151,7 +151,7 @@ func (d *Deleter) deleteKeysWithRetry(ctx context.Context, keys []tidbkv.Key) er
+ 	})
+ }
+ 
+-func (d *Deleter) deleteBufferedKeys(ctx context.Context, keys []tidbkv.Key) error {
++func (d *Deleter) deleteBufferedKeys(ctx context.Context, keys []tidbkv.Key) (err error) {
+ 	if d.trafficRec != nil {
+ 		var writeBytes uint64
+ 		for _, k := range keys {
+

@@ -1836,3 +1836,28 @@ high；上游 https://github.com/pingcap/tidb/issues/69791 带 `found-by-ai`/`se
 点计算 `(pre-error mutations intersect post-reentry consumers) minus rollback owners`，先做 pre/post
 altitude 小矩阵，再用自然 owner 和 terminal-error+durable-state oracle 升级；不证明落点的 timing 控制
 必须记 INVALID。暂停本 root 的 DML/变量/索引/冲突时序变体，下一轮仍只从当前源码生成新的 C3。
+
+**2026-07-13 current-source-only 命中 id2130003/high：IMPORT INTO 冲突删除事务的 Commit
+错误被 defer 写进非返回槽，任务假成功并留下物理索引不一致。** 本轮候选由当前源码 retry closure
+scanner 产生，PR review finding、issue、fix/history 在独立 local RED 前全部禁用。先用源码证明淘汰
+两个高分误报：auto-ID allocator 每次从 authoritative global end 覆盖 captured outputs；nonpartition
+DDL backfill 每次重置 row/index buffers 和 counters、重放 fixed range，outer frontier 只在成功后推进。
+随后 `deleteBufferedKeys` 命中更强 P/Q/F：函数返回 unnamed `error`，`return nil` 在 defer 前固定
+返回槽，defer 中 `err=txn.Commit(ctx)` 只改 local err；`RunWithRetry` 因此看见 nil 并跳过 retry。
+
+local wrapper 明确 rollback 并返回 Commit error，当前函数仍返回 nil；只把 result 改成 named `err`
+即转绿。testbed 8220955 用临时 MinIO/global sort、真实 PD/三 TiKV 和一次性 retryable pre-Commit
+fault 做严格矩阵：current job 180001 报 `finished/Imported_Rows=1/3 conflicted rows`，但 PRIMARY/unique/
+secondary 行集为 `2/1/2`，冲突行 id=2 的 record 与 secondary iv 存在、unique u 缺失，ADMIN CHECK
+报 8223；同进程 fault-consumed control job 180002 为 `1/1/1 + ADMIN green`；named-return job 150001
+记录一次 `retry-count=0` 后完成，仍为 `1/1/1 + ADMIN green`。所有实验 DB/MinIO/binary/process 已清理，
+TidbCluster `tc` 恢复 `replicas=1/readyReplicas=1`；INVALID 遗留 job 90002 已通过恢复原 executor ID
+完成 reversion 并处于 cancelled。
+
+新增 S46 `DEFERRED_TERMINAL_ERROR_RETURN_SLOT_OWNERSHIP`：terminal action 被调用、error 被赋值都
+不足以证明错误已处理；必须解析 defer 实际写入的 return slot，包括 unnamed result 和 shadowing。
+scanner 同时增加两条降噪规则：remote-dominant overwrite-only output、attempt-entry reset + fixed-source
+replay。远端 `found_bug` 已入库 id2130003，现为 110 rows/87 roots/35 high；上游
+https://github.com/pingcap/tidb/issues/69792 带 `found-by-ai`/`severity/major`。私有资产 303 revisions，
+RED=64/GREEN=62/INVALID=12，C3_DIRECT=22，`next=null`。暂停本 root 的 conflict/input/index/error
+变体；下一轮继续只从当前源码产生新的 C3 候选。
