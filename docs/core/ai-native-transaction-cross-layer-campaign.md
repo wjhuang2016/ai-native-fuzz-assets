@@ -468,6 +468,30 @@ This changes the next campaign compiler: packet generation must close predecesso
 owners, and restoration differentials must traverse mutable values rather than stopping at field or
 container classification. It does not lower the severe admission bar; id2220003 remains moderate.
 
+### First severe cross-layer hit: late age error after async proof
+
+The next bounded client-go pass found a severe terminal-truth root without using issue or PR seeds.
+`twoPhaseCommitter.execute` completes async prewrite and selects nonzero `minCommitTS`, then runs the
+generic 24-hour transaction-age check and can return ordinary `txn takes too much time`. The error
+defer starts best-effort cleanup, but a complete async lock set is already sufficient for a later
+LockResolver to choose commit.
+
+The compressed matrix made only the age predicate true and made cleanup unavailable. Local
+integration returned the ordinary error, then point gets recovered both keys as committed. Moving
+the check before prewrite kept both keys absent. The original RED was then lifted into
+`sdkserver-0` on testbed 8220955 against one PD and three real TiKV nodes at commit `bf73df27`; logs
+show nonzero commitTS and `ResolveLock action=commit` for both keys. The probe removed its dedicated
+raw keys afterward.
+
+This promotes `POST_PROOF_FALLIBLE_EPILOGUE`: mark the earliest prefix where an independent owner
+can finish the outcome, then audit every remaining error edge. Deferred cleanup does not justify an
+ordinary abort after that frontier unless completion is synchronously proven. The required oracle
+is terminal response versus final MVCC truth after invoking the independent owner.
+
+Remote `found_bug id2250003` records the root. Its consequence is high, while natural frequency is
+bounded by the exact trigger: a transaction older than 24 hours plus unavailable cleanup. Do not
+inflate frequency or enumerate TTL/key-count variants.
+
 ## Stop Rules
 
 - Stop after one root per terminal owner and protocol transition.

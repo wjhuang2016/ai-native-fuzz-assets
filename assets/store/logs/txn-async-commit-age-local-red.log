@@ -1,0 +1,23 @@
+go: downloading github.com/ninedraft/israce v0.0.3
+go: downloading github.com/pingcap/tidb v1.1.0-beta.0.20260603040045-b254c43931d9
+go: downloading github.com/pingcap/sysutil v1.0.1-0.20241113070546-23b50de46fd3
+go: downloading github.com/pingcap/tidb/pkg/parser v0.0.0-20260603040045-b254c43931d9
+go: downloading github.com/danjacques/gofslock v0.0.0-20220131014315-6e321f4509c8
+=== RUN   TestAsyncCommitFail
+=== RUN   TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+[2026/07/14 02:51:48.309 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=store1] [from=unresolved] [to=resolved] [liveness-state=reachable]
+[2026/07/14 02:51:48.309 +08:00] [INFO] [2pc.go:1655] ["[failpoint] injected skip cleanup secondaries on failure"] [txnStartTS=467656693070692353]
+[2026/07/14 02:51:48.310 +08:00] [INFO] [lock_resolver.go:1288] ["resolve async commit locks"] [startTS=467656693070692353] [commitTS=467656693070954496] [TxnStatus="ttl:3000 commit_ts:467656693070954496 action: NoAction"]
+[2026/07/14 02:51:48.310 +08:00] [INFO] [lock_resolver.go:1288] ["resolve async commit locks"] [startTS=467656693070692353] [commitTS=467656693070954496] [TxnStatus="ttl:3000 commit_ts:467656693070954496 action: NoAction"]
+[2026/07/14 02:51:48.310 +08:00] [INFO] [lock_resolver.go:1517] ["txn lock cleanup resolve-region rpc finished"] [action=commit] [txnStartTS=467656693070692353] [commitTS=467656693070954496] [regionID=2] [keyCount=2]
+[2026/07/14 02:51:48.310 +08:00] [INFO] [lock_resolver.go:1295] ["failed to resolve async-commit locks asynchronously"] [startTS=467656693070692353] [commitTS=467656693070954496] [error="async commit recovery (sending ResolveLock) finished with errors: [context canceled]"] [errorVerbose="async commit recovery (sending ResolveLock) finished with errors: [context canceled]\ngithub.com/tikv/client-go/v2/txnkv/txnlock.(*LockResolver).resolveAsyncResolveData\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/txnkv/txnlock/lock_resolver.go:1252\ngithub.com/tikv/client-go/v2/txnkv/txnlock.(*LockResolver).resolveAsyncCommitLock.func1\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/txnkv/txnlock/lock_resolver.go:1293\ngithub.com/tikv/client-go/v2/txnkv/txnlock.(*asyncResolveTaskPool).tryAsyncResolve.func1\n\t/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/txnkv/txnlock/lock_resolver.go:814\ngithub.com/tiancaiamao/gp.worker\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/github.com/tiancaiamao/gp@v0.0.0-20221230034425-4025bc8a4d4a/gp.go:37\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"]
+[2026/07/14 02:51:48.320 +08:00] [INFO] [db.go:567] ["Closing database"]
+[2026/07/14 02:51:48.320 +08:00] [INFO] [db.go:592] ["Memtable flushed"]
+[2026/07/14 02:51:48.320 +08:00] [INFO] [db.go:596] ["Compaction finished"]
+[2026/07/14 02:51:48.320 +08:00] [INFO] [db.go:615] ["BlobManager finished"]
+[2026/07/14 02:51:48.320 +08:00] [INFO] [db.go:619] ["ResourceManager finished"]
+[2026/07/14 02:51:48.320 +08:00] [INFO] [db.go:625] ["Waiting for closer"]
+--- PASS: TestAsyncCommitFail (0.05s)
+    --- PASS: TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted (0.05s)
+PASS
+ok  	integration_tests	0.774s

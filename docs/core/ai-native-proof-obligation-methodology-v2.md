@@ -3128,3 +3128,36 @@ size made the exact local matrix GREEN, and the SQL-only RED reproduced on the p
 This is strong selector evidence but only a moderate bug: the highest consumer rejects a valid
 transaction-local write; no durable wrong data, cross-session corruption, or limit bypass was
 shown. Keep method validation and consequence ranking as independent gates.
+
+## Mark the irreversible proof horizon before auditing fallible epilogues
+
+Fast protocols can become recoverably committed before their initiating function returns. Mark
+`H`, the earliest point after which an independent component has enough durable evidence to finish
+the outcome:
+
+```text
+request prefix -> H: independent recovery can finish -> fallible checks -> terminal response
+```
+
+Then enumerate every return-error edge after `H`. A cleanup call is not sufficient proof. Each edge
+must either move before `H`, publish success/explicit undetermined, or synchronously prove
+compensation before returning abort.
+
+The smallest useful matrix is:
+
+```text
+guard altitude x compensation availability x independent recovery consumer
+```
+
+Inject only the guard predicate and compensation availability. Keep the downstream owner real, then
+compare the terminal result with final durable truth. This catches errors that a caller-local unit
+test cannot see.
+
+`id2250003` calibrates the selector. client-go completed all async prewrites and selected a nonzero
+`minCommitTS`, then returned ordinary `txn takes too much time`. With cleanup unavailable, both
+local unistore and three real TiKV nodes recovered the two-key transaction as committed. Moving only
+the age guard before prewrite made the old oracle fail with both keys absent and the safe oracle pass.
+
+Store this selector as `POST_PROOF_FALLIBLE_EPILOGUE`. Stop after one root per proof horizon; late
+error strings, TTLs, and key counts are blast radius unless they change the independent owner or
+terminal-result class.

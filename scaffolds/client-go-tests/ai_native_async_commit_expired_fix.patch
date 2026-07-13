@@ -1,0 +1,18 @@
+diff --git a/txnkv/transaction/2pc.go b/txnkv/transaction/2pc.go
+--- a/txnkv/transaction/2pc.go
++++ b/txnkv/transaction/2pc.go
+@@
+ 	start := time.Now()
+ 
++	if c.isAsyncCommit() && c.store.GetOracle().IsExpired(c.startTS, MaxTxnTimeUse, &oracle.Option{TxnScope: oracle.GlobalTxnScope}) {
++		return errors.Errorf("session %d txn takes too much time, txnStartTS: %d, comm: %d",
++			c.sessionID, c.startTS, c.commitTS)
++	}
++
+ 	err = c.prewriteMutations(bo, c.mutations)
+@@
+-	if c.store.GetOracle().IsExpired(c.startTS, MaxTxnTimeUse, &oracle.Option{TxnScope: oracle.GlobalTxnScope}) {
++	if !c.isAsyncCommit() && c.store.GetOracle().IsExpired(c.startTS, MaxTxnTimeUse, &oracle.Option{TxnScope: oracle.GlobalTxnScope}) {
+ 		err = errors.Errorf("session %d txn takes too much time, txnStartTS: %d, comm: %d",
+ 			c.sessionID, c.startTS, c.commitTS)
+ 		return err

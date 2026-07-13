@@ -1,26 +1,31 @@
 # AI-Native Bug Discovery Framework — Session 交接文档
-> 最后更新:2026-07-13。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
+> 最后更新:2026-07-14。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
 > 更详细的逐 session 流水账见项目记忆 `~/.claude/projects/-Users-bba-pc-tidb/memory/ai-native-test-framework.md`。
 
 ---
 
-**2026-07-13 方法复盘与事务跨层 campaign 已完成准备，尚未 admit 新 bug target。** 历程不再按 bug
-编号堆叠，而是按方法演进整理在 `docs/core/ai-native-discovery-retrospective.md`：早期广泛语义扫描验证了
-AI 的源码理解和快速构造能力，但容易跨模块漂移、产出 wrong-error/中等级问题；后期高质量命中主要来自
-跨阶段/跨 owner 信息保真、最高 consumer oracle、单变量反事实、自然 reachability 和强负例筛选。核心
-方法文档已经明确三种 provenance mode：当前 severe lane 为 `COLD_SOURCE`，独立 local RED 和 exact-owner
-GREEN 前禁止用 issue、PR review finding、fix/history 生成候选；这些来源只允许在 RED 后去重。
+**2026-07-14 事务跨层 campaign 已命中首个 severe root: `id2250003`。** 候选来自 current-source
+`COLD_SOURCE` 审计,没有用 issue、PR review finding 或历史修复选题。client-go 在 async prewrite 全部成功、
+`minCommitTS` 非零之后才执行 24 小时事务年龄检查,因此可以返回普通 `txn takes too much time`;如果随后
+best-effort cleanup 不可用,TiKV 的独立 LockResolver 已经拥有完整 secondary 集合,会推导非零 commitTS
+并把事务恢复为 committed。用户看到的是 COMMIT 明确失败,稍后写入却可见;应用按失败重试时可能重复执行
+业务动作。local RED、仅移动 guard 的反事实 GREEN、以及 testbed `8220955` 上一 PD 三真实 TiKV 的 RED
+均已完成,真实 TiKV 日志记录两把锁 `ResolveLock action=commit`。探针已删除专用 raw keys,集群无残留
+failpoint/二进制,TiDB/client-go/TiKV 三个 pinned worktree 均已确认 clean。
 
-下一阶段入口为 `docs/core/ai-native-transaction-cross-layer-campaign.md`，范围是 TiDB/client-go/TiKV，继续
-排除 partition。已登记三个 hypothesis selector：S48 commit outcome terminal truth、S49 lock generation
-identity、S50 1PC/Async Commit fallback atomicity；对应 O56/O57/O58、场景、fault altitude 和 schedule
-已入 `assets/store/transaction-cross-layer-campaign-assets.jsonl`。导入后资产库 332 revisions，执行计数仍为
-RED=68/GREEN=65/INVALID=12/INFO=1，`admitted_active_targets=0`。这表示 campaign 基础设施已就位，但没有
-把方向假设冒充 bug。首轮 `undeterminedErr` owner graph 已用 TiDB 精确 pin 的 client-go revision 完成：
-TiDB 对 unknown outcome 直接断链，不会在同一 session replay，该方向已作为 negative 退役。唯一合法
-下一步：继续证明并发 prewrite 的 request-mode/current-mode 差异能否穿过 TiKV mixed-lock cleanup、
-`CheckTxnStatus` 和 ResolveLock；只有完整 P/Q/F + severe oracle + exact counterfactual 后才能入队，local
-RED 前不使用 testbed。
+新 selector 为 `POST_PROOF_FALLIBLE_EPILOGUE`:先标出独立 owner 已能完成终态的最早 proof horizon `H`,
+再审计 `H` 之后的每条 fallible edge。普通 abort 必须满足三者之一:把 guard 移到 `H` 前、返回
+success/explicit-undetermined、或在返回前同步证明补偿完成。最小矩阵是 `guard altitude x compensation
+availability x independent recovery consumer`;只注入 guard predicate 与补偿可用性,下游恢复 owner 保持
+真实。资产库现为 367 revisions、RED=72/GREEN=69/INVALID=12/INFO=1、validated targets=43;远端
+`found_bug` 为 114 行,其中 high=37。该 root 后果高,但自然频率受限于“事务超过 24 小时 + cleanup 未完成”,
+不得包装成高频问题,也不要枚举 TTL/key-count 变体。
+
+下一轮仍排除 partition 和 SAVEPOINT。先从 common-transaction proof horizon 寻找自然可达性更高的
+post-proof error/cancel/timeout edge,优先普通 COMMIT、pessimistic retry、1PC/async fallback 的终态分叉。
+每个 owner graph 继续使用 bounded source packet;local RED 前不碰 testbed,RED 后才允许 GitHub 去重。
+FK cascade + child concurrent DDL 的 implicit-resource 假设已用 runtime rematerialization + index rowset oracle
+证伪并退役,不要重复。
 
 ---
 

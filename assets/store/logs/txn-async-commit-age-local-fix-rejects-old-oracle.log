@@ -1,0 +1,63 @@
+=== RUN   TestAsyncCommitFail
+=== RUN   TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+[2026/07/14 02:52:38.440 +08:00] [INFO] [2pc.go:1655] ["[failpoint] injected skip cleanup secondaries on failure"] [txnStartTS=467656706212233217]
+[2026/07/14 02:52:38.440 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=store1] [from=unresolved] [to=resolved] [liveness-state=reachable]
+    async_commit_test.go:155: 
+        	Error Trace:	/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/async_commit_test.go:155
+        	            				/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/ai_native_async_commit_expired_probe_test.go:63
+        	            				/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268
+        	Error:      	Expected nil, but got: not exist
+        	Test:       	TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+    async_commit_test.go:156: 
+        	Error Trace:	/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/async_commit_test.go:156
+        	            				/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/ai_native_async_commit_expired_probe_test.go:63
+        	            				/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268
+        	Error:      	Not equal: 
+        	            	expected: []byte(nil)
+        	            	actual  : []byte{0x76, 0x31}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1,2 +1,4 @@
+        	            	-([]uint8) <nil>
+        	            	+([]uint8) (len=2) {
+        	            	+ 00000000  76 31                                             |v1|
+        	            	+}
+        	            	 
+        	Test:       	TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+    async_commit_test.go:155: 
+        	Error Trace:	/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/async_commit_test.go:155
+        	            				/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/ai_native_async_commit_expired_probe_test.go:64
+        	            				/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268
+        	Error:      	Expected nil, but got: not exist
+        	Test:       	TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+    async_commit_test.go:156: 
+        	Error Trace:	/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/async_commit_test.go:156
+        	            				/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/prep.txn.testbed8220955.pinned/client-go/integration_tests/ai_native_async_commit_expired_probe_test.go:64
+        	            				/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268
+        	Error:      	Not equal: 
+        	            	expected: []byte(nil)
+        	            	actual  : []byte{0x76, 0x32}
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1,2 +1,4 @@
+        	            	-([]uint8) <nil>
+        	            	+([]uint8) (len=2) {
+        	            	+ 00000000  76 32                                             |v2|
+        	            	+}
+        	            	 
+        	Test:       	TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+[2026/07/14 02:52:38.454 +08:00] [INFO] [db.go:567] ["Closing database"]
+[2026/07/14 02:52:38.454 +08:00] [INFO] [db.go:592] ["Memtable flushed"]
+[2026/07/14 02:52:38.454 +08:00] [INFO] [db.go:596] ["Compaction finished"]
+[2026/07/14 02:52:38.454 +08:00] [INFO] [db.go:615] ["BlobManager finished"]
+[2026/07/14 02:52:38.454 +08:00] [INFO] [db.go:619] ["ResourceManager finished"]
+[2026/07/14 02:52:38.454 +08:00] [INFO] [db.go:625] ["Waiting for closer"]
+--- FAIL: TestAsyncCommitFail (0.06s)
+    --- FAIL: TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted (0.06s)
+FAIL
+FAIL	integration_tests	0.799s
+FAIL

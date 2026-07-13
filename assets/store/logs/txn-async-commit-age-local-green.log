@@ -1,0 +1,14 @@
+=== RUN   TestAsyncCommitFail
+=== RUN   TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted
+[2026/07/14 02:53:07.712 +08:00] [INFO] [2pc.go:1655] ["[failpoint] injected skip cleanup secondaries on failure"] [txnStartTS=467656713885712385]
+[2026/07/14 02:53:07.712 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=store1] [from=unresolved] [to=resolved] [liveness-state=reachable]
+[2026/07/14 02:53:07.724 +08:00] [INFO] [db.go:567] ["Closing database"]
+[2026/07/14 02:53:07.724 +08:00] [INFO] [db.go:592] ["Memtable flushed"]
+[2026/07/14 02:53:07.724 +08:00] [INFO] [db.go:596] ["Compaction finished"]
+[2026/07/14 02:53:07.724 +08:00] [INFO] [db.go:615] ["BlobManager finished"]
+[2026/07/14 02:53:07.724 +08:00] [INFO] [db.go:619] ["ResourceManager finished"]
+[2026/07/14 02:53:07.724 +08:00] [INFO] [db.go:625] ["Waiting for closer"]
+--- PASS: TestAsyncCommitFail (0.05s)
+    --- PASS: TestAsyncCommitFail/TestAINativeExpiredAsyncPrewriteCanRecoverAsCommitted (0.05s)
+PASS
+ok  	integration_tests	0.760s

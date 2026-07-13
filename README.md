@@ -10,22 +10,23 @@ It treats three things as first-class reusable assets:
 
 ## Snapshot
 
-- `docs/core/`: 17 core methodology and ledger documents.
+- `docs/core/`: 19 core methodology and ledger documents.
 - `docs/handoff/`: latest handoff snapshot for session-to-session continuation.
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
 - `docs/github-issues/`: filed GitHub issue bodies for important bugs, including #69790.
-- `docs/bug-drafts/`: 106 draft bug writeups and filed-issue source bodies.
-- `docs/method-cases/`: 91 compact case summaries tied to bug-db entries.
+- `docs/bug-drafts/`: 112 draft bug writeups and filed-issue source bodies.
+- `docs/method-cases/`: 97 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
 - `scaffolds/top-level/`: 63 top-level Python/shell/data scaffolds from the working directory.
-- `scaffolds/go-probes/`: 22 Go probe/source-scanner files plus `go.mod` and `go.sum`.
+- `scaffolds/go-probes/`: 27 Go probe/source-scanner files plus `go.mod` and `go.sum`.
+- `scaffolds/client-go-tests/`: reusable client-go integration probes and counterfactual patches.
 - `scaffolds/tidb-tests/`: TiDB-side AI-native test/probe files used as harness fixtures.
 - `scripts/`: asset refresh and bug-index generation helpers.
 - `tools/txnlab/`: pinned cross-layer transaction experiment runner, strong oracles, fault control,
   evidence capture, automatic cleanup, and asset-store writeback.
 
-Current snapshot size is about 41 MB.
+Current tracked snapshot size is about 25 MB.
 
 ## Layout
 
@@ -51,6 +52,8 @@ Current snapshot size is about 41 MB.
   owner resets; `nonblocking_semantic_send_scan.go` inventories default-droppable channel sends;
   `deferred_terminal_error_scan.go` inventories fallible deferred terminal actions.
 - `tidb-tests/`: TiDB-repo-side AI-native harness tests and probe fixtures.
+- `client-go-tests/`: client-go integration probes plus minimal counterfactual patches used to
+  distinguish a terminal-contract RED from an expected pre-proof rejection.
 
 `scripts/`
 
