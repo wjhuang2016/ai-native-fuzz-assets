@@ -1791,3 +1791,18 @@ C3_DIRECT=21。新增 S42 `DERIVED_EXECUTION_CONTEXT_MUST_BE_KEYED_OR_REBUILT` �
 `docs/bug-drafts/ai-native-prepare-dedup-stale-read-context-leak-draft.md`、
 `docs/method-cases/ai-native-prepare-dedup-context-method-case.md`、
 `scaffolds/go-probes/prepare_dedup_staleness_repro.go`。
+
+**2026-07-13 current-source-only 命中 id2040003/high：distributed ADD INDEX 在后续批次 TSO
+错误时可发布 partial index。** 候选从 `generatePlanForPhysicalTable` 的重试证明义务独立产生，未用
+PR review、issue 或历史 finding 选题；这些来源只在本地和 testbed RED 后用于去重，未发现 exact
+root。`subTaskMetas` 在 `RunWithRetry` 外声明；第二批 `allocNewTS` 失败后源码返回 `true,nil`，所以
+两批源范围只发布一条 meta。只改成返回真实错误仍会把完整重试追加到失败前缀，得到三条 meta；
+同时传播错误并按 attempt 清空 payload 才得到两条。testbed 8220955 使用真实 PD/TiKV/DXF，101
+regions/100 batch/two TiDB executors：DDL job 5456 `synced`，table scan 为 `1,100999`，FORCE INDEX
+只有 `1`，tail count `1/0`，ADMIN CHECK 返回 8223。远端 `found_bug` 已入库 id2040003，当前
+107 rows/84 roots/32 high；私有资产 279 revisions，RED=57/GREEN=55。新增 S43
+`RETRY_ATTEMPT_DERIVED_PAYLOAD_ATOMICITY` 与 O53：重试 closure 的 captured publishable state 必须
+attempt-local/reset，成功后验必须证明 source domain exactly-once coverage，不能只看 nil error 或
+nonempty payload。暂停本 root 的 batch/error/region 变体；下一轮继续从当前源码独立生成新的 C3
+候选，PR review finding 继续禁止作为生成器。上游已提交
+https://github.com/pingcap/tidb/issues/69789，状态同步为 `issue-filed`。

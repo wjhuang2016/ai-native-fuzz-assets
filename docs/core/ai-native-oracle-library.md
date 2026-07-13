@@ -1477,3 +1477,23 @@ specificity: GOOD; same SQL, same session, dedup-only bypass, and one-field coun
              the owner.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O53 complete_plan_or_fail_index_differential
+
+```text
+obligation:  a successful distributed ADD INDEX plan covers every source key range exactly once,
+             and the published index returns the same committed rowset as the table.
+form:        create at least two planner batches; fail the second per-plan TSO allocation; record
+             planner error/meta count, DDL terminal state, FORCE/IGNORE INDEX rowsets, tail counts,
+             and ADMIN CHECK TABLE.
+red:         planner returns nil plus one of two metas; live DDL is synced, table has ids 1/100999,
+             forced index has only 1, tail counts are 1/0, and ADMIN CHECK returns 8223.
+green:       no fault gives exact two-batch coverage and equal rowsets; error propagation plus
+             per-attempt payload reset retries to exactly two metas.
+catches:     swallowed later-batch errors, retry residue, partial/duplicate distributed work plans,
+             and false-success index publication.
+blind to:    one-batch sources, non-DXF ADD INDEX, and queries that do not force the target index.
+sensitivity: EXECUTION-CONFIRMED on id2040003 locally and testbed 8220955 with real PD/TiKV/DXF.
+specificity: GOOD; 2->1, 2->3, and 2->2 controls isolate both error and attempt-state ownership.
+status:      USED + EXECUTION-CONFIRMED.
+```

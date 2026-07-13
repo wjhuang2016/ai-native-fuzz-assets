@@ -1,0 +1,7 @@
+Extracted before temporary-pod cleanup from /tmp/tidb-red-4000.log:
+[2026/07/13 03:34:06.844 +00:00] [INFO] [backfilling_dist_scheduler.go:144] ["on next subtasks batch"] [task-id=780001] [node-count=2] [curr-step=init] [next-step=read-index]
+[2026/07/13 03:34:06.875 +00:00] [INFO] [backfilling_dist_scheduler.go:371] ["calculate region batch"] [task-id=780001] [totalRegionCnt=101] [regionBatch=100] [instanceCnt=2] [useCloud=false]
+Process environment on both temporary TiDB executors:
+GO_FAILPOINTS=github.com/pingcap/tidb/pkg/ddl/aiNativeFailBackfillPlanTS=1*return(false)->return(true)
+Terminal owner state:
+[jobID=5456] [State:synced] [RowCount:1]

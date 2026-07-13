@@ -2840,3 +2840,34 @@ safepoint-read errors, and let the real PD service write return nil. TiKV still 
 snapshot with error 9006, BR exited 1, and no backupmeta existed. This is a source weakness but not
 a user-visible bug. Recording the GREEN prevents repeated overcounting and adds the downstream
 owner to future proof graphs.
+
+## Retry-attempt payload atomicity proof
+
+Error propagation is not a complete retry proof when a callback mutates state captured outside the
+attempt. Before accepting a retry closure, inventory every slice, map, cursor, summary, or object it
+can publish after `RunWithRetry` returns:
+
+```text
+source domain -> attempt-local derivation -> retry terminal result -> published payload -> consumer
+                     | failure after prefix |
+                     +------ residue ------> next attempt
+```
+
+Use the smallest two-batch matrix and keep the fault after a nonempty prefix:
+
+1. current source: `2 -> 1` with nil error proves partial-success publication;
+2. propagate the real error only: `2 -> 3` proves failed-attempt residue survives retry;
+3. propagate the error and reset/build attempt-local state: `2 -> 2` proves the full obligation;
+4. lift the winning RED to a consumer oracle that checks exact coverage and uniqueness.
+
+The postcondition must be `complete source coverage exactly once`, not `payload is nonempty`. A safe
+shape builds the payload inside each attempt and copies it out only on complete success; resetting at
+attempt entry is an acceptable bounded counterfactual, while an explicit exact-coverage validation
+is an additional publication guard.
+
+id2040003 is the calibration case. `generatePlanForPhysicalTable` appended ReadIndex metas to a
+slice outside `RunWithRetry`, swallowed the second TSO error, and published one of two batches. On a
+real DXF testbed the DDL finished synced, but FORCE INDEX missed a committed row and ADMIN CHECK
+returned 8223. Changing only the returned error retried to three metas; resetting the attempt
+payload as well returned exactly two. Candidate generation used current source only; PR/issue search
+was reserved for post-RED dedup and found no exact root.

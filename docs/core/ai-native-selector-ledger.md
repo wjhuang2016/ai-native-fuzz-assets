@@ -1483,3 +1483,25 @@ status:     validated/terminal - local wrong-result RED, same-SQL dedup-off GREE
 stop rule:  one root per cache layer and derived owner. SQL forms, staleness durations, and client
             libraries are blast radius; audit sibling copied fields without counting them anew.
 ```
+
+## S43: retry-attempt derived payload atomicity
+
+```text
+selector:   a retry closure mutates publishable state captured outside the closure, then can fail
+            after a nonempty prefix and before the payload is complete
+born from:  id2040003 (distributed ADD INDEX ReadIndex planning keeps subTaskMetas across attempts)
+prediction:
+  - swallowing the suffix error publishes a partial payload as success;
+  - propagating the error alone retries onto failed-attempt residue and publishes duplicates;
+  - an attempt-local or reset payload produces exact source coverage.
+oracle gate:
+  - force at least two source batches and fail only after the first append;
+  - measure source-domain coverage, not only error identity or nonempty output;
+  - run the 2->1 current, 2->3 error-only, and 2->2 attempt-local matrix;
+  - lift to the highest consumer before severity admission.
+status:     validated/terminal - local planner matrix and real DXF testbed RED; ALTER ADD INDEX
+            finished synced while FORCE INDEX missed a committed row and ADMIN CHECK returned 8223;
+            remote id2040003 high.
+stop rule:  one root per retry payload owner. Batch counts, TSO error strings, and region layouts are
+            blast radius; reopen only for a distinct published payload or highest consumer.
+```

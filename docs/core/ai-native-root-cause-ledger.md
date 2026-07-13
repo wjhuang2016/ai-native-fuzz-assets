@@ -378,3 +378,25 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   restores a live capability bit while excluding a required owner, and reaches the DML commit path.
 - Counting rule: INSERT/UPDATE/DELETE and lease values are blast radius. Reopen only for another
   restore-excluded owner with a distinct mandatory consumer.
+
+## 2026-07-13 update: id2010003
+
+- Remote `found_bug`: 106 surfaces, 83 distinct root causes, 31 high-severity rows at insertion.
+- New root: `prepare-dedup-stale-derived-execution-context`.
+- Consequence: C3 direct silent wrong result. A newly prepared ordinary SELECT reads an old snapshot
+  after the session cleared `tidb_read_staleness`.
+- Distinctness: payload identity is correct; the fast path overwrites fresh semantic analysis with a
+  cached derived evaluator whose producer context is absent from the key.
+- Counting rule: SQL forms and stale durations are blast radius. Reopen only for another derived
+  owner with a different semantic producer or terminal consumer.
+
+## 2026-07-13 update: id2040003
+
+- Remote `found_bug`: 107 surfaces, 84 distinct root causes, 32 high-severity rows.
+- New root: `distributed-backfill-partial-plan-on-tso-error`.
+- Consequence: C3 direct silent index corruption. Distributed ADD INDEX reports `synced`, but the
+  published index omits committed rows and `ADMIN CHECK TABLE` returns 8223.
+- Distinctness: this is not merely a swallowed error. The retry closure owns a captured publishable
+  slice, so error propagation alone produces duplicate failed-attempt residue.
+- Counting rule: region counts, batch sizes, and transient TSO error forms are blast radius. Reopen
+  only for a distinct retry payload owner or highest consumer.

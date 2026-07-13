@@ -1,0 +1,22 @@
+diff --git a/pkg/ddl/backfilling_dist_scheduler.go b/pkg/ddl/backfilling_dist_scheduler.go
+index 46a1a98d34..bbfb8ab4fe 100644
+--- a/pkg/ddl/backfilling_dist_scheduler.go
++++ b/pkg/ddl/backfilling_dist_scheduler.go
+@@ -377,7 +377,7 @@ func generatePlanForPhysicalTable(
+ 
+ 		for i := 0; i < len(recordRegionMetas); i += regionBatch {
+ 			// It should be different for each subtask to determine if there are duplicate entries.
+-			importTS, err := allocNewTS(ctx, store.(kv.StorageWithPD))
++			importTS, err := allocNewTSForBackfill(ctx, store.(kv.StorageWithPD))
+ 			if err != nil {
+ 				return true, nil
+ 			}
+@@ -524,6 +524,8 @@ func generateGlobalSortIngestPlan(
+ 	return metas, nil
+ }
+ 
++var allocNewTSForBackfill = allocNewTS
++
+ func allocNewTS(ctx context.Context, store kv.StorageWithPD) (uint64, error) {
+ 	pdCli := store.GetPDClient()
+ 	p, l, err := pdCli.GetTS(ctx)
