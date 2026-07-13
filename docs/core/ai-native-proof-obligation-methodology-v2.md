@@ -3276,3 +3276,47 @@ promoted it in `commitTxn`, but pipelined DML returned the raw `commitMutations`
 showed the value committed while the caller received an ordinary transport error. Adding only the
 missing promotion produced `ErrResultUndetermined` with the same durable value. Store this selector
 as `SIDE_STATE_SEMANTIC_PROMOTION_BYPASS`.
+
+## Build cross-attempt feedback edges, not only survivor lists
+
+Rollback differentials originally asked whether a failed attempt left state behind. That misses a
+more severe shape: the residue is read by the successful retry and changes durable output.
+
+```text
+failed-attempt write -> retry read -> key/predicate/row/action/terminal consumer
+```
+
+Enumerate both external and internal state owners. Require a same-final-state direct execution, then
+compare the highest consumer. When the state owner is documented as nontransactional, add an equal-
+owner-state anti-oracle so expected gaps are not mislabeled as corruption.
+
+`id2370003` is the calibration. The hidden attempt executed `SETVAL(seq,100)` and the retry executed
+it again, committing NULL instead of 100. Both the retry and direct-control sequence ended at 101,
+so the only contradiction was the committed row. This selector is
+`HIDDEN_ATTEMPT_FEEDBACK_INTO_RETRY_OUTPUT`.
+
+## Treat evaluator cloning as a temporal ownership proof
+
+Prepared plans and expressions can own mutable runtime objects. Search `Clone` implementations for
+pointer, map, slice, interface, and receiver aliases, but do not promote an alias by itself. Prove
+four edges:
+
+```text
+entry owner -> mutation before retry -> alias/reuse during rebuild -> correctness-bearing consumer
+```
+
+The snapshot altitude is part of the proof. A deep copy made while rebuilding the retry can preserve
+only the state that exists then; it cannot recover state already consumed by the failed attempt.
+Test the timing with a deliberately late-copy counterfactual before proposing clone isolation as a
+fix.
+
+`id2400003` is the calibration. Constant-seed RAND owns one mutable `MysqlRng`; the failed attempt
+consumes its first value and the retry consumes its second. Mapping those values across a threshold
+turns a subtle numeric difference into duplicate-key versus success. The narrow retry-decline gate
+is GREEN, while deep-copy-at-retry remains RED. Store the selector as
+`MUTABLE_EVALUATOR_STATE_SURVIVES_RETRY`.
+
+For candidate generation, rank deterministic evaluators first. A seed, fixed clock, token stream,
+or ordered iterator can map first and second outputs to opposing terminal outcomes, yielding a much
+stronger oracle than comparing two arbitrary values. Stop after one root per evaluator owner; input
+values and SQL forms are blast radius.

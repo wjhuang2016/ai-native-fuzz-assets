@@ -4,6 +4,42 @@
 
 ---
 
+**2026-07-14 current-source pass 命中新的 high correctness root `id2400003`:悲观 RC 透明重试会
+推进 constant-seed `RAND` 的内部 RNG,把 duplicate-key failure 变成成功提交。** 候选没有来自 PR
+review 或 issue seed,而是把 #69822 的 cross-attempt feedback selector 从 external owner 扩展到
+prepared evaluator owner。`builtinRandSig` 在 statement prepare 前创建 mutable `MysqlRng`,
+`evalReal.Gen()` 推进状态,`Clone` 浅拷贝同一 pointer;失败 attempt 消费第一个 deterministic value 后,
+retry 从已经推进的 expression state 重建并消费第二个值。
+
+最强矩阵把 `RAND(12345)` 的前两个值映射到相反终态:`IF(RAND(12345)<0.8,1,2)`。session B 在 A
+第一次 evaluation 时提交 unique `u=1`;A hidden retry=1 后改取 `u=2`,返回成功并提交
+`(1,2),(2,1)`。同 final DB state 的 direct execution 从第一个值开始,返回 duplicate key 并保留
+`(1,10),(2,1)`。numeric sibling 为 retry=`912825259`、direct=`665703432`。local baseline RED、
+owner-level retry-decline GREEN、以及 testbed `8220955` real-TiKV SQL-only RED 均完成;MDL 全程为
+default ON。slow log 记录 `Exec_retry_count=1,Succ=1,Query_time=40.004s`。
+
+新 selector 是 `MUTABLE_EVALUATOR_STATE_SURVIVES_RETRY`:枚举 `Clone` 中 pointer/map/slice/interface
+alias,证明 first attempt 的 mutating method、retry rebuild 的 reuse,以及 key/predicate/row/terminal C3
+consumer。新增 temporal gate:在 retry construction 时 deep-copy 已经太晚;该反事实仍 RED,说明 snapshot
+altitude 必须早于第一次 mutation,或直接拒绝透明 replay。远端 `found_bug id2400003` 已入库;当前
+119 surfaces、96 roots、42 high、104 confirmed。上游
+[#69823](https://github.com/pingcap/tidb/issues/69823) 已带 `found-by-ai`、`severity/major` 和
+`component/expression`。资产入口:
+`assets/store/pessimistic-retry-seeded-rand-results.jsonl`、
+`docs/method-cases/ai-native-id2400003-seeded-rand-retry-method-case.md`、
+`docs/bug-drafts/ai-native-pessimistic-retry-seeded-rand-wrong-result-draft.md`、
+`scaffolds/tidb-tests/ai_native_pessimistic_retry_seeded_rand_test.go`。该 RNG owner 已 terminal;禁止枚举
+seed、threshold、random-function、DML、sleep 或 conflict 变体。下一轮只复用 selector 到不同 mutable
+evaluator owner 或不同 correctness path。
+
+**同轮补齐 `id2370003` 的方法资产:** #69822 证明 survivor 本身不是最强条件,关键是
+`failed-attempt write -> retry read -> durable output`。对外部 owner 使用 equal-final-owner-state
+anti-oracle:SETVAL retry/control 都留下 `NEXTVAL=101`,但 durable rows 是 NULL/100。它现在以
+`HIDDEN_ATTEMPT_FEEDBACK_INTO_RETRY_OUTPUT` 写入 selector、proof catalog 和 methodology;sequence
+变体仍为 terminal。
+
+---
+
 **2026-07-14 MDL-on current-source pass 命中新的 high root `id2310003`:悲观 RC 透明重试会保留
 失败 attempt 获取的 advisory lock。** 本轮先把 testbed `8220955` 的
 `tidb_enable_metadata_lock` 从旧实验残留的 `0` 恢复为 `DEFAULT=1`,全程没有并发 DDL。候选来自

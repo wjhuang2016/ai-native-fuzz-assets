@@ -515,3 +515,34 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   `tidb_dml_type=BULK` is opt-in and the loss must land after primary apply.
 - Counting rule: DML forms, transport errors, timeout lengths, key counts, and retry counts are
   blast radius. Reopen only for a different side-state producer or semantic finalizer.
+
+## 2026-07-14 update: id2370003
+
+- Remote `found_bug`: 118 surfaces, 95 distinct root causes, 41 high-severity rows, 103 confirmed
+  rows.
+- New root: `pessimistic-retry-reexecutes-setval-and-persists-null`.
+- Upstream: [TiDB #69822](https://github.com/pingcap/tidb/issues/69822), labeled
+  `severity/major`, `component/executor`, and `found-by-ai`.
+- Consequence: C3 silent wrong data. A failed attempt changes a sequence owner; the hidden retry
+  reads that state, changes `SETVAL` from 100 to NULL, and commits NULL into the row.
+- Distinctness: earlier retry roots retain values or capabilities. This root is a cross-attempt
+  write-read feedback edge where the failed attempt changes the successful attempt's output.
+- Counting rule: sequence values, DML forms, sleep durations, and conflict shapes are blast radius.
+  Reopen only for another state owner feeding a retry-visible correctness consumer.
+
+## 2026-07-14 update: id2400003
+
+- Remote `found_bug`: 119 surfaces, 96 distinct root causes, 42 high-severity rows, 104 confirmed
+  rows.
+- New root: `pessimistic-retry-advances-seeded-rand-output`.
+- Upstream: [TiDB #69823](https://github.com/pingcap/tidb/issues/69823), labeled
+  `severity/major`, `component/expression`, and `found-by-ai`.
+- Consequence: C3 silent wrong data and terminal inversion. A hidden retry advances a constant-seed
+  evaluator from its first deterministic value to its second, turning duplicate-key failure into
+  successful commit of another key.
+- Distinctness: the state owner is inside the prepared expression, not an external sequence,
+  session field, or capability. `Clone` aliases the mutable RNG and retry construction occurs after
+  the first attempt has already mutated it.
+- Counting rule: seeds, thresholds, random-function variants, DML forms, sleep durations, and
+  conflict shapes are blast radius. Reopen only for another mutable evaluator owner or retry
+  boundary.

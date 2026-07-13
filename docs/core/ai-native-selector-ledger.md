@@ -1761,3 +1761,47 @@ status:     validated/moderate. id2220003 is local RED, exact field-level GREEN,
 stop rule:  temporary-table shapes and payload sizes are blast radius. Reopen for a different mutable
             owner or a higher consequence, not another field behind the same value.
 ```
+
+### S45 extension: failed-attempt feedback into successful retry output
+
+`id2370003` adds a stronger relation than survivor-state omission:
+
+```text
+failed attempt writes owner E
+  -> successful retry reads E
+  -> changed expression result reaches durable row or terminal truth
+```
+
+An external side effect can be intentionally nontransactional and still make transparent retry
+unsafe. For `SETVAL`, both retry and control leave the sequence at 101, yet retry commits NULL and a
+single execution from the same state commits 100. Equal final owner state is the anti-oracle that
+separates hidden feedback from expected sequence gaps.
+
+Store this child selector as `HIDDEN_ATTEMPT_FEEDBACK_INTO_RETRY_OUTPUT`. Generate a cross-attempt
+write-read-consumer graph, then subtract journal, restore, idempotency, and retry-decline owners.
+Status: issue-filed high, remote id2370003, upstream #69822. Sequence values, SQL forms, sleeps, and
+conflict shapes are one terminal root.
+
+## S52: mutable evaluator state survives retry
+
+```text
+selector:   prepared expression owns mutable state M; a failed attempt mutates M; retry rebuild
+            aliases or reuses M; the successful attempt consumes M into a correctness-bearing output
+born from:  id2400003 (constant-seed RAND advances across pessimistic retry)
+candidate:  mutable(evaluator state) intersect retry alias/reuse intersect C3 consumers
+            minus statement-entry snapshot/restore/journal/idempotency/retry-decline
+prediction:
+  - Clone methods shallow-copy pointers, maps, slices, interfaces, or stateful receivers;
+  - an eval method mutates the retained owner before a retryable edge;
+  - retry construction occurs after that mutation and cannot reconstruct entry state;
+  - a later deterministic output changes a key, predicate, row image, action, or terminal result.
+oracle gate:
+  - prove the retry edge ran;
+  - map deterministic first/second outputs to opposing terminal outcomes when possible;
+  - compare with one execution from the same final database state;
+  - test snapshot altitude: copying already-mutated state at retry time is not restoration.
+status:     VALIDATED by id2400003. Local natural-conflict RED, retry-decline GREEN, real-TiKV RED,
+            and same-state duplicate-vs-success oracle are complete; upstream #69823.
+stop rule:  one root per mutable evaluator owner and retry boundary. Seeds, thresholds, random
+            variants, SQL forms, and schedules are blast radius.
+```

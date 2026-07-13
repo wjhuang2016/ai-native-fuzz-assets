@@ -3479,3 +3479,37 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   `assets/store/pessimistic-retry-advisory-lock-results.jsonl`.
 - Pause gate: lock names, DML forms, retry counts, conflict windows, and repeated-reference variants
   are blast radius. Reopen only for another external capability owner or retry boundary.
+
+## id2370003 - Pessimistic retry feeds SETVAL state into the committed row
+
+- Target: `target.txn.pessimistic-retry-setval-feedback.v1`.
+- Selector: `HIDDEN_ATTEMPT_FEEDBACK_INTO_RETRY_OUTPUT`.
+- **P**: statement rollback and executor rebuild create an observationally fresh attempt.
+- **Q**: a nontransactional effect from the failed attempt cannot change the successful attempt's
+  returned expression value.
+- **F**: `SETVAL` mutates the table-level sequence owner and returns a value derived from that owner;
+  the retry repeats it without restore or journaling.
+- C3 oracle: retry commits `(1,2,NULL)` while a same-state direct execution commits `(1,2,100)`;
+  both sequence owners then return 101.
+- Counterfactual: decline retry after an effective SETVAL and expose the original conflict.
+- Status: **ISSUE-FILED**, remote `found_bug id2370003`, high consequence/low frequency, upstream
+  #69822.
+- Pause gate: sequence values, DML forms, sleep durations, and conflict shapes are blast radius.
+
+## id2400003 - Pessimistic retry advances constant-seed RAND state
+
+- Target: `target.txn.pessimistic-retry-seeded-rand.v1`.
+- Selector: `MUTABLE_EVALUATOR_STATE_SURVIVES_RETRY`.
+- **P**: rebuilding the executor creates an observationally fresh statement attempt.
+- **Q**: mutable expression evaluators start the retry from statement-entry state.
+- **F**: `builtinRandSig.evalReal` advances `MysqlRng`, `Clone` aliases that pointer, and retry
+  rebuild occurs after the failed attempt has consumed the first deterministic value.
+- C3 oracle: the hidden retry succeeds and commits `(1,2),(2,1)`; one execution from the same final
+  database state returns duplicate key and retains `(1,10),(2,1)`. Numeric witnesses are
+  `912825259` versus `665703432`.
+- Counterfactual: decline retry after mutable RNG consumption. Deep-copy-at-retry remains RED,
+  proving the required snapshot altitude is before first evaluation.
+- Status: **ISSUE-FILED**, remote `found_bug id2400003`, high consequence/low frequency, upstream
+  #69823. Local and real-TiKV REDs ran with MDL enabled.
+- Pause gate: seeds, thresholds, random-function variants, SQL forms, and conflict schedules are
+  blast radius. Reopen only for another evaluator owner or retry boundary.

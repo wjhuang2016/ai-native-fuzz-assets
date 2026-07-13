@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 07:27:05 +0800
+Generated at: 2026-07-14 07:57:43 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -45,3 +45,4 @@ Generated at: 2026-07-14 07:27:05 +0800
 | 2310003 | issue-filed | high | liveness | UPDATE | pessimistic statement retry / advisory locks | `pessimistic-retry-retains-failed-attempt-advisory-lock` | Pessimistic retry can retain an advisory lock acquired by a rolled-back attempt | [https://github.com/pingcap/tidb/issues/69820](https://github.com/pingcap/tidb/issues/69820) |
 | 2340003 | issue-filed | high | atomicity/data-integrity | BULK autocommit DML | client-go pipelined commit / undetermined promotion | `pipelined-commit-bypasses-undetermined-promotion` | Pipelined DML can return a definite failure after its primary commit is durable | [https://github.com/pingcap/tidb/issues/69821](https://github.com/pingcap/tidb/issues/69821) |
 | 2370003 | issue-filed | high | data-integrity | UPDATE | pessimistic READ COMMITTED statement retry / sequence SETVAL | `pessimistic-retry-reexecutes-setval-and-persists-null` | Pessimistic retry can persist NULL instead of SETVAL result | [https://github.com/pingcap/tidb/issues/69822](https://github.com/pingcap/tidb/issues/69822) |
+| 2400003 | issue-filed | high | data-integrity | UPDATE | pessimistic READ COMMITTED retry / constant-seed RAND evaluator | `pessimistic-retry-advances-seeded-rand-output` | Pessimistic retry can advance seeded RAND and change failure into success | [https://github.com/pingcap/tidb/issues/69823](https://github.com/pingcap/tidb/issues/69823) |
