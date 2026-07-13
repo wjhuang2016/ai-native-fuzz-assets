@@ -1,0 +1,37 @@
+diff --git a/integration_tests/util_test.go b/integration_tests/util_test.go
+index 3dfbe48..4f6f73e 100644
+--- a/integration_tests/util_test.go
++++ b/integration_tests/util_test.go
+@@ -40,6 +40,7 @@ import (
+ 	"fmt"
+ 	"io/ioutil"
+ 	"net/http"
++	"os"
+ 	"strings"
+ 	"testing"
+ 	"unsafe"
+@@ -108,7 +109,11 @@ func newTiKVStore(t *testing.T) *tikv.KVStore {
+ 	pdClient, err := pd.NewClient(caller.TestComponent, addrs, pd.SecurityOption{})
+ 	re.Nil(err)
+ 	var opt tikv.ClientOpt
+-	switch mustGetApiVersion(re, pdClient) {
++	apiVersion := kvrpcpb.APIVersion_V1
++	if os.Getenv("AI_NATIVE_FORCE_API_V1") != "1" {
++		apiVersion = mustGetApiVersion(re, pdClient)
++	}
++	switch apiVersion {
+ 	case kvrpcpb.APIVersion_V1:
+ 		pdClient = tikv.NewCodecPDClient(tikv.ModeTxn, pdClient)
+ 		opt = tikv.WithCodec(tikv.NewCodecV1(tikv.ModeTxn))
+@@ -133,7 +138,9 @@ func newTiKVStore(t *testing.T) *tikv.KVStore {
+ 		tikv.NewRPCClient(opt),
+ 	)
+ 	re.Nil(err)
+-	err = clearStorage(store)
+-	re.Nil(err)
++	if os.Getenv("AI_NATIVE_NO_CLEAR_STORAGE") != "1" {
++		err = clearStorage(store)
++		re.Nil(err)
++	}
+ 	return store
+ }

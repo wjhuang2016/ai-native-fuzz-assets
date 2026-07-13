@@ -1,0 +1,49 @@
+diff --git a/txnkv/transaction/prewrite.go b/txnkv/transaction/prewrite.go
+index 41fffab..cf00001 100644
+--- a/txnkv/transaction/prewrite.go
++++ b/txnkv/transaction/prewrite.go
+@@ -321,6 +321,8 @@ type prewrite1BatchReqHandler struct {
+ 	sender               *locate.RegionRequestSender
+ 	resolvingRecordToken *int
+ 	attempts             int
++	requestFastCommit    bool
++	fastCommitRPCError   error
+ 	// begin is the time when the first request is sent,
+ 	// it will be reset once the total duration exceeds the slowRequestThreshold
+ 	// It's used to log slow prewrite requests.
+@@ -336,5 +338,6 @@ func (action actionPrewrite) newSingleBatchPrewriteReqHandler(c *twoPhaseCommitt
+ 	}
+ 	req := c.buildPrewriteRequest(batch, txnSize)
++	prewriteReq := req.Req.(*kvrpcpb.PrewriteRequest)
+ 	sender := locate.NewRegionRequestSender(c.store.GetRegionCache(), c.store.GetTiKVClient(), c.store.GetOracle())
+ 	return &prewrite1BatchReqHandler{
+ 		action:               &action,
+@@ -346,6 +349,7 @@ func (action actionPrewrite) newSingleBatchPrewriteReqHandler(c *twoPhaseCommitt
+ 		begin:                time.Now(),
+ 		attempts:             0,
+ 		resolvingRecordToken: nil,
++		requestFastCommit:    prewriteReq.GetTryOnePc() || prewriteReq.GetUseAsyncCommit(),
+ 	}
+ }
+ 
+@@ -356,7 +360,9 @@ func (handler *prewrite1BatchReqHandler) drop(err error) {
+ 		// transaction has been successfully committed.
+ 		// If prewrite has been cancelled, all ongoing prewrite RPCs will become errors, we needn't set undetermined
+ 		// errors.
+-		if (handler.committer.isAsyncCommit() || handler.committer.isOnePC()) && handler.sender.GetRPCError() != nil && atomic.LoadUint32(&handler.committer.prewriteCancelled) == 0 {
++		if handler.fastCommitRPCError != nil {
++			handler.committer.setUndeterminedErr(handler.fastCommitRPCError)
++		} else if (handler.committer.isAsyncCommit() || handler.committer.isOnePC()) && handler.sender.GetRPCError() != nil && atomic.LoadUint32(&handler.committer.prewriteCancelled) == 0 {
+ 			handler.committer.setUndeterminedErr(handler.sender.GetRPCError())
+ 		}
+ 	}
+@@ -401,6 +407,9 @@ func (handler *prewrite1BatchReqHandler) sendReqAndCheck() (retryable bool, err
+ 	if retryTimes > 0 {
+ 		handler.action.hasRpcRetries = true
+ 	}
++	if handler.requestFastCommit && handler.sender.GetRPCError() != nil {
++		handler.fastCommitRPCError = handler.sender.GetRPCError()
++	}
+ 	regionErr, err := resp.GetRegionError()
+ 	if err != nil {
+ 		return false, err

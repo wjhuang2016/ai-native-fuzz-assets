@@ -3161,3 +3161,27 @@ the age guard before prewrite made the old oracle fail with both keys absent and
 Store this selector as `POST_PROOF_FALLIBLE_EPILOGUE`. Stop after one root per proof horizon; late
 error strings, TTLs, and key counts are blast radius unless they change the independent owner or
 terminal-result class.
+
+## Close the real downstream retry owner before promoting a local RED
+
+A cross-layer local RED is provisional when the local store, mock RPC layer, or harness owns the
+response that decides retry semantics. Extend the owner graph one step past the apparent terminal
+error:
+
+```text
+local terminal mismatch
+  -> exact downstream replay request
+  -> idempotency or committed-record owner
+  -> final terminal result and durable truth
+```
+
+The 1PC lost-response candidate calibrates this gate. The embedded store returned a write conflict
+when a committed TryOnePc request was replayed after Region regrouping, producing an ordinary error
+while both keys were visible. Real TiKV instead ran `check_committed_record_on_err`, recovered the
+existing 1PC commit timestamp, and let client-go return success. The local observation was a useful
+locator, but the real owner made the product matrix GREEN; the target is retired and is not a bug.
+
+Fault ownership is part of the same proof. A process-wide retry failpoint can also intercept a
+topology helper that shares the process and deadlock the experiment. Run Region split, owner change,
+or independent recovery from a separate process when the target process is paused. Classify a
+shared-failpoint timeout as `INVALID(harness)`, never as product liveness evidence.

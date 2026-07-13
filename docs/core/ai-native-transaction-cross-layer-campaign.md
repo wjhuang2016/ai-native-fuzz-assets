@@ -1,6 +1,7 @@
 # AI-Native Cross-Layer Transaction Campaign
-> Prepared: 2026-07-13. Status: methodology, assets, and experiment control plane complete; one
-> moderate savepoint bug confirmed, but no new severe cross-layer target admitted yet.
+> Prepared: 2026-07-13; updated: 2026-07-14. Status: the first severe cross-layer root
+> (`id2250003`) is execution-verified; the adjacent 1PC ambiguity candidate is retired after its
+> provisional local RED became GREEN under the real TiKV idempotency owner.
 
 ## Mission
 
@@ -491,6 +492,24 @@ is terminal response versus final MVCC truth after invoking the independent owne
 Remote `found_bug id2250003` records the root. Its consequence is high, while natural frequency is
 bounded by the exact trigger: a transaction older than 24 hours plus unavailable cleanup. Do not
 inflate frequency or enumerate TTL/key-count variants.
+
+### 1PC ambiguity negative: real TiKV dominates the local mock
+
+The next current-source candidate asked whether a committed TryOnePc response could be lost, then
+an EpochNotMatch regroup could clear client-go's current 1PC mode and suppress explicit
+undetermined. The embedded store produced exactly that terminal mismatch: ordinary write conflict,
+both keys visible, and no undetermined error. A request-scoped safety counterfactual converted it to
+explicit undetermined.
+
+The real-TiKV lift retired the candidate. TiKV's repeated-prewrite path recognizes the transaction's
+committed record and returns the prior `one_pc_commit_ts`; after a real external Region split,
+client-go returned success and both keys matched. The local RED is stored as `INVALID(semantic-gap)`
+and was not added to the bug database.
+
+This adds two campaign gates: close the exact downstream retry/idempotency owner before promotion,
+and run topology actors in a separate process from process-wide failpoints. The next source packet
+must not revisit this 1PC shape; it should cover common pipelined/fast-commit proof horizons and
+their highest terminal consumers.
 
 ## Stop Rules
 

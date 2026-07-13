@@ -4,6 +4,23 @@
 
 ---
 
+**2026-07-14 1PC response-ambiguity candidate 已由真实 TiKV 证伪并退役,不计新 bug。** current-source
+候选是首个 TryOnePc 已提交但 response 丢失,随后 Region split 令 retry 遇到 EpochNotMatch 并清除
+client-go 当前 1PC mode。本地 embedded mock 返回普通 write conflict,同时两 key 已可见且
+`undeterminedErr=nil`;保留 request-scoped fast-commit RPC ambiguity 的反事实会返回 explicit
+undetermined。但这只是 provisional RED:真实 TiKV 的 `check_committed_record_on_err` 会识别本事务已有
+commit record,返回原 `one_pc_commit_ts`。testbed `8220955` 用独立进程执行真实 Region split 后,Commit
+返回 nil、`commitTS > startTS`、两 key 都可见并已清理。因此该项入资产库为
+`INVALID(semantic-gap)+GREEN(real-owner)`,没有写入远端 bug 库。
+
+方法论新增硬门:跨层 retry 的 local RED 必须继续穿过真实 downstream idempotency/committed-record owner,
+不能把 mock 的 retry response 当产品语义。测试编排也要隔离 owner:第一次同进程 split 被 process-wide
+failpoint 一并暂停而死锁,有效矩阵改为“主进程 pause + 独立进程 topology actor”。下一步仍排除 partition、
+SAVEPOINT 和这个 1PC 形状,对 common transaction 的 pipelined/fast-commit proof horizon 编译不超过三个
+候选的 bounded packet。
+
+---
+
 **2026-07-14 事务跨层 campaign 已命中首个 severe root: `id2250003`。** 候选来自 current-source
 `COLD_SOURCE` 审计,没有用 issue、PR review finding 或历史修复选题。client-go 在 async prewrite 全部成功、
 `minCommitTS` 非零之后才执行 24 小时事务年龄检查,因此可以返回普通 `txn takes too much time`;如果随后

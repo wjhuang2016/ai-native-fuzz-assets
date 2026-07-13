@@ -1,0 +1,14 @@
+diff --git a/txnkv/transaction/prewrite.go b/txnkv/transaction/prewrite.go
+index 41fffab..20c66e4 100644
+--- a/txnkv/transaction/prewrite.go
++++ b/txnkv/transaction/prewrite.go
+@@ -391,6 +391,9 @@ func (handler *prewrite1BatchReqHandler) sendReqAndCheck() (retryable bool, err
+ 	reqBegin := time.Now()
+ 	handler.beforeSend(reqBegin)
+ 	resp, retryTimes, err := handler.sender.SendReq(handler.bo, handler.req, handler.batch.region, client.ReadTimeoutShort)
++	if _, injected := util.EvalFailpoint("aiNativeOnePCRememberLostResponse"); injected == nil {
++		handler.sender.SetRPCError(errors.New("injected lost 1PC response"))
++	}
+ 	// Unexpected error occurs, return it directly.
+ 	if err != nil {
+ 		return false, err
