@@ -1,0 +1,8 @@
+commit=b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+control=execute the same EXPLAIN ANALYZE UPDATE inside an explicit pessimistic transaction
+signal=SQLKiller.QueryInterrupted before first RecordSet.Next
+client_terminal=error 1317 Query execution was interrupted
+action=ROLLBACK
+fresh_observer=select v from t where id=1 -> 0
+meaning=when commit has not crossed the lazy result boundary, the same signal does not publish the mutation
+verdict=GREEN

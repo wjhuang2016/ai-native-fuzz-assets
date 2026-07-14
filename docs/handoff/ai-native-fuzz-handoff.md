@@ -4,6 +4,36 @@
 
 ---
 
+**2026-07-14 specialized-finalizer pass 命中新的 critical terminal-integrity root `id2520003`:
+autocommit `EXPLAIN ANALYZE` DML 可以在 mutation 已提交后返回 1317 `Query execution was
+interrupted`。** 这条由 current source 的 eager-effect/lazy-result split 独立产生,不是 PR review 或历史
+issue seed。`ExecStmt.handleNoDelay` 先执行 inner DML,`session.ExecuteStmt` 在返回非空 explain
+RecordSet 前调用 `StmtCommit + CommitTxn`;但第一次 `recordSet.Next` 仍会先消费 `SQLKiller` signal,再生成
+explain chunk。因此 late `KILL QUERY` 可以成为 durable commit 之后的 definite statement error。
+
+确定性 local RED 在 `ExecuteStmt` 返回 RecordSet 后、第一次 `Next` 前发送 production-equivalent
+`SQLKiller.QueryInterrupted`:client terminal 为 error 1317,fresh observer 却读到 `v=1`;contract 期望
+error 对应 `v=0`。同一 DML/同一 signal 放在 explicit pessimistic transaction 中,随后 rollback,fresh
+observer 为 `v=0`,证明差异只来自 commit 是否越过 lazy terminal boundary。MDL 为默认 ON。post-RED
+GitHub 搜索无 exact root;[#37373](https://github.com/pingcap/tidb/issues/37373) 是旧的执行行数问题,不是
+本 root。
+
+新 selector `IRREVERSIBLE_EFFECT_BEFORE_LAZY_TERMINAL_CHECK` 从 eager DML/external effect 返回的 lazy
+RecordSet、iterator、stream、encoder、Close finalizer 出发,寻找位于第一次 fallible consumer 之前的
+`Commit/Publish/external apply`;再在边界注入真实 cancellation/render/encode signal,用
+`TERMINAL_ERROR_VS_FRESH_DURABLE_STATE` 判定。允许状态只有 success+effect、definite pre-commit
+error+no effect,或显式 undetermined+possible effect。远端 `found_bug id2520003` 已入库;当前 123
+surfaces、100 roots、46 high、108 confirmed。上游
+[#69829](https://github.com/pingcap/tidb/issues/69829) 已带 `severity/critical`、`found-by-ai`、
+`sig/transaction` 和 `component/executor`。资产入口:
+`assets/store/explain-analyze-dml-post-commit-kill-results.jsonl`、
+`docs/method-cases/ai-native-id2520003-lazy-terminal-after-commit.md`、
+`docs/github-issues/id2520003-explain-analyze-dml-post-commit-kill.md`。该 owner 已 terminal;禁止枚举
+DML verb、explain format、kill source、timeout 和 timing 变体。下一轮把 selector 移到更高频 ordinary
+DML/RETURNING 或 import/stream lazy-terminal owner。
+
+---
+
 **2026-07-14 intermediate-publication pass 命中新的 critical consequence root `id2490003`:
 悲观事务执行 `ON UPDATE CASCADE` 时,并发 child insert 与 parent-key update 可以同时 COMMIT 成功,
 最终留下持久化 FK orphan。** 这条不是从 PR review 或历史 issue 出发。起点是一个新的证明义务:

@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 09:07:59 +0800
+Generated at: 2026-07-14 09:34:30 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -49,3 +49,4 @@ Generated at: 2026-07-14 09:07:59 +0800
 | 2430003 | issue-filed | high | data-integrity | UPDATE | pessimistic READ COMMITTED retry / materialized CTE storage | `pessimistic-retry-reuses-completed-cte-result` | Pessimistic retry can reuse stale materialized CTE result and commit a mixed-attempt row | [https://github.com/pingcap/tidb/issues/69826](https://github.com/pingcap/tidb/issues/69826) |
 | 2460003 | issue-filed | high | wrong_result | INSERT SELECT | pessimistic retry MySQL OK-packet insert id | `pessimistic-retry-publishes-failed-attempt-insert-id` | Pessimistic retry returns explicit auto-increment ID from a rolled-back attempt | [https://github.com/pingcap/tidb/issues/69827](https://github.com/pingcap/tidb/issues/69827) |
 | 2490003 | issue-filed | high | data_integrity | UPDATE | pessimistic transaction foreign key ON UPDATE CASCADE | `fk-cascade-stmtcommit-drops-final-parent-lock` | Pessimistic ON UPDATE CASCADE can commit a concurrent child orphan | [https://github.com/pingcap/tidb/issues/69828](https://github.com/pingcap/tidb/issues/69828) |
+| 2520003 | issue-filed | high | atomicity/data-integrity | EXPLAIN ANALYZE UPDATE | autocommit EXPLAIN ANALYZE DML / lazy result / SQLKiller | `explain-analyze-dml-commit-before-kill-check` | Killed EXPLAIN ANALYZE DML can return an error after committing its mutation | [https://github.com/pingcap/tidb/issues/69829](https://github.com/pingcap/tidb/issues/69829) |

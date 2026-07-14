@@ -593,3 +593,20 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   outer pessimistic lock closure.
 - Counting rule: FK actions, join shapes, child counts, isolation variants, and timing windows are
   blast radius. Reopen only for another intermediate publication owner or finalizer boundary.
+
+## 2026-07-14 update: id2520003
+
+- Remote `found_bug`: 123 surfaces, 100 distinct root causes, 46 high-severity rows, 108 confirmed
+  rows.
+- New root: `explain-analyze-dml-commit-before-kill-check`.
+- Upstream: [TiDB #69829](https://github.com/pingcap/tidb/issues/69829), labeled
+  `severity/critical`, `component/executor`, and `found-by-ai`.
+- Consequence: C3 false terminal truth. `EXPLAIN ANALYZE UPDATE` can return error 1317 after its
+  autocommit mutation is durable; retrying a non-idempotent update can apply it twice.
+- Distinctness: #69821 bypasses undetermined promotion inside client-go's pipelined commit
+  finalizer. This root commits in the TiDB session before a separate lazy RecordSet consumer checks
+  SQLKiller and determines the public statement result.
+- Frequency calibration: high catalog severity and critical terminal-integrity consequence, but a
+  lower-frequency trigger because it needs diagnostic DML and a late cancellation window.
+- Counting rule: DML verbs, explain formats, kill sources, timeouts, and timing windows are blast
+  radius. Reopen only for another eager-effect owner or lazy terminal consumer.

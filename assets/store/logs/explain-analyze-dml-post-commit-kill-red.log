@@ -1,0 +1,9 @@
+commit=b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+command=go test ./pkg/server -run TestExplainAnalyzeDMLKillAfterCommitReturnsError -tags=intest -count=1 -v
+mdl=ON (default)
+signal=SQLKiller.QueryInterrupted after Session.ExecuteStmt returned the autocommit EXPLAIN ANALYZE DML RecordSet and before its first Next
+client_terminal=error 1317 Query execution was interrupted
+fresh_observer=select v from t where id=1 -> 1
+contract_expected=0 when a definite interruption error is returned
+failure=expected [[0]], actual [[1]]
+verdict=RED
