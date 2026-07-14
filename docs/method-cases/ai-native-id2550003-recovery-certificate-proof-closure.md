@@ -1,6 +1,7 @@
 # id2550003: recovery certificates must cover proof dependencies
 
-Remote bug DB: `found_bug id2550003`, confirmed high severity / critical consequence.
+Remote bug DB: `found_bug id2550003`, issue-filed high severity / critical consequence;
+upstream: [TiDB #69832](https://github.com/pingcap/tidb/issues/69832).
 
 ## Missed proof obligation
 

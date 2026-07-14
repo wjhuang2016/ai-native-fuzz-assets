@@ -1,7 +1,7 @@
 # Async recovery can commit a business write after duplicate-key failure
 
-Status: confirmed critical correctness bug on current TiDB/client-go with real TiKV and MDL ON.
-Remote bug DB: `found_bug id2550003`.
+Status: issue-filed critical correctness bug on current TiDB/client-go with real TiKV and MDL ON.
+Remote bug DB: `found_bug id2550003`; upstream: [TiDB #69832](https://github.com/pingcap/tidb/issues/69832).
 
 ## User-visible failure
 

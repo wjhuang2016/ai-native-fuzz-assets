@@ -2223,7 +2223,9 @@ rolling restart 或 TiKV 路径长期失败而没完成，后续读在 TTL 后�
 先插入已有 email 的 tentative row，再删除自己的 insert，同时将账户 `0 -> -100`；`COMMIT` 返回明确
 duplicate，但 fresh session 触发 `ResolveLock action=commit` 后读到 `-100`。移除 200 ms Region delay 后
 连续 3/3 RED。仅加入 `hasNoNeedCommitKeys => checkAsyncCommit=false`，相同 SQL/Region/fault 变 GREEN，
-余额保持 0。远端 `found_bug id2550003` 已入库：124 surfaces、101 roots、47 high、109 confirmed；post-RED
+余额保持 0。远端 `found_bug id2550003` 已入库并更新为 `issue-filed`，上游 issue 为
+[TiDB #69832](https://github.com/pingcap/tidb/issues/69832)，带 `found-by-ai` / `severity/critical`；
+当前为 124 surfaces、101 roots、47 high、109 confirmed；post-RED
 TiDB/client-go/TiKV issue 搜索无 exact root，#65757 是不同的 stale-secondary/minCommitTS 问题。新增 S55
 `RECOVERY_CERTIFICATE_PROOF_CLOSURE` 与 O60；资产入口：
 `assets/store/txn-async-checknotexists-proof-closure-results.jsonl`、

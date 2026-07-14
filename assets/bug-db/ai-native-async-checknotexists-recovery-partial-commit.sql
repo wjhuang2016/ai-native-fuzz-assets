@@ -18,6 +18,6 @@ VALUES
  'async-recovery-omits-failed-checknotexists-proof',
  'current TiDB b8d04e17a2ca / client-go 01bd8f99 / real TiKV; MDL default ON; async commit enabled',
  1,
- 'confirmed',
- NULL,
- 'Discovered from current source and a recovery-certificate proof obligation without PR or issue seeds. Real-TiKV SQL RED reproduced 3/3 without Region-delay injection. Cleanup skip models TiDB exit, OOM, rolling restart, or exhausted cleanup RPC retries after the duplicate response. Exact client-go and end-to-end SQL owner counterfactuals were GREEN. Post-RED GitHub searches found no exact root; #65757 is a distinct stale-secondary-lock/minCommitTS issue.');
+ 'issue-filed',
+ 'https://github.com/pingcap/tidb/issues/69832',
+ 'Discovered from current source and a recovery-certificate proof obligation without PR or issue seeds. Real-TiKV SQL RED reproduced 3/3 without Region-delay injection. Cleanup skip models TiDB exit, OOM, rolling restart, or exhausted cleanup RPC retries after the duplicate response. Exact client-go and end-to-end SQL owner counterfactuals were GREEN. Post-RED GitHub searches found no exact root; #65757 is a distinct stale-secondary-lock/minCommitTS issue. Upstream issue #69832 includes the concrete production trigger, directly runnable real-TiKV test, and found-by-ai/severity-critical labels.');
