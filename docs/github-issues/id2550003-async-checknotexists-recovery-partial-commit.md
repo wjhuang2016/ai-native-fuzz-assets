@@ -6,33 +6,47 @@
 
 #### Concrete production scenario
 
-One concrete production shape is an order or resource-allocation service using a Spring/JPA unit of
-work. This is not dependent on an ORM accidentally reordering statements: explicit flush boundaries
-force the SQL sequence below.
+One concrete production shape is an at-least-once import/reconciliation consumer. A common two-stage
+flow first materializes a provisional entity, then merges it into an existing canonical entity after
+matching has completed. The same database transaction also updates the canonical balance and advances
+the import cursor. Explicit flush boundaries make this independent of ORM statement reordering.
 
 ```java
 @Transactional
-void allocate(Request request) {
+void importCustomer(Event event) {
     Candidate c = candidates.saveAndFlush(
-        new Candidate(nextID(), request.idempotencyKey())); // sends INSERT now
+        new Candidate(nextID(), event.externalCustomerID())); // sends INSERT now
 
-    if (!routingService.isEligible(c)) {
+    Match match = matchingService.match(event);
+    if (match.mergeIntoExisting()) {
         candidates.delete(c);
-        candidates.flush();                                // sends DELETE now
+        candidates.flush();                                  // sends DELETE now
+        accounts.applyDelta(match.accountID(), event.balanceDelta());
     }
 
-    accounts.debit(request.accountID(), request.amount()); // sends UPDATE
-}                                                          // JDBC COMMIT here
+    importJobs.advanceCursor(event.partition(), event.offset());
+}                                                            // JDBC COMMIT here
 ```
 
-The request may be a duplicate delivery from a queue or a retry after a client timeout, so its unique
-idempotency key already belongs to an earlier committed candidate. TiDB's lazy uniqueness checking lets
-`saveAndFlush` return success. A later, independent routing decision rejects this provisional candidate,
-so the service deletes it and continues the same unit of work by updating the durable account, inventory,
-quota, or order row. `COMMIT` is the first operation that reports `Duplicate entry`; the transaction
-manager therefore reports the whole unit of work as aborted, and the message handler commonly retries it.
+Suppose this event is a redelivery after the first consumer timed out, or two import workers received the
+same external customer concurrently. A committed row therefore already owns the unique external customer
+ID. With lazy uniqueness checking, `saveAndFlush` can still return success. The matcher then decides to
+merge the provisional entity into the existing customer, deletes the provisional row, adjusts the
+canonical account, and advances the consumer cursor. `COMMIT` is the first operation that reports
+`Duplicate entry`. The transaction manager reports the whole unit of work as aborted, so the message is
+normally retried and neither the balance adjustment nor the cursor advance is expected to persist.
 
-The compact SQL below uses `candidates` and `accounts` to represent that production flow:
+The bug violates that expectation after an ordinary TiDB failure window: the account/cursor prewrite has
+already succeeded, the duplicate proof in another Region fails, and TiDB returns the definite duplicate
+error before its background rollback completes. If that TiDB pod is then terminated by an OOM, node loss,
+or rolling deployment, or if the primary Region remains unavailable through the cleanup backoff budget,
+the primary lock survives. A later read or update of the account/cursor resolves that lock. Async recovery
+does not know about the failed `CheckNotExists` proof and commits the business write. The redelivered event
+can then apply the balance delta a second time. If the cursor is the surviving write, the consumer can skip
+an event it believes was rolled back.
+
+The compact SQL below uses `candidates` for the provisional entity and `accounts` for the canonical
+balance/cursor write:
 
 ```sql
 SET tidb_enable_async_commit = ON;
@@ -69,9 +83,9 @@ The exact production trigger is:
    concurrently; the real-TiKV SQL test reproduced this ordering 3/3 without Region-delay injection.
 7. TiDB starts best-effort cleanup in a background goroutine and returns the definite duplicate error
    without waiting for that cleanup. The cleanup does not reach the primary. A concrete production case is
-   the TiDB pod exiting because of OOM, node loss, or a deployment after the error response is sent but
-   before `BatchRollback` reaches the primary. Another is the primary Region remaining unreachable or
-   server-busy until the cleanup backoff budget is exhausted.
+   the TiDB pod exiting because of OOM, node loss, or a rolling deployment after the error response is sent
+   but before `BatchRollback` reaches the primary. Another is the primary Region remaining unreachable or
+   server-busy through client-go's cleanup backoff budget.
 8. After the lock expires, a later request touches the business key. Lock resolution reads the async
    primary, whose recovery set omits the failed proof, and incorrectly commits the business mutation.
 
@@ -214,7 +228,7 @@ actual:   [["1", "-100"]]
 
 The candidate table still contains only the original `used@example.com` row, but lock recovery commits
 the account update from the failed transaction. This is a durable partial commit, and an application retry
-can deduct another 100.
+can apply the same balance delta again or advance a business cursor twice.
 
 The root cause is that `Op_CheckNotExists` keys are commit prerequisites but do not write locks.
 `checkAsyncCommit` admits the transaction, while `asyncSecondaries` excludes these proof-only keys. The
