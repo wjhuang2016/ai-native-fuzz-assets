@@ -1,0 +1,16 @@
+TiDB commit: b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+Backend: UniStore
+Isolation: READ-COMMITTED
+tidb_enable_metadata_lock: ON
+Counterfactual: acquire the current KeysNeedToLock set immediately before the first FK StmtCommit.
+
+owner update affected rows: 1
+owner commit: success
+competitor insert: ERROR 1452 Cannot add or update a child row
+parent: [[2 10]]
+child: [[100 2]]
+orphans: []
+ADMIN CHECK TABLE parent: success
+ADMIN CHECK TABLE child: success
+
+GREEN: preserving pre-publication lock ownership closes the exact schedule.

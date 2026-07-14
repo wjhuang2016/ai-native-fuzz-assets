@@ -4,6 +4,33 @@
 
 ---
 
+**2026-07-14 intermediate-publication pass 命中新的 critical consequence root `id2490003`:
+悲观事务执行 `ON UPDATE CASCADE` 时,并发 child insert 与 parent-key update 可以同时 COMMIT 成功,
+最终留下持久化 FK orphan。** 这条不是从 PR review 或历史 issue 出发。起点是一个新的证明义务:
+内部 cascade 为了看到主 DML 会提前 `StmtCommit`,但这个中间发布不能丢掉外层语句最终需要持有的锁。
+
+源码链路为 `handleStmtForeignKeyTrigger -> StmtCommit -> flushStmtBuf/Release stage -> cleanup/init fresh
+stage -> handlePessimisticDML.KeysNeedToLock`。最后一步只 inspect 当前 fresh stage,已 release 的 old-parent
+mutation 没有进入最终 pessimistic lock set。确定性 local RED 在该窗口让 competitor 插入 `(200,1)` 并
+commit,owner 随后把 parent `1` 改为 `2` 并 commit;fresh observer 得到
+`parent=[[2,10]],child=[[100,2],[200,1]],orphans=[[200,1]]`,且两张表的 `ADMIN CHECK TABLE` 都成功。
+只在第一次 FK `StmtCommit` 前 acquire 当前 lock set 的 proof counterfactual 会让 competitor 等待并报
+1452,anti-join 为空。MDL 为默认 ON。
+
+新 selector `INTERMEDIATE_PUBLICATION_LOCK_CLOSURE` 枚举 `Publish/Release/Commit/Flush` 中间边界,
+与后续仅扫描 current stage/generation 的 `Lock/Validate/Finalize` 相交,再减去显式 owner transfer、union
+journal 和已持锁 cache。生成 schedule 时必须优先 disjoint physical key 上的 semantic invariant;同 key
+冲突可能只得到 TiKV late error,掩盖高层锁义务缺失。强 oracle 为
+`BOTH_COMMIT_SUCCESS_PLUS_FK_ANTI_JOIN`。远端 `found_bug id2490003` 已入库;当前 122 surfaces、99 roots、
+45 high、107 confirmed。上游 [#69828](https://github.com/pingcap/tidb/issues/69828) 已带
+`severity/critical`、`found-by-ai`、`sig/transaction` 和 `component/executor`。资产入口:
+`assets/store/pessimistic-fk-cascade-orphan-results.jsonl`、
+`docs/method-cases/ai-native-id2490003-intermediate-publication-lock-closure.md`、
+`docs/bug-drafts/ai-native-pessimistic-fk-cascade-orphan-draft.md`。该 FK stage owner 已 terminal;禁止枚举
+FK action、join、isolation 或 delay 变体。下一轮只复用 selector 到不同中间发布/最终闭包边界。
+
+---
+
 **2026-07-14 consumer-first terminal-output pass 命中新的 high correctness root `id2460003`:
 悲观 RC retry 会把失败 attempt 的显式 auto-increment ID 放进成功语句的 MySQL OK packet。** 这次
 不是从 PR review、issue 或历史修复出发,而是从公共终端消费者反向切片:server 写 OK packet 时调用

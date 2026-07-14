@@ -1,0 +1,17 @@
+TiDB commit: b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+Backend: UniStore
+Isolation: READ-COMMITTED
+tidb_enable_metadata_lock: ON
+Test: TestPessimisticFKCascadeDoesNotCommitOrphan
+
+competitor insert: success
+competitor commit: success
+owner update affected rows: 1
+owner commit: success
+parent: [[2 10]]
+child: [[100 2] [200 1]]
+orphans: [[200 1]]
+ADMIN CHECK TABLE parent: success
+ADMIN CHECK TABLE child: success
+
+RED: both commits succeeded and child (200,1) references a parent key that no longer exists.

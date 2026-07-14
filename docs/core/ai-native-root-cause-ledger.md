@@ -577,3 +577,19 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   auto-increment input. The #69796 field reset does not close this owner.
 - Counting rule: explicit values, INSERT forms, sleep durations, and conflict schedules are blast
   radius. Reopen only for another terminal-output owner or replay boundary.
+
+## 2026-07-14 update: id2490003
+
+- Remote `found_bug`: 122 surfaces, 99 distinct root causes, 45 high-severity rows, 107 confirmed
+  rows.
+- New root: `fk-cascade-stmtcommit-drops-final-parent-lock`.
+- Upstream: [TiDB #69828](https://github.com/pingcap/tidb/issues/69828), labeled
+  `severity/critical`, `component/executor`, and `found-by-ai`.
+- Consequence: C3 silent persistent relational corruption. Two pessimistic transactions both commit,
+  but `ON UPDATE CASCADE` leaves a concurrently inserted child on the removed parent key; a fresh
+  anti-join finds the orphan while `ADMIN CHECK TABLE` remains green.
+- Distinctness: this is not a retry-state owner. An intermediate `StmtCommit` publishes enough state
+  for the nested FK consumer while releasing the stage whose mutations must still participate in the
+  outer pessimistic lock closure.
+- Counting rule: FK actions, join shapes, child counts, isolation variants, and timing windows are
+  blast radius. Reopen only for another intermediate publication owner or finalizer boundary.
