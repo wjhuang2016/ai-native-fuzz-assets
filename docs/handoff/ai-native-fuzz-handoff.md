@@ -237,6 +237,13 @@ best-effort cleanup 不可用,TiKV 的独立 LockResolver 已经拥有完整 sec
 业务动作。local RED、仅移动 guard 的反事实 GREEN、以及 testbed `8220955` 上一 PD 三真实 TiKV 的 RED
 均已完成,真实 TiKV 日志记录两把锁 `ResolveLock action=commit`。探针已删除专用 raw keys,集群无残留
 failpoint/二进制,TiDB/client-go/TiKV 三个 pinned worktree 均已确认 clean。
+当前 client-go `01bd8f99` 再次稳定复现后,已提交上游
+[TiDB #69831](https://github.com/pingcap/tidb/issues/69831),带 `found-by-ai`、
+`severity/critical`、`component/tikv-client`、`sig/transaction` 和 `type/bug` 标签;远端
+`found_bug id2250003` 已同步为 `issue-filed`。
+issue 已补齐真实生产触发边界:`tidb_enable_async_commit=ON`(当前默认 OFF)、事务 startTS 超过
+24 小时、async prewrite 全成功、TiDB A 到 TiKV 的网络故障或 Pod 终止让后台 rollback 拖过 lock TTL;
+业务在 TiDB B 上重试同一组 key 时会亲自触发恢复器提交第一笔,随后第二笔再提交,形成双重执行。
 
 新 selector 为 `POST_PROOF_FALLIBLE_EPILOGUE`:先标出独立 owner 已能完成终态的最早 proof horizon `H`,
 再审计 `H` 之后的每条 fallible edge。普通 abort 必须满足三者之一:把 guard 移到 `H` 前、返回

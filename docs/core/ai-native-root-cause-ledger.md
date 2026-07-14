@@ -469,6 +469,8 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   recovery can later commit the complete write set.
 - Distinctness: the error occurs after the async recovery proof horizon; cleanup is only
   best-effort and does not dominate the independent recovery owner.
+- Upstream: [TiDB #69831](https://github.com/pingcap/tidb/issues/69831), filed after revalidating the
+  same RED on current client-go `01bd8f99`.
 - Counting rule: age values, TTLs, cleanup failures, and key counts are blast radius. Reopen only
   for another post-proof terminal owner or outcome class.
 

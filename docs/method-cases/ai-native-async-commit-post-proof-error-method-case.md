@@ -1,11 +1,18 @@
 # Method Case: fallible epilogue after the async commit proof frontier
 
+Status: execution-verified and filed as [TiDB #69831](https://github.com/pingcap/tidb/issues/69831).
+
 ## Finding
 
 The source finished all async prewrites and established a recovery commit timestamp, then ran a
 generic transaction-age guard that could still return an ordinary error. A downstream lock resolver
 provided the strong oracle: suppressing best-effort cleanup turned the supposedly failed transaction
 into a committed one.
+
+Production reachability is narrow but concrete: async commit must be explicitly enabled, the
+transaction must be older than 24 hours, and background rollback must be delayed beyond lock expiry.
+The next consumer can be the application's own retry on another TiDB node; touching the same keys
+causes lock recovery to commit the first attempt before the retry applies the operation again.
 
 ## P/Q/D/F/O/R/S card
 

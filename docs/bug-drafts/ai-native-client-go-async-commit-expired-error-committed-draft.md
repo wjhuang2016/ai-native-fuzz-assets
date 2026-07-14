@@ -1,8 +1,9 @@
 # New finding: expired async transaction can return an ordinary error and later commit
 
-Status: confirmed by a local client-go integration RED/GREEN experiment and by real PD/TiKV on
-authorized testbed `8220955`. Recorded as remote `found_bug id2250003`. Post-RED searches in
-`tikv/client-go` and `pingcap/tidb` found no exact issue. No upstream issue has been filed yet.
+Status: issue-filed as [TiDB #69831](https://github.com/pingcap/tidb/issues/69831), after confirmation
+by a local client-go integration RED/GREEN experiment and by real PD/TiKV on authorized testbed
+`8220955`. Recorded as remote `found_bug id2250003`; current client-go `01bd8f99` was revalidated
+immediately before filing.
 
 ## User-visible symptom
 
@@ -11,11 +12,12 @@ of its async prewrites have succeeded. If the best-effort cleanup does not finis
 recover those locks as committed. The application therefore sees a normal failure, may retry the
 logical operation, and can later observe the first attempt as committed too.
 
-A realistic trigger is a long-running transaction held open for more than 24 hours by an ETL,
-workflow, or forgotten connection. Its final async-eligible write set prewrites successfully, but
-the client returns the age-limit error. If the TiDB/client process exits, loses connectivity, or the
-store closes before asynchronous cleanup, the next conflicting read can recover the first write set
-as committed. This is an outcome-contract violation and can duplicate non-idempotent business work.
+A realistic trigger requires `tidb_enable_async_commit=ON` (it is OFF by default), a workflow
+transaction older than 24 hours, and cleanup delayed beyond lock expiry. For example, TiDB A
+prewrites a two-account transfer, returns the age-limit error, then loses its TiKV path or is
+terminated before background rollback completes. The application's retry on TiDB B touches the same
+keys, recovers the first async lock set as committed, and can then commit the transfer a second time.
+This is an outcome-contract violation and can duplicate non-idempotent business work.
 
 The consequence is high, but the natural trigger is not high-frequency: it needs both a transaction
 older than `MaxTxnTimeUse` and failed/incomplete cleanup.
@@ -26,8 +28,9 @@ older than `MaxTxnTimeUse` and failed/incomplete cleanup.
 2. The transaction is older than `MaxTxnTimeUse` (24 hours) at commit time.
 3. Every async prewrite succeeds and the primary publishes the complete secondary list.
 4. The post-prewrite age check returns `txn takes too much time` as an ordinary error.
-5. Deferred cleanup does not complete.
-6. A later lock resolver checks all secondaries and recovers the transaction with a nonzero commit TS.
+5. Deferred cleanup is delayed beyond lock expiry or does not complete.
+6. A later lock resolver, including the application's own retry on another TiDB node, checks all
+   secondaries and recovers the transaction with a nonzero commit TS.
 
 ## Deterministic reproduction
 

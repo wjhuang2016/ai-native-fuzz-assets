@@ -16,8 +16,8 @@ VALUES
  'TERMINAL_ERROR_VS_INDEPENDENT_MVCC_RECOVERY_TRUTH',
  'POST_PROOF_FALLIBLE_EPILOGUE',
  'async-commit-age-check-after-recovery-proof',
- 'client-go 661db4f5 and TiDB builds using this async commit path; real TiKV testbed 8220955 confirmed recovery behavior',
+ 'client-go 01bd8f99; TiDB b8d04e17; real TiKV confirmed',
  1,
- 'confirmed',
- NULL,
- 'Discovery used current source only. Three post-RED GitHub issue searches found no exact root. The natural trigger is high consequence but not high frequency: a transaction older than 24 hours plus failed/incomplete cleanup. Local RED, local fix GREEN, and real-TiKV RED evidence are stored in the private AI-native asset repository.');
+ 'issue-filed',
+ 'https://github.com/pingcap/tidb/issues/69831',
+ 'Discovery used current source only. Three post-RED GitHub issue searches found no exact root. Production reachability requires async commit explicitly enabled (default OFF), a transaction older than 24 hours, successful prewrites, and cleanup delayed beyond lock expiry by TiKV-path loss or TiDB termination. An application retry on another TiDB can recover the first attempt as committed and then apply the operation again. Local RED, local fix GREEN, and real-TiKV RED evidence are stored in the private AI-native asset repository. Issue #69831 contains the directly runnable integration probe and found-by-ai/severity-critical/component-tikv-client labels.');

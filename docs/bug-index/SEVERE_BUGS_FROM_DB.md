@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 09:34:30 +0800
+Generated at: 2026-07-14 10:37:30 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -40,7 +40,7 @@ Generated at: 2026-07-14 09:34:30 +0800
 | 2100003 | issue-filed | high | wrong_result | UPDATE | pessimistic statement retry / user-variable assignment | `pessimistic-retry-omits-user-var-side-effect-rollback` | Pessimistic DML retry can change a SETVAR-derived unique key and turn duplicate-key failure into success | [https://github.com/pingcap/tidb/issues/69791](https://github.com/pingcap/tidb/issues/69791) |
 | 2130003 | issue-filed | high | correctness/data-integrity | IMPORT INTO | global sort conflict resolution with on_duplicate_key=capture | `importinto-conflict-delete-commit-false-success` | IMPORT INTO can report success with inconsistent indexes after a transient conflict-deletion Commit error | [https://github.com/pingcap/tidb/issues/69792](https://github.com/pingcap/tidb/issues/69792) |
 | 2190003 | issue-filed | high | wrong_result | UPDATE | pessimistic retry last insert id | `pessimistic-retry-omits-last-insert-id-reset` | Pessimistic RC retry publishes LAST_INSERT_ID from a rolled-back attempt | [https://github.com/pingcap/tidb/issues/69796](https://github.com/pingcap/tidb/issues/69796) |
-| 2250003 | confirmed | high | atomicity | COMMIT | client-go async commit / transaction age limit | `async-commit-age-check-after-recovery-proof` | Async commit can return txn-too-old error and later recover as committed |  |
+| 2250003 | issue-filed | high | atomicity | COMMIT | client-go async commit / transaction age limit | `async-commit-age-check-after-recovery-proof` | Async commit can return txn-too-old error and later recover as committed | [https://github.com/pingcap/tidb/issues/69831](https://github.com/pingcap/tidb/issues/69831) |
 | 2280003 | confirmed | high | consistency | ADD INDEX / TRUNCATE TABLE | TiDB 1PC / schema lease checker / metadata lock disabled | `onepc-schema-check-before-prewrite-mdl-off` | 1PC can commit with an obsolete schema after concurrent DDL and corrupt a newly added index when MDL is off |  |
 | 2310003 | issue-filed | high | liveness | UPDATE | pessimistic statement retry / advisory locks | `pessimistic-retry-retains-failed-attempt-advisory-lock` | Pessimistic retry can retain an advisory lock acquired by a rolled-back attempt | [https://github.com/pingcap/tidb/issues/69820](https://github.com/pingcap/tidb/issues/69820) |
 | 2340003 | issue-filed | high | atomicity/data-integrity | BULK autocommit DML | client-go pipelined commit / undetermined promotion | `pipelined-commit-bypasses-undetermined-promotion` | Pipelined DML can return a definite failure after its primary commit is durable | [https://github.com/pingcap/tidb/issues/69821](https://github.com/pingcap/tidb/issues/69821) |
