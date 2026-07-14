@@ -4,6 +4,37 @@
 
 ---
 
+**2026-07-14 current-source pass 再命中 high correctness root `id2430003`:悲观 RC retry 会复用失败
+attempt 已完成的 materialized CTE,成功提交 mixed-attempt row。** 候选从 #69823 的负边界产生:Go AST
+scanner 把 `pkg/expression` 600+ Clone 压缩后,非 RAND 候选为零,因此把 owner 边界外移到 statement-owned
+materialization。`StmtCtx.CTEStorageMap` 为每个 CTE 持有 storage、producer 和 `sync.Once`;第一次
+attempt 完成 `resTbl` 后,`CTEExec.Close` 故意保留 completed result。retry build 继续使用同一 statement
+context,`initOnce` 阻止 producer 重建,而 ordinary source read 已切到新的 RC attempt。
+
+最强自然矩阵让同一 UPDATE 同时读取 ordinary `src` 和被引用两次、`EXPLAIN` 含 `CTEFullScan` 的 CTE。
+竞争 session 在 CTE 的 SLEEP 窗口把 source 从 `next_u=1,payload=10` 改为 `2,20`,并占用 unique
+`u=1`。local baseline `Exec_retry_count=1`,成功提交 `(u=2,v=10)`;同 final DB state direct control
+提交 `(2,20)`。只在 retry build 前 `resetCTEStorageMap + empty map` 的 owner 反事实全绿。8-region、
+22,051-byte bounded source packet 也只返回该 high-confidence candidate,并退役 partial CTE、correlated
+parameter 和 cross-statement sibling。
+
+testbed `8220955` 的三真实 TiKV SQL-only lift 同样 RED:retry rows=`1:2:10,2:1:0`,control=
+`1:2:20,2:1:0`;slow log `Exec_retry_count=1,Exec_retry_time=20.00218629,Query_time=20.005502414,
+Succ=1,IsExplicitTxn=1`,MDL 全程 default ON,无 failpoint,数据库已删除。新 selector 是
+`REPLAY_PERSISTENT_MATERIALIZATION_STATE`,寻找
+`initialize once -> preserve completed -> reset only at outer boundary` lifecycle 与 inner replay 的错位。
+新强 oracle `MIXED_ATTEMPT_ROW_COHERENCE` 把 fresh path 和 materialized path 汇入同一行;结果若不属于
+old/new 任一 coherent generation,直接判 RED。远端 `found_bug id2430003` 已入库;当前 120 surfaces、
+97 roots、43 high、105 confirmed。上游
+[#69826](https://github.com/pingcap/tidb/issues/69826) 已带 `found-by-ai`、`severity/major` 和
+`component/executor`。资产入口:`assets/store/pessimistic-retry-stale-cte-results.jsonl`、
+`docs/method-cases/ai-native-id2430003-cte-materialization-retry-method-case.md`、
+`scaffolds/tidb-tests/ai_native_pessimistic_retry_stale_cte_test.go`、`tools/clone-state-scan/`。
+该 CTE lifecycle 已 terminal;禁止枚举 recursive/nonrecursive、consumer count、SQL verb、delay 或 conflict
+变体。下一轮只复用到不同 materialization owner 或 replay boundary。
+
+---
+
 **2026-07-14 current-source pass 命中新的 high correctness root `id2400003`:悲观 RC 透明重试会
 推进 constant-seed `RAND` 的内部 RNG,把 duplicate-key failure 变成成功提交。** 候选没有来自 PR
 review 或 issue seed,而是把 #69822 的 cross-attempt feedback selector 从 external owner 扩展到

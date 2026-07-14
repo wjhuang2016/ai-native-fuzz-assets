@@ -3320,3 +3320,42 @@ For candidate generation, rank deterministic evaluators first. A seed, fixed clo
 or ordered iterator can map first and second outputs to opposing terminal outcomes, yielding a much
 stronger oracle than comparing two arbitrary values. Stop after one root per evaluator owner; input
 values and SQL forms are blast radius.
+
+## Compare outer statement lifetime with inner replay lifetime
+
+Field-differential scans miss state whose contract is expressed by a lifecycle rather than a reset
+list. Search for the triad:
+
+```text
+initialize once -> preserve completed state -> reset only at outer statement boundary
+```
+
+Then enumerate every inner replay boundary inside that statement. A materialization that is correct
+to share among sibling consumers can still be wrong to share across attempts. `sync.Once`, `Done`,
+generation numbers, completed futures, memoized rowsets, and preserve-on-Close branches are compact
+proof-debt markers.
+
+Before testing, follow both owners:
+
+```text
+materialized path from failed attempt
+fresh path from successful attempt
+             -> same durable consumer
+```
+
+The strongest oracle changes two source values at the replay boundary and routes them through the
+two paths into one row. A result that belongs to neither the old nor new generation proves mixed-
+attempt execution without inspecting internal cache state.
+
+`id2430003` is the calibration. `CTEStorageMap` owns a completed result and `sync.Once`; normal
+statement setup clears it, but pessimistic retry reuses the same statement context. The retry row
+`(u=2,v=10)` combines a fresh ordinary read with a stale materialized CTE, while one execution from
+the same final state produces `(2,20)`. Resetting exactly the CTE storage before rebuild makes the
+matrix GREEN. Store the selector as `REPLAY_PERSISTENT_MATERIALIZATION_STATE` and the oracle as
+`MIXED_ATTEMPT_ROW_COHERENCE`.
+
+Use AST automation only to compress candidate generation. The checked-in `clone-state-scan` parses
+Go and reduced more than 600 expression clones to the one already-terminal RAND owner. Its empty
+non-RAND result justified moving the owner boundary to statement materializations; it did not prove
+the subsystem safe. This is the intended division: machines enumerate ownership debt, while P/Q/F,
+consumer ranking, natural RED, and counterfactual decide the verdict.

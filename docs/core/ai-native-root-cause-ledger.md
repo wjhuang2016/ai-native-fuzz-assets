@@ -546,3 +546,19 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: seeds, thresholds, random-function variants, DML forms, sleep durations, and
   conflict shapes are blast radius. Reopen only for another mutable evaluator owner or retry
   boundary.
+
+## 2026-07-14 update: id2430003
+
+- Remote `found_bug`: 120 surfaces, 97 distinct root causes, 43 high-severity rows, 105 confirmed
+  rows.
+- New root: `pessimistic-retry-reuses-completed-cte-result`.
+- Upstream: [TiDB #69826](https://github.com/pingcap/tidb/issues/69826), labeled
+  `severity/major`, `component/executor`, and `found-by-ai`.
+- Consequence: C3 silent wrong data. One successful row combines `u=2` from the retry snapshot with
+  `v=10` from the failed attempt's completed CTE; one coherent execution persists `u=2,v=20`.
+- Distinctness: #69823 retains mutable state inside an expression evaluator. This root retains a
+  statement-owned materialized rowset whose `sync.Once` and completion marker suppress producer
+  reconstruction.
+- Counting rule: recursive/nonrecursive forms, consumer counts, CTE query shapes, DML verbs, delays,
+  and conflict schedules are blast radius. Reopen only for another materialization owner or replay
+  boundary.

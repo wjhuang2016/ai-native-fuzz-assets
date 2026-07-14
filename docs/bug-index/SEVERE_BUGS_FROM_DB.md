@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 07:57:43 +0800
+Generated at: 2026-07-14 08:17:10 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -46,3 +46,4 @@ Generated at: 2026-07-14 07:57:43 +0800
 | 2340003 | issue-filed | high | atomicity/data-integrity | BULK autocommit DML | client-go pipelined commit / undetermined promotion | `pipelined-commit-bypasses-undetermined-promotion` | Pipelined DML can return a definite failure after its primary commit is durable | [https://github.com/pingcap/tidb/issues/69821](https://github.com/pingcap/tidb/issues/69821) |
 | 2370003 | issue-filed | high | data-integrity | UPDATE | pessimistic READ COMMITTED statement retry / sequence SETVAL | `pessimistic-retry-reexecutes-setval-and-persists-null` | Pessimistic retry can persist NULL instead of SETVAL result | [https://github.com/pingcap/tidb/issues/69822](https://github.com/pingcap/tidb/issues/69822) |
 | 2400003 | issue-filed | high | data-integrity | UPDATE | pessimistic READ COMMITTED retry / constant-seed RAND evaluator | `pessimistic-retry-advances-seeded-rand-output` | Pessimistic retry can advance seeded RAND and change failure into success | [https://github.com/pingcap/tidb/issues/69823](https://github.com/pingcap/tidb/issues/69823) |
+| 2430003 | issue-filed | high | data-integrity | UPDATE | pessimistic READ COMMITTED retry / materialized CTE storage | `pessimistic-retry-reuses-completed-cte-result` | Pessimistic retry can reuse stale materialized CTE result and commit a mixed-attempt row | [https://github.com/pingcap/tidb/issues/69826](https://github.com/pingcap/tidb/issues/69826) |

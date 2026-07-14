@@ -1,0 +1,65 @@
+{
+  "candidate_count": 1,
+  "command": [
+    "codex",
+    "exec",
+    "--ephemeral",
+    "--ignore-user-config",
+    "--skip-git-repo-check",
+    "--sandbox",
+    "read-only",
+    "--cd",
+    "/Users/bba/pc/ai-native-fuzz-assets/runs/scout-cte-retry-current-source-20260714",
+    "--color",
+    "never",
+    "--output-last-message",
+    "/Users/bba/pc/ai-native-fuzz-assets/runs/scout-cte-retry-current-source-20260714/last-message.json",
+    "-"
+  ],
+  "duration_seconds": 49.075,
+  "log_bytes": 33824,
+  "ok": true,
+  "output_dir": "/Users/bba/pc/ai-native-fuzz-assets/runs/scout-cte-retry-current-source-20260714",
+  "packet_bytes": 22051,
+  "packet_sha256": "266b7e9c22f139e064ab44b0e55d7abdac7b2244db40e62f5ff499e61cc605fd",
+  "reason": "",
+  "region_count": 8,
+  "reported_tokens": 16571,
+  "result": {
+    "candidates": [
+      {
+        "F": "A pessimistic READ COMMITTED UPDATE can commit a target value derived from the materialized CTE result of its failed attempt, while an equivalent conflict-free execution after the blocker commits derives the value from the newer source row.",
+        "P": "CTE storage is kept in StatementContext.CTEStorageMap and initialized through sync.Once; a completed producer marks resTbl Done, and CTEExec.Close closes only producer executors and resets the producer only when no completed result exists. Pessimistic retry rebuilds the executor against the same StatementContext before ResetForRetry, while the shown map clear occurs only during statement-context initialization.",
+        "Q": "Because no reset or map clear shown here dominates retry, the rebuilt CTEExec loads the existing CTEStorages, initOnce suppresses producer reconstruction, and hasCTEResult accepts the completed resTbl from the failed attempt.",
+        "anchors": [
+          "pkg/executor/select.go:952",
+          "pkg/executor/builder.go:5993",
+          "pkg/executor/builder.go:5999",
+          "pkg/executor/builder.go:6040",
+          "pkg/executor/cte.go:101",
+          "pkg/executor/cte.go:150",
+          "pkg/executor/cte.go:156",
+          "pkg/executor/cte.go:349",
+          "pkg/executor/cte.go:384",
+          "pkg/executor/adapter.go:1394",
+          "pkg/executor/adapter.go:1410",
+          "pkg/executor/adapter.go:1416"
+        ],
+        "confidence": "high",
+        "highest_consumer": "data loss",
+        "oracle": "Use two identical databases. In the retry case, after a blocker changes source s.v from 10 to 20 and releases the target lock, require the UPDATE to succeed and durable t.v to equal 20 after COMMIT and reconnect. In the control case, run the same UPDATE without contention after the blocker has committed; it must also persist t.v=20. A retry result of 10 with success is the failure.",
+        "owners": "StatementContext durably owns CTEStorageMap for the statement; each storage entry owns ResTbl, IterInTbl, Producer, initOnce, and initErr; Producer owns the completed-result state in ResTbl. CTEExec.Close finalizes producer executors but deliberately preserves a completed ResTbl. Statement-context initialization clears the map, but the retry graph rebuilds and opens an executor on the existing context before that initialization path, so no shown finalizer dominates reuse.",
+        "reachability": "Create source s(id,v) and target t(id,v), use a pessimistic transaction at READ COMMITTED, and execute an UPDATE whose scalar input is a forced materialized non-recursive CTE over s and whose target row in t is concurrently locked. This uses ordinary TiDB SQL and excludes RAND, sequences, advisory locks, SAVEPOINT, partitions, and TiCDC.",
+        "schedule": "Initialize s(1,10), t(1,0). Session B begins pessimistic READ COMMITTED and locks t(1). Session A begins pessimistic READ COMMITTED and executes UPDATE t SET v=(WITH c AS MATERIALIZED (SELECT v FROM s WHERE id=1) SELECT v FROM c) WHERE id=1; let A materialize c and block on t. Session B updates s(1) to 20, makes a conflicting change to t(1), and commits. A receives the pessimistic lock error, retries internally, reports success, commits, and reconnects to read t(1). Compare with the same UPDATE started only after B commits."
+      }
+    ],
+    "retired": [
+      "Incomplete or failed CTE production: CTEExec.Close resets the producer whenever resTbl is not Done, so partial rows or a stored generation error are not the highest surviving shape.",
+      "Correlated-parameter reuse: CTEExec.Open checks the correlated-column hash and resets the producer when it changes.",
+      "Cross-statement reuse: statement-context initialization clears CTEStorageMap, so completed CTE state does not survive into a separately submitted SQL statement."
+    ],
+    "scope": "Completed materialized CTE reuse during internal pessimistic statement retry only."
+  },
+  "returncode": 0,
+  "timed_out": false
+}

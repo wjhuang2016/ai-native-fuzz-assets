@@ -1805,3 +1805,29 @@ status:     VALIDATED by id2400003. Local natural-conflict RED, retry-decline GR
 stop rule:  one root per mutable evaluator owner and retry boundary. Seeds, thresholds, random
             variants, SQL forms, and schedules are blast radius.
 ```
+
+## S53: replay-persistent materialization state
+
+```text
+selector:   a statement-scoped result is initialized once, marked complete, preserved by executor
+            Close, and reused by an inner replay whose reset occurs below the materialization owner
+born from:  id2430003 (completed CTE storage survives pessimistic retry)
+candidate:  completed materializations intersect preserve-on-close intersect replay reuse
+            intersect fresh-state C3 consumers minus retry reset/rebuild/version guards
+prediction:
+  - statement context owns a map, spool, cache, temp result, or materialized lookup table;
+  - sync.Once, Done, generation, or completion state suppresses reconstruction;
+  - normal statement entry clears it, but transparent retry reuses the same owner;
+  - the successful attempt can combine stale materialized data with a fresh ordinary read.
+oracle gate:
+  - prove a materialized plan node and a positive retry count;
+  - change two source fields at the retry boundary;
+  - route one target field through a fresh path and one through the suspected materialization;
+  - reject any committed row belonging to neither coherent source generation;
+  - compare with one execution from the same final database state.
+status:     VALIDATED by id2430003. Local natural-conflict RED, exact CTE-storage reset GREEN,
+            bounded source-packet confirmation, and SQL-only real-TiKV RED with MDL ON are complete;
+            upstream #69826.
+stop rule:  one root per materialization lifecycle and replay boundary. CTE forms, consumers, SQL
+            verbs, delays, and schedules are blast radius.
+```

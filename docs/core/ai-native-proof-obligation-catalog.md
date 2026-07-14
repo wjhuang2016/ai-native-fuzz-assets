@@ -3513,3 +3513,22 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   #69823. Local and real-TiKV REDs ran with MDL enabled.
 - Pause gate: seeds, thresholds, random-function variants, SQL forms, and conflict schedules are
   blast radius. Reopen only for another evaluator owner or retry boundary.
+
+## id2430003 - Pessimistic retry reuses a completed materialized CTE
+
+- Target: `target.txn.pessimistic-retry-stale-materialized-cte.v1`.
+- Selector: `REPLAY_PERSISTENT_MATERIALIZATION_STATE`.
+- **P**: accepted pessimistic retry rebuilds a fresh executor against the new READ COMMITTED attempt.
+- **Q**: every statement-owned materialized input consumed by that executor belongs to the
+  successful attempt.
+- **F**: `CTEStorageMap`, `initOnce`, and completed `resTbl` survive retry; `buildCTE` loads the old
+  entry and skips producer reconstruction while ordinary source reads refresh.
+- C3 oracle: competitor changes source from `(next_u=1,payload=10)` to `(2,20)`. Retry succeeds and
+  commits `(u=2,v=10)`; a same-final-state direct execution commits `(2,20)`.
+- Counterfactual: close old CTE storage and create an empty map before retry executor construction;
+  the exact natural-conflict test matches the direct row.
+- Status: **ISSUE-FILED**, remote `found_bug id2430003`, high consequence, upstream #69826. Local
+  and real-TiKV REDs ran with MDL enabled and no fault injection.
+- Pause gate: recursive/nonrecursive CTEs, consumer counts, query shapes, SQL verbs, delays, and
+  conflict schedules are blast radius. Reopen only for another materialization lifecycle or replay
+  boundary.
