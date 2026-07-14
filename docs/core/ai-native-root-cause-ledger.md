@@ -4,9 +4,9 @@
 
 ## Current remote snapshot (2026-07-14)
 
-`found_bug`: 115 surfaces, 92 distinct root causes, 38 high-severity rows, and 100 confirmed rows.
-The newest entry is `id2280003`, a confirmed high root from the transaction validation-horizon
-campaign.
+`found_bug`: 126 surfaces, 103 distinct root causes, 49 high-severity rows, and 111 confirmed rows.
+The newest entry is `id2610003`, a confirmed high root from value-replacement proof
+revalidation in the transaction campaign.
 
 ## Counting convention
 
@@ -645,3 +645,26 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   reclaimed the conflict evidence, but the retired start TS remains admitted to an effectful consumer.
 - Counting rule: transaction durations, SQL verbs, row values, GC timing, assertion settings, and
   compaction schedules are blast radius. Reopen only for another retirement event or effectful consumer.
+
+## 2026-07-14 update: id2610003
+
+- Remote `found_bug`: 126 surfaces, 103 distinct root causes, 49 high-severity rows, 111 confirmed
+  rows.
+- New root: `commit-ts-expired-retry-bypasses-upper-bound-check`.
+- Upstream: [TiDB #69836](https://github.com/pingcap/tidb/issues/69836), labeled
+  `severity/critical`, `component/tikv-client`, `sig/transaction`, and `found-by-ai`.
+- Consequence: C3 silent source/cache divergence that can become durable business-data corruption.
+  SQL COMMIT succeeds with fresh source `v=1`, while a healthy TiDB's cache remains `v=0`; ordinary
+  `INSERT SELECT` persists `0` into a regular sink table.
+- Production trigger: cached table, ordinary optimistic 2PC, primary lock TTL longer than the fixed
+  five-second WRITE lease, a writer-local pause longer than the lease, and a healthy peer read that
+  pushes the live primary's `minCommitTS`. A roughly 4 MiB write gives about 12 seconds of lock TTL;
+  a node-specific network interruption or long runtime/CPU scheduling pause supplies the writer gap.
+- Distinctness: the initial commitTS is checked. The defect is that `CommitTsExpired` replaces that
+  value with a new TSO and retries while inheriting a proof that was valid only for the old value.
+  Related TiDB #36885 and client-go #564 do not close this replacement edge.
+- Verification: local TiDB RED, owner-level client-go RED/GREEN, and full real-TiKV RED/GREEN are
+  complete with MDL ON. The test observes natural `CheckTxnStatus`, minCommitTS push, and
+  `CommitTsExpired`; injection only compresses the writer-local pause.
+- Counting rule: row sizes, pause causes, cache values, SQL copy shapes, and timing schedules are
+  blast radius. Reopen only for another proof owner, replacement site, or irreversible consumer.

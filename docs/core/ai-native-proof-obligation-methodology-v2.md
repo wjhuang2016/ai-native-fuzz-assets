@@ -3388,3 +3388,39 @@ unique-key conflict plus gate forced one retry whose successful attempt inserted
 the competitor row existed. Clearing exactly `InsertID` at `ResetForRetry` made both arms return 0.
 Store the selector as `PROTOCOL_OUTPUT_RESET_DIFFERENTIAL` and the oracle as
 `ZERO_ROW_RETRY_OK_PACKET_VS_SAME_STATE_CONTROL`.
+
+## Treat a proof as scoped to its exact arguments
+
+Do not summarize `P(x)` as a path-level boolean such as `checked=true`. Preserve the checked value
+and every context argument:
+
+```text
+proof token = checked(value=x, lease=L, schema=S, owner=O, generation=G)
+```
+
+Then continue the def-use graph past the check. Retry, fallback, refresh, redirect, recovery, and
+reconstruction paths often replace one argument while retaining the control-flow fact that validation
+already happened. Every post-proof replacement must have one of three closures:
+
+```text
+revalidate P(x2)
+prove P(x) => P(x2) for this transformation
+fail closed before the proof-dependent consumer
+```
+
+Generate candidates by intersecting value-dependent checks with later assignments and the highest
+irreversible consumers. Build the smallest matrix where the original value passes and the replacement
+fails. A natural replacement producer is stronger than a fabricated error; deterministic injection
+may compress only the timing needed to reach it and must name its production-equivalent event.
+
+`id2610003` calibrates this selector. TiDB's cached-table commit installs
+`commitTSCheck(commitTS < writeLease)`, and client-go checks the initial commitTS. A healthy reader can
+naturally push a still-live primary lock's `minCommitTS`; TiKV then returns `CommitTsExpired` for the
+original Commit. client-go obtains a replacement TSO and retries without running the checker again.
+With a writer-local pause longer than the five-second lease and a roughly 4 MiB transaction whose
+lock TTL is about 12 seconds, SQL COMMIT succeeds while another TiDB serves the pre-commit cache.
+`INSERT SELECT` persists that stale value into a regular table. Rechecking only the replacement flips
+the identical local and real-TiKV schedule to GREEN.
+
+Store the selector as `VALUE_REPLACEMENT_PROOF_REVALIDATION`. Stop after one root per
+proof/replacement/consumer triple; values, retry counts, timing, and workload shapes are blast radius.

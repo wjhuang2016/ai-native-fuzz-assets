@@ -4,6 +4,46 @@
 
 ---
 
+**2026-07-14 value-replacement pass 命中新的 critical-consequence data-integrity root
+`id2610003`: `CommitTsExpired` 重试可以绕过 cached-table commitTS 上界检查，在 WRITE lease 过期后
+仍成功提交。** 候选完全来自 current source 的 proof owner 分析：TiDB 为 cached-table commit 获取
+WRITE lease，并把 `commitTS < lease` 作为 checker 交给 client-go；普通 2PC 的初始 commitTS 会检查，
+但 TiKV 返回 `CommitTsExpired` 后，client-go 在 `commit.go` 生成 replacement TSO 并直接重试，没有对
+新值重跑 checker。代码证明的是 `P(commitTS1)`，却把它当成了 `P(commitTS2)`。
+
+真实生产触发不是泛泛的“in-flight error”，而是一条具体时序：业务显式启用 table cache；一次较大
+optimistic write 使 primary lock TTL 长于固定 5s WRITE lease（约 4 MiB 写入在当前公式下约为 12s，
+生产 cap 为 20s）；prewrite 和初始 checker 后，writer TiDB 因节点特有的 TiDB-to-TiKV/PD 网络中断、
+长 stop-the-world pause、严重 CPU 饥饿或 OS/container 调度停顿而超过 5s 不再提交/续租，另一健康 TiDB
+在 lease 过期后普通 SELECT，获取 READ lease 并由 TiKV `CheckTxnStatus` 推高仍存活 primary lock 的
+`minCommitTS`；writer 恢复后首个 Commit 自然得到 `CommitTsExpired`，replacement commitTS 已越过旧
+WRITE lease，却因漏检而第二次 Commit 成功。小事务约 3s TTL 会先被 reader 回滚，是明确负控制。
+
+local 与 pinned real-TiKV RED 都观察到真实 prewrite、reader-driven minCommitTS push、首个
+`CommitTsExpired`、两个 Commit RPC 和 SQL COMMIT success；post-commit cached SELECT 为 `v=0`，
+NOCACHE source 为 `v=1`。更高消费者 `INSERT INTO sink SELECT ... FROM cached_table` 把旧值 0 持久化到
+普通 sink；NOCACHE 后 source 保持 1、sink 保持 0。只在 replacement TSO 后重跑 existing checker 的
+精确反事实使 checker 调用 1->2、Commit RPC 2->1、COMMIT fail，local/real TiKV 都 GREEN，且首个
+TiKV `CommitTsExpired` 仍自然发生。MDL default ON，ordinary 2PC；1PC/async 因 checker 自动关闭。
+
+新 selector `VALUE_REPLACEMENT_PROOF_REVALIDATION` 把 proof 存为带参数 token，例如
+`checked(commitTS=x, lease=L)`，然后枚举 proof 后所有 value replacement 与最高 irreversible consumer；
+每条边必须 revalidate、证明单调蕴含，或 fail closed。远端 `found_bug id2610003` 已 issue-filed/high；
+当前 126 surfaces、103 roots、49 high、111 confirmed。post-RED 搜索只找到 related TiDB #36885、
+client-go #564/#1316，它们没有关闭 replacement commitTS 的 lease proof，不是 exact duplicate。该 root
+已通过 [#69836](https://github.com/pingcap/tidb/issues/69836) issue-filed，带 `severity/critical`、
+`component/tikv-client`、`sig/transaction` 和 `found-by-ai`；禁止枚举 row size、pause cause、cache value、
+SQL copy shape 或 timing 变体。
+
+资产入口：`docs/bug-drafts/ai-native-cached-table-commit-ts-retry-draft.md`、
+`docs/method-cases/ai-native-id2610003-value-replacement-proof-revalidation.md`、
+`assets/store/logs/txn-cached-table-commit-ts-retry-real-tikv-20260714.log`、
+`scaffolds/tidb-tests/ai_native_cached_table_commit_ts_retry_test.go`、
+`scaffolds/client-go-tests/ai_native_commit_ts_upper_bound_retry_test.go`。下一轮回到不同 proof owner 的
+value replacement，不继续 cached-table/CommitTsExpired 变体。
+
+---
+
 **2026-07-14 safe-point retirement pass 命中新的 critical data-integrity root `id2580003`:
 过期 optimistic transaction 可以在 GC 后成功提交并复活已删除行。** 候选完全来自 current source
 consumer closure:TiDB 会把超过可配置 `tidb_gc_max_wait_time` 的 active startTS 排除出 min-start-TS,

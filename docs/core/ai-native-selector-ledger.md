@@ -1909,3 +1909,31 @@ status:     VALIDATED by id2580003. Raw client-go and SQL-level real-TiKV REDs, 
 stop rule:  one root per retirement event and effectful consumer. Transaction duration, SQL shape,
             GC phase, compaction timing, assertion level, and table layout are blast radius.
 ```
+
+## S57: value replacement proof revalidation
+
+```text
+selector:   code proves P(x), then retry/refresh/fallback replaces x with x2 before an irreversible
+            consumer, while control flow reuses the proof about x as if it covered x2
+born from:  id2610003 (CommitTsExpired replaces a lease-checked commitTS and retries unchecked)
+candidate:  value-scoped proofs intersect post-proof assignments/reconstruction
+            intersect proof-dependent Commit/Publish/Ack/external-effect consumers
+            minus exact revalidation, monotonic derivation, or fail-closed edges
+prediction:
+  - the main path visibly validates the initial value and therefore looks safe in local review;
+  - a recovery branch obtains a fresh timestamp, token, owner, version, range, or identity;
+  - only the consumer field/request is updated; proof arguments or cached validation are not;
+  - the replacement can cross a lease, schema, age, ownership, or capability boundary.
+oracle gate:
+  - record the exact value and proof arguments accepted on the initial path;
+  - make the replacement naturally violate only that proof;
+  - prove the irreversible consumer receives the replacement;
+  - observe the highest public consequence, not only checker-call counts;
+  - revalidate exactly the replacement before the consumer and rerun the identical schedule;
+  - name the production event equivalent to every deterministic pause or injection.
+status:     VALIDATED by id2610003. Owner-level RED/GREEN plus local and real-TiKV SQL RED/GREEN,
+            MDL ON, natural minCommitTS push/CommitTsExpired, durable cache-to-sink corruption,
+            and upstream #69836.
+stop rule:  one root per proof/replacement/consumer triple. Replacement values, retry counts, pause
+            causes, transaction sizes, SQL forms, and timing are blast radius.
+```

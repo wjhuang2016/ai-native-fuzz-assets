@@ -2021,3 +2021,31 @@ For retirement bugs, separately prove the natural wall-clock chain and the deter
 test: the latter may advance time or request compaction, but must keep real GC, storage conflict
 reclamation, commit, and fresh-state observation intact. The new selector is
 `SAFE_POINT_RETIREMENT_CONSUMER_CLOSURE`.
+
+## Value-replacement proof-revalidation tick: cached-table lease crossed, EXECUTED (2026-07-14)
+
+This tick started from current-source proof ownership. Issue and fix history stayed closed until a
+local product RED and exact owner GREEN existed.
+
+```text
+P(x):         initial commitTS x is below the cached-table WRITE lease.
+Q:            every Commit request uses a commitTS satisfying P.
+F:            CommitTsExpired replaces x with x2 and retries without rechecking P(x2).
+LOCAL RED:    natural minCommitTS push; 2 Commit RPCs; SQL success; cache/source = 0/1.
+DURABLE RED:  INSERT SELECT consumes cache 0 into regular sink; source remains 1.
+OWNER GREEN:  recheck replacement; checker calls 2; Commit RPCs 1; key absent/rollback.
+LIVE RED:     pinned real TiKV; real prewrite/CheckTxnStatus/CommitTsExpired; MDL ON.
+LIVE GREEN:   same real-TiKV schedule; first rejection remains, replacement fails before RPC.
+INTEGRATE:    id2610003 high / critical consequence; #69836; 126 surfaces, 103 roots, 49 high,
+              111 confirmed.
+```
+
+Production reachability is a first-class gate. The compressed hold corresponds to a writer-local
+network, runtime, CPU, or scheduling pause longer than the fixed five-second cache lease while a peer
+remains healthy. A primary lock must remain live: current client-go gives a roughly 4 MiB write about
+12 seconds, whereas the small-transaction three-second TTL is a negative control.
+
+Method improvement: store proof facts as argument-bearing tokens such as
+`checked(commitTS=x, lease=L)`, not booleans such as `commitTSChecked=true`. Enumerate every assignment
+to either argument before the irreversible consumer; require exact revalidation, a proven monotonic
+implication, or fail-closed behavior. The new selector is `VALUE_REPLACEMENT_PROOF_REVALIDATION`.

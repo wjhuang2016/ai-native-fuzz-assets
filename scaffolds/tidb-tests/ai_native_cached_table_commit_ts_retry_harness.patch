@@ -1,0 +1,31 @@
+diff --git a/pkg/table/tables/cache.go b/pkg/table/tables/cache.go
+index c8fe53a824..7e7c02ac66 100644
+--- a/pkg/table/tables/cache.go
++++ b/pkg/table/tables/cache.go
+@@ -305,6 +305,13 @@ func (c *cachedTable) renewLease(handle StateRemote, ts uint64, data *cacheData,
+ 
+ const cacheTableWriteLease = 5 * time.Second
+ 
++// TestAINativeStopWriteLeaseRenewal and TestAINativeWriteLeaseAcquired expose
++// the cached-table lease boundary to the focused transaction safety probe.
++var (
++	TestAINativeStopWriteLeaseRenewal atomic.Bool
++	TestAINativeWriteLeaseAcquired    chan uint64
++)
++
+ func (c *cachedTable) WriteLockAndKeepAlive(ctx context.Context, exit chan struct{}, leasePtr *uint64, wg chan error) {
+ 	writeLockLease, err := c.lockForWrite(ctx)
+ 	atomic.StoreUint64(leasePtr, writeLockLease)
+@@ -313,6 +320,12 @@ func (c *cachedTable) WriteLockAndKeepAlive(ctx context.Context, exit chan struc
+ 		logutil.Logger(ctx).Warn("lock for write lock fail", zap.String("category", "cached table"), zap.Error(err))
+ 		return
+ 	}
++	if TestAINativeWriteLeaseAcquired != nil {
++		TestAINativeWriteLeaseAcquired <- writeLockLease
++	}
++	if TestAINativeStopWriteLeaseRenewal.Load() {
++		return
++	}
+ 
+ 	t := time.NewTicker(cacheTableWriteLease / 2)
+ 	defer t.Stop()

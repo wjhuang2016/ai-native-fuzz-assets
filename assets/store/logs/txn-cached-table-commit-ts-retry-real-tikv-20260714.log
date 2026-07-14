@@ -1,0 +1,54 @@
+AI-native transaction proof: cached-table commitTS replacement
+Date: 2026-07-14
+
+Pinned source:
+  TiDB      b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+  client-go 01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b
+  TiKV      7ecce12e7573f7d4a392877b994fa6af80606369
+
+Configuration and path:
+  tidb_enable_metadata_lock = ON
+  ordinary optimistic 2PC
+  1PC disabled by commitTS upper-bound checker
+  async commit disabled by commitTS upper-bound checker
+  production ManagedLockTTL = 20000ms
+  cached-table WRITE lease = 5000ms
+  row payload ~= 4 MiB, calculated primary lock TTL ~= 12000ms
+
+Current-source real-TiKV RED:
+  real cached-table WRITE lease acquired and renewal stopped
+  real primary prewrite completed
+  first primary Commit held until observed WRITE lease expired
+  healthy reader acquired READ lease and executed CheckTxnStatus
+  TiKV returned Action_MinCommitTSPushed
+  TiKV rejected first primary Commit with CommitTsExpired:
+    start_ts            = 467666559668060171
+    attempted_commit_ts = 467666559668060175
+    min_commit_ts       = 467666561005780998
+  client-go sent 2 Commit RPCs
+  SQL COMMIT returned success
+  post-commit cached SELECT v = 0
+  after NOCACHE fresh source v = 1
+  INSERT INTO sink SELECT ... FROM cached table committed copied_v = 0
+  after NOCACHE regular sink copied_v remained 0
+
+Exact owner GREEN:
+  rerun commitTSUpperBoundCheck after replacement TSO and before retry
+  same real-TiKV schedule still produced the first CommitTsExpired
+  checker rejected the replacement commitTS
+  only 1 Commit RPC reached TiKV
+  SQL COMMIT returned the upper-bound error
+  cached and NOCACHE source both remained v = 0
+
+Calibration:
+  A first real-TiKV run inherited realtikvtest ManagedLockTTL=5000ms. The reader
+  rolled back the lock instead of pushing minCommitTS, so that run was invalid as
+  a product verdict. Restoring the production client-go default 20000ms and using
+  a 4 MiB write produced a ~12s primary lock and the natural RED above.
+
+Production equivalence:
+  The harness stops renewal and holds the first Commit only to compress a writer-
+  local pause. A node-specific TiDB-to-TiKV/PD interruption, long GC/runtime pause,
+  severe CPU starvation, or OS scheduling stall longer than 5s has the same owner
+  effect while a second TiDB remains healthy. TiKV generated the lock resolution,
+  minCommitTS push, CommitTsExpired response, retry outcome, and fresh read state.
