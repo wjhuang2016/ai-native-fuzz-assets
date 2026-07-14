@@ -6,16 +6,31 @@
 
 #### Concrete production scenario
 
-One concrete production shape is an order or resource-allocation service using an ORM unit of work:
+One concrete production shape is an order or resource-allocation service using a Spring/JPA unit of
+work. This is not dependent on an ORM accidentally reordering statements: explicit flush boundaries
+force the SQL sequence below.
 
-1. The service inserts a provisional reservation carrying a unique request token. The token already
-   belongs to an earlier request, but with lazy uniqueness checking the `INSERT` returns success.
-2. A later validation or routing decision in the same unit of work cancels that provisional reservation.
-   An ORM can produce the same insert-then-delete sequence across an autoflush/manual-flush boundary.
-3. Because no statement has reported the duplicate yet, the service continues its fallback path and
-   updates a durable order, inventory, quota, or account row.
-4. `COMMIT` is the first operation that reports `Duplicate entry`. The application therefore treats the
-   entire unit of work as aborted and commonly retries it.
+```java
+@Transactional
+void allocate(Request request) {
+    Candidate c = candidates.saveAndFlush(
+        new Candidate(nextID(), request.idempotencyKey())); // sends INSERT now
+
+    if (!routingService.isEligible(c)) {
+        candidates.delete(c);
+        candidates.flush();                                // sends DELETE now
+    }
+
+    accounts.debit(request.accountID(), request.amount()); // sends UPDATE
+}                                                          // JDBC COMMIT here
+```
+
+The request may be a duplicate delivery from a queue or a retry after a client timeout, so its unique
+idempotency key already belongs to an earlier committed candidate. TiDB's lazy uniqueness checking lets
+`saveAndFlush` return success. A later, independent routing decision rejects this provisional candidate,
+so the service deletes it and continues the same unit of work by updating the durable account, inventory,
+quota, or order row. `COMMIT` is the first operation that reports `Duplicate entry`; the transaction
+manager therefore reports the whole unit of work as aborted, and the message handler commonly retries it.
 
 The compact SQL below uses `candidates` and `accounts` to represent that production flow:
 
@@ -39,25 +54,43 @@ The exact production trigger is:
 1. Async commit has been explicitly enabled at cluster or session scope. It is not enabled by default in
    current TiDB. `tidb_enable_1pc` may be OFF, or it may be ON and fall back because the transaction needs
    more than one prewrite batch.
-2. The transaction is optimistic and lazy uniqueness checking is active
+2. The service uses optimistic transactions, for example through a session/global
+   `tidb_txn_mode=optimistic` setting, and lazy uniqueness checking is active
    (`tidb_constraint_check_in_place=OFF`, the current default).
 3. The transaction inserts and then deletes a new row carrying a unique value that is already committed
    elsewhere. Both SQL statements can return success; TiDB retains row/index `CheckNotExists` operations
    as commit-time proofs.
-4. The transaction also changes at least one real business key, and key ordering selects such a key as the
-   transaction primary. In the reproducer, `accounts` is created before `candidates`, so its lower table
-   prefix makes the account mutation the primary.
+4. The transaction also changes at least one real business key. In the reproducer the account update is
+   the only lock-bearing mutation, so it becomes the transaction primary; `CheckNotExists` keys are
+   explicitly skipped during primary selection. No special table-creation order is required.
 5. The business primary and the failed uniqueness proof are in different Region/batch requests. This is
    an ordinary layout once the tables have separate Regions; it does not require a DDL or MDL race.
 6. The primary prewrite succeeds before the other batch returns `AlreadyExist`. Prewrite batches run
    concurrently; the real-TiKV SQL test reproduced this ordering 3/3 without Region-delay injection.
-7. TiDB returns the definite duplicate error and starts cleanup in the background, but cleanup does not
-   reach the primary. Concrete production causes include the TiDB pod being killed by OOM or deployment,
-   or the primary Region becoming unreachable/server-busy long enough for cleanup retries to be exhausted.
+7. TiDB starts best-effort cleanup in a background goroutine and returns the definite duplicate error
+   without waiting for that cleanup. The cleanup does not reach the primary. A concrete production case is
+   the TiDB pod exiting because of OOM, node loss, or a deployment after the error response is sent but
+   before `BatchRollback` reaches the primary. Another is the primary Region remaining unreachable or
+   server-busy until the cleanup backoff budget is exhausted.
 8. After the lock expires, a later request touches the business key. Lock resolution reads the async
    primary, whose recovery set omits the failed proof, and incorrectly commits the business mutation.
 
-Thus the application is told that the transaction failed, but the business write becomes durable later. A normal application retry can apply the write a second time.
+The required ordering is:
+
+```text
+T(primary Prewrite succeeds)
+  < T(proof Region returns AlreadyExist)
+  < T(COMMIT returns Duplicate entry)
+
+T(TiDB exits or cleanup exhausts its retries)
+  < T(BatchRollback would reach the primary), so that rollback never happens
+
+T(primary lock TTL expires)
+  < T(a later request touches the business key and invokes lock resolution)
+```
+
+Thus the application is told that the transaction failed, but the business write becomes durable later.
+A normal queue redelivery or transaction retry can apply the write a second time.
 
 To reproduce with real TiKV, add the following file as
 `tests/realtikvtest/txntest/ai_native_async_checknotexists_sql_test.go`:

@@ -21,12 +21,13 @@ contained only the original `used@example.com` row. An application retry can the
 
 ## Concrete production trigger
 
-One concrete production shape is an order or resource-allocation service using an ORM unit of work. It
-inserts a provisional reservation with a unique request token, then cancels that provisional row after a
-later routing or validation decision. An ORM can emit the insert and delete across autoflush/manual-flush
-boundaries. Because lazy uniqueness checking lets both statements return success, the service continues
-its fallback path and updates an order, inventory, quota, or account row. `COMMIT` is the first operation
-to report the pre-existing duplicate token, so the application treats the whole unit of work as aborted.
+One concrete production shape is an order or resource-allocation service using a Spring/JPA unit of work.
+`saveAndFlush` first sends an INSERT for a provisional candidate carrying an idempotency key. A later,
+independent routing decision rejects the candidate, so `delete` plus `flush` sends the DELETE before the
+transaction updates an account, inventory, quota, or order row. A duplicate queue delivery means the
+idempotency key already exists. Lazy uniqueness checking lets both flushes return success, and `COMMIT` is
+the first operation to report the duplicate. The transaction manager reports the whole unit of work as
+aborted and the message is normally retried.
 
 All of the following are required:
 
@@ -39,16 +40,17 @@ All of the following are required:
    commit. This occurs in workflows that create a tentative/reservation row and revoke it after later
    business validation. The final row and unique-index tombstones become proof-only `CheckNotExists`
    mutations.
-4. The transaction also changes real business data, such as an account, quota, inventory, or ledger key,
-   and key ordering selects a real mutation as the transaction primary. In the reproducer, the `accounts`
-   table has the lower table prefix and its row becomes the primary.
+4. The transaction also changes real business data, such as an account, quota, inventory, or ledger key.
+   In the reproducer the account update is the only lock-bearing mutation, so it becomes the primary;
+   `CheckNotExists` is explicitly skipped during primary selection. No table-creation order is required.
 5. The real mutation and proof mutation are sent in different Region batches. Ordinary table growth and
    Region splitting are enough; no DDL or MDL race is involved.
 6. The business primary prewrite reaches TiKV before the proof Region reports `AlreadyExist`. Prewrite
    batches run concurrently. The SQL probe reproduced this ordering 3/3 without an injected Region delay.
-7. After TiDB returns the duplicate error, its background cleanup does not reach the primary. Concrete
-   causes are TiDB process exit/OOM/deployment, or the primary Region being unreachable/server-busy long
-   enough for cleanup RPCs to exhaust their retry budget.
+7. TiDB starts best-effort cleanup in a background goroutine and returns the duplicate error without
+   waiting for it. The TiDB pod can then exit because of OOM, node loss, or deployment before
+   `BatchRollback` reaches the primary; alternatively, the primary Region remains unreachable/server-busy
+   until cleanup exhausts its retry budget.
 8. After the lock TTL expires, another TiDB request reads or writes the business key. LockResolver sees an
    async primary with an empty recovery set, chooses a nonzero commit TS, and commits the primary.
 
@@ -67,6 +69,20 @@ COMMIT; -- returns Duplicate entry 'used@example.com'
 
 The existing `used@example.com` row is committed before this transaction. `accounts` and `candidates`
 must reside in different Region batches. MDL remains at its default enabled setting throughout.
+
+The precise production ordering is:
+
+```text
+T(primary Prewrite succeeds)
+  < T(proof Region returns AlreadyExist)
+  < T(COMMIT returns Duplicate entry)
+
+T(TiDB exits or cleanup exhausts its retries)
+  < T(BatchRollback would reach the primary), so that rollback never happens
+
+T(primary lock TTL expires)
+  < T(a later request touches the business key and invokes lock resolution)
+```
 
 The cleanup failpoint represents loss of best-effort cleanup after the duplicate response. The expiring
 oracle used by the test only avoids waiting for the real lock TTL; it does not alter the resolver's
