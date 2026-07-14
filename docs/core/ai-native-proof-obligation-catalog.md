@@ -3636,3 +3636,29 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   upstream [#69845](https://github.com/pingcap/tidb/issues/69845).
 - Pause gate: IDs, table names, synchronization products, delays, ordering clauses, and conflict keys
   are blast radius. Reopen only for another cache/provenance/logical-owner tuple.
+
+## id2700003 - Failed server-info restart suppresses membership republication
+
+- Target: `target.txn.mdl-server-info-restart-publication.v1`.
+- Selector: `FAILED_PUBLICATION_LIVE_OWNER_RETRY_SUPPRESSION`, an S37 extension.
+- **P**: `NewSession` returns a live replacement server-info session.
+- **Q**: assigning it to `s.session` before storing `/tidb/server/info/<id>` safely transfers retry
+  ownership.
+- **F**: `StoreServerInfo` can exhaust all five retries. The loop then waits on the live unpublished
+  replacement's `Done` channel and does not retry after etcd becomes healthy.
+- Cross-proof consumer: MDL DDL constructs its wait set from server-info membership, while old MDL
+  transactions set `needCheckSchemaByDelta=false` because they trust that wait to cover every live
+  TiDB.
+- C3 oracle: ADD INDEX succeeds, old COMMIT succeeds, fresh table/index state is `1/0`, and
+  `ADMIN CHECK TABLE` returns 8223.
+- Production trigger: server-info session loss while schema-sync remains live, followed by successful
+  replacement lease grant and transient membership Put failure. Classic defaults and MDL ON are
+  sufficient; two TiDB frontends expose the natural DDL membership consequence.
+- Reachability control: a whole-process stall expires schema sync too. Validator restart then makes
+  old COMMIT return 8028, so broad node failure is GREEN and does not prove this root.
+- Counterfactual: on publication error, close the unpublished replacement and restore the completed
+  prior session. The loop retries registration, DDL waits for old COMMIT, and table/index is `1/1`.
+- Status: **CONFIRMED**, remote `found_bug id2700003`, high severity / critical consequence. Real
+  TiKV RED/GREEN and post-RED issue dedup are complete; no exact upstream issue was found.
+- Pause gate: do not enumerate ADD INDEX variants, transaction modes, errors, TTL values, or table
+  shapes. Reopen only for another publication owner or highest consumer.

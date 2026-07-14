@@ -1699,3 +1699,27 @@ specificity: HIGH; complete outcome-set proof, stable source key, source-target 
              cache-use GREEN isolate row-identity binding.
 status:      USED + EXECUTION-CONFIRMED by id2670003 / #69845.
 ```
+
+## O65 failed_membership_publication_vs_row_index_closure
+
+```text
+obligation:  a transient membership-publication failure must not let a fresh DDL consumer exclude a
+             live old-schema transaction owner and publish a schema that the owner can still commit
+             against.
+form:        in one run, record the exact server-info restart publication error; prove the membership
+             key stays absent after the fault is healthy; run ADD INDEX; commit the old transaction;
+             compare fresh table scan, forced-index scan, and ADMIN CHECK TABLE.
+red:         restart publication error is observed, ADD INDEX succeeds, old COMMIT succeeds, table
+             rows are 1, index rows are 0, and ADMIN CHECK returns 8223.
+green:       the identical one-shot fault is followed by membership republication; DDL waits for old
+             COMMIT; table/index rows are 1/1 and ADMIN CHECK is green.
+catches:     publication-before-owner-transfer inversions, missing retry ownership, and membership
+             consumers that treat absent live participants as safe.
+blind to:    whole-node failures that restart schema validation and reject old transactions, fault
+             markers that were not compiled or activated, and missing membership with no durable
+             DML/DDL overlap consequence.
+sensitivity: EXECUTION-CONFIRMED by id2700003 on real TiKV with default MDL ON.
+specificity: HIGH for the root when paired with the exact fault stack and owner-only GREEN; production
+             frequency depends on independent server-info lease loss while schema sync remains live.
+status:      USED + EXECUTION-CONFIRMED by id2700003.
+```

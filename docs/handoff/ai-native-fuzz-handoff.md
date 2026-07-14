@@ -2394,3 +2394,33 @@ TiDB/client-go/TiKV issue 搜索无 exact root，#65757 是不同的 stale-secon
 `assets/store/txn-async-checknotexists-proof-closure-results.jsonl`、
 `docs/bug-drafts/ai-native-async-checknotexists-recovery-partial-commit-draft.md`、
 `docs/method-cases/ai-native-id2550003-recovery-certificate-proof-closure.md`。临时源码改动已归位。
+
+**2026-07-14 MDL-on txn/DDL cross-layer critical consequence hit：`id2700003` 证明 server-info
+Restart 会在 membership publication 成功前安装 live replacement session，单次 publication 失败可永久
+压掉 retry，并让 ADD INDEX 与旧事务共同造成 row/index 物理不一致。** 选题来自当前源码证明义务：
+MDL DDL 的 wait set 来自 `/tidb/server/info`，而 MDL 事务在 commit 时令
+`needCheckSchemaByDelta=false`，所以 membership publication 是两条安全链的共同 owner。独立 RED 前未用
+PR review、issue 或修复历史。
+
+探索过程保留了三个重要反例。直接 `SetSessionManager(nil)` 虽得到 COMMIT success + 1/0 + 8223，但只
+证明后果，不证明生产可达；真实双 TiDB 进程整体 `SIGSTOP` 95 秒后，schema syncer 同时重启，validator
+以 `restartSchemaVer` 拒绝旧事务并返回 8028，所以 broad node stall 是 GREEN；最初自定义
+`failpoint.Inject` 没有执行 `make failpoint-enable`，marker 实际是 compile-time no-op，相关输出全部记
+INVALID。最终 real-TiKV 精确调度只关闭 server-info session，保持 schema-sync live，在 Restart 前 pause，
+让 replacement lease 创建成功但第一次 `StoreServerInfo` 明确返回
+`mock store server info error`。当前源码随后不再重试，ADD INDEX 成功、旧 COMMIT 成功、table/index=1/0，
+`ADMIN CHECK` 8223。仅在失败时 restore completed old session 并 close unpublished replacement，日志出现
+第二次 Restart success，DDL 等旧事务，最终 1/1 + ADMIN green。
+
+远端 `found_bug id2700003/high/confirmed` 已入库：129 surfaces、106 roots、52 high、114 confirmed；
+post-RED GitHub 搜索无 exact root，尚未提 upstream issue。生产触发卡必须原样保留窄条件：server-info
+lease 单独结束、schema-sync lease 继续存活；replacement grant 成功后五次 Put 失败，但 replacement
+session 随后保持 live 并覆盖 DDL+COMMIT。MDL、事务和 90 秒 TTL 都是默认值，但故障顺序频率不能夸大。
+新增 S37 extension `FAILED_PUBLICATION_LIVE_OWNER_RETRY_SUPPRESSION` 与 O65；方法硬门新增
+`fault_activation_witness`，任何注入行必须在同一 run 证明目标 producer 真被执行。资产入口：
+`assets/bug-db/ai-native-mdl-server-info-restart-publication.sql`、
+`assets/store/logs/mdl-server-info-restart-publication-red-green.json`、
+`docs/bug-drafts/ai-native-mdl-server-info-restart-publication-draft.md`、
+`docs/method-cases/ai-native-id2700003-failed-publication-live-owner.md`、
+`scaffolds/tidb-tests/ai_native_mdl_server_info_restart_test.go` 及两份 failpoint/GREEN patch。暂停本 root 的
+DDL/事务/error/TTL 变体；下一轮迁移 S37 extension 到另一个 membership/routing/recovery consumer。

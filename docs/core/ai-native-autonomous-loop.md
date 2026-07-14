@@ -2134,3 +2134,35 @@ Method improvement: model replay values as
 `certificate(value,provenance,logical_owner,generation,predicate)`, not raw array elements. Add
 `RETRY_CACHE_PROVENANCE_AND_IDENTITY` after allowed-outcome admission and before expensive fault
 design. Stop after one cache/provenance/owner/consumer root.
+
+## Failed membership publication tick: live replacement suppresses retry, EXECUTED (2026-07-14)
+
+This tick started from the current-source MDL proof: DDL trusts leased server membership, and MDL
+transactions skip schema-delta validation because they trust DDL's wait. Issues and history stayed
+closed until the real-TiKV RED and exact owner GREEN.
+
+```text
+P:             replacement server-info session is live.
+Q:             it is safe to install that session before membership Put succeeds.
+F:             Put fails; loop waits on live unpublished session and never retries.
+WEAK RED:      direct manager removal gives COMMIT success and table/index 1/0.
+BROAD CONTROL: whole-process 95s stall restarts schema validator; COMMIT returns 8028.
+INVALID:       custom Inject markers compiled as no-ops before make failpoint-enable.
+EXACT RED:     same run logs StoreServerInfo error; ADD INDEX success; COMMIT success; 1/0; 8223.
+OWNER GREEN:   restore completed prior owner and close unpublished replacement; retry succeeds;
+               DDL waits; table/index 1/1; ADMIN green.
+INTEGRATE:     id2700003 high / critical consequence; 129 surfaces, 106 roots, 52 high,
+               114 confirmed; no exact post-RED issue match.
+```
+
+Production reachability is intentionally narrow: server-info session loss must not restart the
+schema-sync session. Replacement lease grant succeeds, then all five registration Put attempts fail
+during a short recovery flap, and the unpublished replacement remains live through DDL and COMMIT.
+MDL and SQL variables remain at defaults. Whole-node outage is not claimed as the producer because
+its sibling validator owner fails closed.
+
+Method improvement: every injected matrix row now needs `fault_activation_witness` in the same run.
+Enabling a named failpoint is not evidence; require an exact stack/log, call counter, captured RPC, or
+state transition. Extend S37 with `FAILED_PUBLICATION_LIVE_OWNER_RETRY_SUPPRESSION`: audit
+`create owner -> assign current -> publish` sequences where publication errors return to a loop that
+waits only on the new owner's completion. Local liveness can be the reason shared state never heals.

@@ -1370,6 +1370,38 @@ status:     validated/terminal - local RED/counterfactual GREEN and real-PD/TiKV
 stop rule:  one root per destroyed retry owner. Payload types and policy actions are blast radius.
 ```
 
+### S37 extension: live replacement owner suppresses failed publication retry
+
+id2700003 adds the dual failure shape. The publisher does not destroy a pending payload. Instead it
+installs a new long-lived session before shared publication succeeds. When publication fails, the
+loop waits for that live but unpublished owner to finish and therefore never retries the missing
+payload.
+
+```text
+selector:   replacement owner becomes current before durable/shared publication succeeds
+candidate:  create replacement owner -> assign current owner -> fallible publication
+            intersect error return/log-only handling
+            intersect next retry waits only on replacement owner completion
+            intersect a fresh consumer treats absent shared state as permission
+prediction:
+  - one transient publication error survives a later healthy window;
+  - the producer owns a live lease/session/watcher but consumers see no registration;
+  - retry is suppressed precisely because local liveness is green;
+  - membership, quorum, routing, schema, or recovery consumers may omit a live participant.
+oracle gate:
+  - prove fault activation in the same run with an exact call/log/state witness;
+  - fail one publication, then make the publisher healthy;
+  - prove the replacement owner remains live while shared state stays absent;
+  - observe the highest fresh consumer and public-plus-durable consequence;
+  - restore only publication/owner ordering and rerun the identical schedule;
+  - run broad node/control-plane failure as a control and name any sibling fail-closed owner.
+status:     VALIDATED by id2700003. Current source and real TiKV produce ADD INDEX success plus old
+            COMMIT success, table/index 1/0, and ADMIN 8223. Restoring prior retry ownership makes
+            registration retry, DDL wait, and table/index 1/1 with ADMIN green. MDL remains ON.
+stop rule:  one root per publication owner/highest consumer. Error strings, DDL verbs, transaction
+            modes, timing values, and table shapes are blast radius.
+```
+
 ## S38: deferred terminal error dominates success
 
 ```text

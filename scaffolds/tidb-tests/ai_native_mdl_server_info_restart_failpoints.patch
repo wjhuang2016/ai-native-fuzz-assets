@@ -1,0 +1,36 @@
+diff --git a/pkg/domain/serverinfo/syncer.go b/pkg/domain/serverinfo/syncer.go
+index e6e3b7e793..4114f8f0f1 100644
+--- a/pkg/domain/serverinfo/syncer.go
++++ b/pkg/domain/serverinfo/syncer.go
+@@ -121,7 +121,10 @@ func (s *Syncer) NewSessionAndStoreServerInfo(ctx context.Context) error {
+ func (s *Syncer) StoreServerInfo(ctx context.Context) error {
+ 	if s.etcdCli == nil {
+ 		return nil
+ 	}
++	failpoint.Inject("mockStoreServerInfoError", func() {
++		failpoint.Return(errors.New("mock store server info error"))
++	})
+ 	info := s.info.Load()
+ 	infoBuf, err := info.Marshal()
+ 	if err != nil {
+@@ -226,8 +229,11 @@ func (s *Syncer) GetAllServerInfo(ctx context.Context) (map[string]*ServerInfo,
+ // Done returns a channel that closes when the info syncer is no longer being refreshed.
+ func (s *Syncer) Done() <-chan struct{} {
+ 	if s.etcdCli == nil {
+ 		return make(chan struct{}, 1)
+ 	}
++	failpoint.Inject("mockCloseServerInfoSession", func() {
++		_ = s.session.Close()
++	})
+ 	return s.session.Done()
+ }
+ 
+@@ -296,7 +302,8 @@ func (s *Syncer) ServerInfoSyncLoop(store tidbkv.Storage, exitCh chan struct{})
+ 		case <-ticker.C:
+ 			s.reporter.ReportMinStartTS(store, s.session)
+ 		case <-s.Done():
+ 			logutil.BgLogger().Info("server info syncer need to restart")
++			failpoint.Inject("beforeServerInfoRestart", func() {})
+ 			if err := s.Restart(context.Background()); err != nil {
+ 				logutil.BgLogger().Error("server info syncer restart failed", zap.Error(err))
+ 			} else {

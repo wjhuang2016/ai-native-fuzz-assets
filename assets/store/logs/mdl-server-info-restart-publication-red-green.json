@@ -1,0 +1,43 @@
+{
+  "id": 2700003,
+  "root_cause_id": "server-info-restart-publishes-live-session-before-registration",
+  "source": {
+    "tidb": "2964713e267eac6eab92c4be53e9ad0641df2e9f",
+    "storage": "real TiKV nightly",
+    "mdl": "ON"
+  },
+  "red": {
+    "fault_witness": [
+      "server info syncer need to restart",
+      "server info syncer restart failed: mock store server info error"
+    ],
+    "ddl": "success",
+    "commit": "success",
+    "table_rows": [[1, 10]],
+    "index_rows": [],
+    "admin_check": "8223 data inconsistency"
+  },
+  "green": {
+    "change": "restore the completed prior session and close the unpublished replacement when StoreServerInfo fails",
+    "fault_witness": [
+      "server info syncer restart failed: mock store server info error",
+      "server info syncer need to restart",
+      "server info syncer restarted"
+    ],
+    "ddl_waited_for_old_transaction": true,
+    "commit": "success",
+    "table_rows": [[1, 10]],
+    "index_rows": [[1, 10]],
+    "admin_check": "green"
+  },
+  "reachability_boundary": {
+    "required": "server-info session ends while schema-sync session remains live",
+    "whole_process_stall_control": "GREEN: schema validator restarts and old COMMIT returns 8028",
+    "publication_failure": "replacement lease grant succeeds, then all five server-info Put retries fail, and the replacement session remains live"
+  },
+  "invalid_runs": [
+    "Directly removing the session manager proved the consequence but not production reachability.",
+    "Initial custom failpoint runs were invalid because failpoint source conversion was not enabled.",
+    "Externally revoking the lease did not immediately close the local Done channel within the observation window."
+  ]
+}

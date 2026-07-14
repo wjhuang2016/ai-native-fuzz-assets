@@ -733,3 +733,27 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: external IDs, staging schemas, DML syntax, hot-row choice, scan delays, and conflict
   timing are blast radius. Reopen only for another retry cache, provenance class, or logical-owner
   binding.
+
+## 2026-07-14 update: id2700003
+
+- Remote `found_bug`: 129 surfaces, 106 distinct root causes, 52 high-severity rows, 114 confirmed
+  rows.
+- New root: `server-info-restart-publishes-live-session-before-registration`.
+- Consequence: C3 silent persistent row/index divergence. `ALTER TABLE ... ADD INDEX` and an old
+  transaction both return success, but a fresh table scan is `[[1,10]]`, a forced new-index scan is
+  empty, and `ADMIN CHECK TABLE` returns 8223.
+- Production trigger: one TiDB's server-info session ends while its schema-sync session remains
+  live; replacement lease creation succeeds, all five membership `Put` retries fail during a short
+  control-plane recovery flap, and that unpublished replacement lease remains live through DDL and
+  old-transaction COMMIT. Classic defaults and MDL ON are retained.
+- Reachability boundary: a whole-process 95-second stall is GREEN because schema-sync restart makes
+  old COMMIT return 8028. The severe surface requires independent server-info lease loss; this is a
+  hard condition, not omitted detail.
+- Exact owner GREEN: on publication failure, restore the completed prior session and close the
+  unpublished replacement. The loop retries, membership returns, DDL waits for old COMMIT, and
+  table/index finish `1/1` with green `ADMIN CHECK`.
+- Distinctness: S37 previously covered failed publication followed by destruction of the retry
+  payload. This root installs a live replacement owner before publication; its liveness suppresses
+  the retry while the shared payload is absent.
+- Counting rule: DDL verbs, table/index shapes, transaction modes, Put error strings, retry delays,
+  and lease IDs are blast radius. Reopen only for another publication owner or highest consumer.

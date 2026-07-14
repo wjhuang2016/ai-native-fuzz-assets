@@ -1,0 +1,19 @@
+diff --git a/pkg/domain/serverinfo/syncer.go b/pkg/domain/serverinfo/syncer.go
+index e6e3b7e793..b2bc4728a1 100644
+--- a/pkg/domain/serverinfo/syncer.go
++++ b/pkg/domain/serverinfo/syncer.go
+@@ -112,7 +112,13 @@ func (s *Syncer) NewSessionAndStoreServerInfo(ctx context.Context) error {
+ 	session, err := tidbutil.NewSession(ctx, logPrefix, s.etcdCli, tidbutil.NewSessionDefaultRetryCnt, util.SessionTTL)
+ 	if err != nil {
+ 		return err
+ 	}
++	oldSession := s.session
+ 	s.session = session
+-	return s.StoreServerInfo(ctx)
++	if err := s.StoreServerInfo(ctx); err != nil {
++		s.session = oldSession
++		_ = session.Close()
++		return err
++	}
++	return nil
+ }
