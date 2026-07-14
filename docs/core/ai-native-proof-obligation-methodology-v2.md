@@ -3415,21 +3415,32 @@ may compress only the timing needed to reach it and must name its production-equ
 
 Before promoting a RED, write a **production trigger card**. Generic phrases such as "a network
 error", "an in-flight operation fails", or "the process pauses" are not sufficient. The card must
-close all five fields:
+close all seven fields:
 
 ```text
-workload:   the supported SQL/API operation and data shape that enters the path
-producer:   the ordinary concurrent request, resource event, component failure, or lifecycle event
-schedule:   the required ordering and lifetime inequalities, including the negative control
-topology:   which TiDB/TiKV/PD nodes remain healthy and which boundary is delayed or lost
-outcome:    the exact client-visible result followed by the fresh durable-state violation
+production_workload: the supported SQL/API operation, transaction mode, and data shape that enters the path
+natural_producer:    the ordinary concurrent request, resource event, component failure, or lifecycle event
+ordering:            the exact before/after and lifetime inequalities that make the producer reach the path
+defaults:            every relevant default and non-default setting, including the MDL state
+topology:            which TiDB/TiKV/PD nodes remain healthy and which boundary is delayed, moved, or lost
+production_outcome:  the exact client result and the violation observed from a fresh session after finalization
+control:             one nearby execution that breaks a required inequality or enables the exact protection
 ```
+
+A natural producer must explain how an ordinary deployment creates the ordering. For example, name
+the business worker that holds a hot guard-row lock, why its transaction can exceed the default
+50-second lock timeout, which later statement waits on that row, and why the application can still
+issue `COMMIT` after receiving 1205. Merely replacing that chain with "TiKV is slow" or "an RPC times
+out" does not establish reachability. If the consequence requires a later action such as `COMMIT`,
+retry, recovery, or a second request, the card must explain why a real client performs that action.
 
 A failpoint is only a schedule compressor. It may make the producer deterministic, but it cannot be
 the producer in the card. At least one product-level run must retain the real proof owner,
-replacement/fallback path, irreversible consumer, and durable-state oracle. If the natural producer
-cannot be named concretely, or a downstream guard rejects the manufactured state, keep the result as
-a negative asset and do not call it a production bug.
+replacement/fallback path, irreversible consumer, and durable-state oracle. The control must break a
+named inequality or exercise the exact protection, rather than merely omit the failpoint. If the
+natural producer cannot be named concretely, a required non-default switch is hidden, the client has
+no credible path to the irreversible action, or a downstream guard rejects the manufactured state,
+keep the result as a negative asset and do not call it a production bug.
 
 ### Close fast-path proofs over the full execution resource set
 
@@ -3505,3 +3516,34 @@ a later COMMIT makes parent and child `2/2`. Retaining the savepoint through fin
 Store the selector as `ROLLBACK_CHECKPOINT_FALLIBILITY_HORIZON`. It is distinct from lock-set closure:
 one asks whether published effects retain serialization ownership; this one asks whether they retain
 rollback ownership until the whole public operation is terminal.
+
+## Compare transparent retries with the legal one-attempt outcome set
+
+A same-final-state control is not automatically a valid retry oracle. Transaction isolation can make
+the original transaction's legal input set different from a new transaction started after the
+competitor commits. Before promoting any retry mismatch, enumerate:
+
+```text
+transaction snapshot and when it was established
+statement read/forUpdateTS and when it was established
+locking/current reads
+non-locking consistent reads
+every legal placement of one non-retried statement relative to the competitor commit
+```
+
+The admission condition is set membership, not equality with one preferred control:
+
+```text
+retry_output not in allowed_one_attempt_outputs(same isolation, snapshot, locks, and session state)
+```
+
+The scalar-subquery calibration shows why this matters. A hidden pessimistic retry durably produced
+`(route=2, policy=10)` while a fresh transaction from the final state produced `(2,20)`. That looked
+like stale optimizer state. But a real-TiKV no-retry control first established the old RR snapshot,
+then let the publisher commit `(2,20)`, and finally ran the UPDATE once. The DML current read saw route
+`2`; the scalar consistent read saw policy `10`; `ExecRetryCount=0`; the same `(2,10)` was legal.
+
+Declining the retry and returning 9007 was GREEN but was not owner proof: fail-closed behavior can
+remove a supported result without repairing a violated contract. Store this gate as
+`RETRY_ALLOWED_ONE_ATTEMPT_SET`. Reopen only when no legal single attempt can produce the retry's
+terminal result or durable state.

@@ -1,0 +1,55 @@
+diff --git a/pkg/sessiontxn/txn_context_test.go b/pkg/sessiontxn/txn_context_test.go
+index 566126f66a..09a8f5db53 100644
+--- a/pkg/sessiontxn/txn_context_test.go
++++ b/pkg/sessiontxn/txn_context_test.go
+@@ -978,6 +978,50 @@ func TestOptimisticTxnRetryInPessimisticMode(t *testing.T) {
+ 	})
+ }
+ 
++func TestAINativePessimisticRetryLocalTempMultiTableUpdate(t *testing.T) {
++	store, _ := setupTxnContextTest(t)
++	competitor := testkit.NewTestKit(t, store)
++	competitor.MustExec("use test")
++	competitor.MustExec("truncate table t1")
++	competitor.MustExec("insert into t1 values (1, 10)")
++
++	probe := testkit.NewTestKit(t, store)
++	probe.MustExec("use test")
++	probe.MustExec("create temporary table ai_probe(id int primary key, v int not null)")
++	probe.MustExec("insert into ai_probe values (1, 30)")
++	probe.MustExec("begin pessimistic")
++	err := probe.ExecToErr(`update t1 join ai_probe on t1.id = ai_probe.id
++		set t1.v = ai_probe.v, ai_probe.v = ai_probe.v + 1`)
++	require.NoError(t, err)
++	probe.MustQuery("select * from ai_probe").Check(testkit.Rows("1 31"))
++	probe.MustQuery("select * from t1").Check(testkit.Rows("1 30"))
++	probe.MustExec("rollback")
++
++	worker := testkit.NewSteppedTestKit(t, store)
++	worker.MustExec("use test")
++	worker.MustExec("create temporary table ai_tmp(id int primary key, v int not null)")
++	worker.MustExec("insert into ai_tmp values (1, 40)")
++	worker.MustExec("begin pessimistic")
++	defer worker.MustExec("rollback")
++
++	worker.SetBreakPoints(
++		sessiontxn.BreakPointBeforeExecutorFirstRun,
++		sessiontxn.BreakPointOnStmtRetryAfterLockError,
++	)
++	worker.SteppedMustExec(`update t1 join ai_tmp on t1.id = ai_tmp.id
++		set t1.v = ai_tmp.v, ai_tmp.v = ai_tmp.v + 1`)
++	worker.ExpectStopOnBreakPoint(sessiontxn.BreakPointBeforeExecutorFirstRun)
++	competitor.MustExec("update t1 set v = v + 1 where id = 1")
++
++	worker.Continue().ExpectStopOnBreakPoint(sessiontxn.BreakPointOnStmtRetryAfterLockError)
++	worker.Continue().ExpectIdle()
++	worker.MustQuery("select * from ai_tmp").Check(testkit.Rows("1 41"))
++	worker.MustExec("commit")
++	competitor.MustQuery("select * from t1").Check(testkit.Rows("1 40"))
++	competitor.MustExec("admin check table t1")
++	t.Log("natural write conflict forced one pessimistic statement retry; temp and durable values reflect one execution")
++}
++
+ func TestTSOCmdCountForPrepareExecute(t *testing.T) {
+ 	// This is a mock workload mocks one which discovers that the tso request count is abnormal.
+ 	// After the bug fix, the tso request count recovers, so we use this workload to record the current tso request count

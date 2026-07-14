@@ -2045,12 +2045,14 @@ network, runtime, CPU, or scheduling pause longer than the fixed five-second cac
 remains healthy. A primary lock must remain live: current client-go gives a roughly 4 MiB write about
 12 seconds, whereas the small-transaction three-second TTL is a negative control.
 
-This must be written as a production trigger card before issue promotion: supported workload, natural
-event producer, exact ordering/lifetime inequalities, healthy/unhealthy component topology, public
-terminal result, and fresh durable-state consequence. "Network failure" or "an in-flight RPC returns
-an error" is not a producer description. Failpoints may compress the named schedule, but cannot
-replace it. A candidate without this card remains SOURCE/LOCAL evidence even when its injected RED is
-deterministic.
+This must be written as a seven-field production trigger card before issue promotion: supported
+workload, natural event producer, exact ordering/lifetime inequalities, defaults and non-defaults
+including MDL, healthy/unhealthy component topology, public result plus fresh-session durable-state
+consequence, and a control that breaks one required inequality or enables the exact protection.
+"Network failure" or "an in-flight RPC returns an error" is not a producer description. The card must
+also explain why a real client reaches any later `COMMIT`, retry, recovery, or second request required
+to make the consequence durable. Failpoints may compress the named schedule, but cannot replace it.
+A candidate without this card remains SOURCE/LOCAL evidence even when its injected RED is deterministic.
 
 Method improvement: store proof facts as argument-bearing tokens such as
 `checked(commitTS=x, lease=L)`, not booleans such as `commitTSChecked=true`. Enumerate every assignment
@@ -2084,3 +2086,23 @@ Method improvement: model each rollback capability as `protects(C,E,until=T)` an
 with every later public error site. Nested success is not the terminal boundary of the enclosing user
 operation. The new selector is `ROLLBACK_CHECKPOINT_FALLIBILITY_HORIZON`; stop after one checkpoint
 owner/release/highest-consumer root.
+
+## Retry allowed-outcome calibration: scalar-subquery candidate rejected (2026-07-14)
+
+```text
+CANDIDATE:   pessimistic retry count 1; success + COMMIT; durable route/policy = 2/10.
+WEAK ORACLE: fresh transaction from final state produced 2/20.
+COUNTERFACT: forced replan still produced 2/10; declining retry returned 9007 and preserved target.
+CONTRACT:    establish old RR snapshot, let publisher commit 2/20, run UPDATE once.
+WITNESS:     retry count 0; durable route/policy = 2/10; ADMIN CHECK passed.
+VERDICT:     INVALID(oracle-too-strong); no found_bug row and no issue.
+```
+
+The seven-field production card was useful but not sufficient. It proved that the schedule was real;
+it did not prove that the outcome violated the isolation contract. The LOOP now adds an admission
+step between production reachability and RED promotion: enumerate the legal one-attempt outcome set
+under the same transaction snapshot, statement TS, and current-read/consistent-read split. A fresh
+final-state control is only one member candidate, not the oracle by itself.
+
+Method improvement: `RETRY_ALLOWED_ONE_ATTEMPT_SET`. A fail-closed GREEN is not causal proof unless
+the original output is first shown to be outside every legal one-attempt outcome.

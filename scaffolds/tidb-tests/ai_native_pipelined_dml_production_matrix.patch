@@ -1,0 +1,210 @@
+diff --git a/tests/realtikvtest/pipelineddmltest/pipelineddml_test.go b/tests/realtikvtest/pipelineddmltest/pipelineddml_test.go
+index cf1dfb295b..151026a728 100644
+--- a/tests/realtikvtest/pipelineddmltest/pipelineddml_test.go
++++ b/tests/realtikvtest/pipelineddmltest/pipelineddml_test.go
+@@ -598,6 +598,205 @@ func TestPipelinedDMLInsertOnDuplicateKeyUpdateInTxn(t *testing.T) {
+ 	}
+ }
+ 
++func TestAINativePipelinedDMLLateDataErrorAtomicity(t *testing.T) {
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBMinFlushKeys", `return(10)`))
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBMinFlushSize", `return(100)`))
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBForceFlushSizeThreshold", `return(10240)`))
++	defer func() {
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBMinFlushKeys"))
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBMinFlushSize"))
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBForceFlushSizeThreshold"))
++	}()
++
++	store := realtikvtest.CreateMockStoreAndSetup(t)
++	tk := testkit.NewTestKit(t, store)
++	fresh := testkit.NewTestKit(t, store)
++	tk.MustExec("use test")
++	fresh.MustExec("use test")
++	tk.MustQuery("select @@tidb_enable_metadata_lock").Check(testkit.Rows("1"))
++
++	tk.MustExec("drop table if exists ai_src, ai_check, ai_unique")
++	tk.MustExec("create table ai_src(id int primary key, v int)")
++	values := bytes.NewBuffer(make([]byte, 0, 32768))
++	values.WriteString("insert into ai_src values ")
++	for i := range 2000 {
++		if i > 0 {
++			values.WriteString(",")
++		}
++		_, _ = fmt.Fprintf(values, "(%d,%d)", i, i)
++	}
++	tk.MustExec(values.String())
++	tk.MustExec("set session tidb_dml_type = bulk")
++
++	// A late NOT NULL error must roll back generations already flushed to TiKV.
++	tk.MustExec("create table ai_check(id int primary key, v int not null, pad varchar(128))")
++	err := tk.ExecToErr("insert into ai_check select id, if(id = 1500, null, v), repeat('x', 96) from ai_src order by id")
++	require.ErrorContains(t, err, "Column 'v' cannot be null")
++	for _, warning := range tk.Session().GetSessionVars().StmtCtx.GetWarnings() {
++		require.NotContains(t, warning.Err.Error(), "Fallback to standard mode")
++	}
++	fresh.MustQuery("select count(*) from ai_check").Check(testkit.Rows("0"))
++	fresh.MustExec("admin check table ai_check")
++
++	// A late unique-key collision must also undo earlier row and index rewrites.
++	tk.MustExec("set session tidb_dml_type = standard")
++	tk.MustExec("create table ai_unique(id int primary key, u int, pad varchar(128), unique key uk_u(u))")
++	tk.MustExec("insert into ai_unique select id, id, repeat('y', 96) from ai_src")
++	tk.MustExec("set session tidb_dml_type = bulk")
++	err = tk.ExecToErr("update ai_unique set u = if(id = 1500, 1800, u + 10000), pad = repeat('z', 96) order by id")
++	require.ErrorContains(t, err, "Duplicate entry '1800'")
++	for _, warning := range tk.Session().GetSessionVars().StmtCtx.GetWarnings() {
++		require.NotContains(t, warning.Err.Error(), "Fallback to standard mode")
++	}
++	fresh.MustQuery("select id, u from ai_unique where id in (0, 1499, 1500, 1800) order by id").
++		Check(testkit.Rows("0 0", "1499 1499", "1500 1500", "1800 1800"))
++	fresh.MustQuery("select count(*), sum(u) from ai_unique").Check(testkit.Rows("2000 1999000"))
++	fresh.MustExec("admin check table ai_unique")
++}
++
++func TestAINativePipelinedDMLMutationAlgebra(t *testing.T) {
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBMinFlushKeys", `return(50)`))
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBMinFlushSize", `return(1024)`))
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBForceFlushSizeThreshold", `return(32768)`))
++	defer func() {
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBMinFlushKeys"))
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBMinFlushSize"))
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBForceFlushSizeThreshold"))
++	}()
++
++	store := realtikvtest.CreateMockStoreAndSetup(t)
++	tk := testkit.NewTestKit(t, store)
++	fresh := testkit.NewTestKit(t, store)
++	tk.MustExec("use test")
++	fresh.MustExec("use test")
++	tk.MustQuery("select @@tidb_enable_metadata_lock").Check(testkit.Rows("1"))
++
++	createTable := func(name string) {
++		tk.MustExec(fmt.Sprintf(`create table %s(
++			id int primary key,
++			email int not null,
++			phone int not null,
++			payload int not null,
++			g int as (payload %% 97) stored,
++			unique key uk_email(email),
++			unique key uk_phone(phone),
++			key idx_g(g))`, name))
++	}
++	assertNoFallback := func() {
++		for _, warning := range tk.Session().GetSessionVars().StmtCtx.GetWarnings() {
++			require.NotContains(t, warning.Err.Error(), "Fallback to standard mode")
++		}
++	}
++	compareTables := func(standard, bulk string) {
++		stdRows := fresh.MustQuery(fmt.Sprintf("select id, email, phone, payload, g from %s order by id", standard)).Rows()
++		bulkRows := fresh.MustQuery(fmt.Sprintf("select id, email, phone, payload, g from %s order by id", bulk)).Rows()
++		require.Equal(t, stdRows, bulkRows)
++		fresh.MustExec("admin check table " + standard)
++		fresh.MustExec("admin check table " + bulk)
++	}
++	buildValues := func(prefix string, count int, row func(int) (int, int, int, int)) string {
++		buf := bytes.NewBuffer(make([]byte, 0, count*32))
++		buf.WriteString(prefix)
++		for i := range count {
++			if i > 0 {
++				buf.WriteString(",")
++			}
++			id, email, phone, payload := row(i)
++			_, _ = fmt.Fprintf(buf, "(%d,%d,%d,%d)", id, email, phone, payload)
++		}
++		return buf.String()
++	}
++
++	createTable("ai_replace_std")
++	createTable("ai_replace_bulk")
++	replaceRows := func(i int) (int, int, int, int) {
++		return i % 300, 1000 + (i*17+i/7)%350, 2000 + (i*29+i/11)%360, i
++	}
++	tk.MustExec("set session tidb_dml_type = standard")
++	tk.MustExec(buildValues("replace into ai_replace_std(id,email,phone,payload) values ", 1500, replaceRows))
++	tk.MustExec("set session tidb_dml_type = bulk")
++	tk.MustExec(buildValues("replace into ai_replace_bulk(id,email,phone,payload) values ", 1500, replaceRows))
++	assertNoFallback()
++	compareTables("ai_replace_std", "ai_replace_bulk")
++
++	createTable("ai_ondup_std")
++	createTable("ai_ondup_bulk")
++	onDupRows := func(i int) (int, int, int, int) {
++		id := i % 300
++		return id, 5000 + id, 6000 + id, i
++	}
++	tk.MustExec("set session tidb_dml_type = standard")
++	tk.MustExec(buildValues("insert into ai_ondup_std(id,email,phone,payload) values ", 1800, onDupRows) +
++		" on duplicate key update payload = values(payload)")
++	tk.MustExec("set session tidb_dml_type = bulk")
++	tk.MustExec(buildValues("insert into ai_ondup_bulk(id,email,phone,payload) values ", 1800, onDupRows) +
++		" on duplicate key update payload = values(payload)")
++	assertNoFallback()
++	compareTables("ai_ondup_std", "ai_ondup_bulk")
++}
++
++func TestAINativePipelinedDMLLateNaturalConflictAtomicity(t *testing.T) {
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBMinFlushKeys", `return(10)`))
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBMinFlushSize", `return(100)`))
++	require.NoError(t, failpoint.Enable("tikvclient/pipelinedMemDBForceFlushSizeThreshold", `return(10240)`))
++	defer func() {
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBMinFlushKeys"))
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBMinFlushSize"))
++		require.NoError(t, failpoint.Disable("tikvclient/pipelinedMemDBForceFlushSizeThreshold"))
++	}()
++
++	store := realtikvtest.CreateMockStoreAndSetup(t)
++	bulk := testkit.NewTestKit(t, store)
++	competitor := testkit.NewTestKit(t, store)
++	fresh := testkit.NewTestKit(t, store)
++	for _, tk := range []*testkit.TestKit{bulk, competitor, fresh} {
++		tk.MustExec("use test")
++	}
++	bulk.MustQuery("select @@tidb_enable_metadata_lock").Check(testkit.Rows("1"))
++	bulk.MustExec("drop table if exists ai_conflict_src, ai_conflict_dst")
++	bulk.MustExec("create table ai_conflict_src(id int primary key, u int, pad varchar(128))")
++	bulk.MustExec("create table ai_conflict_dst(id int primary key, u int, pad varchar(128), unique key uk_u(u))")
++
++	values := bytes.NewBuffer(make([]byte, 0, 262144))
++	values.WriteString("insert into ai_conflict_src values ")
++	for i := range 2000 {
++		if i > 0 {
++			values.WriteString(",")
++		}
++		_, _ = fmt.Fprintf(values, "(%d,%d,'%s')", i, i, strings.Repeat("x", 96))
++	}
++	bulk.MustExec(values.String())
++	bulk.MustExec("set session tidb_dml_type = bulk")
++
++	// Let generation 1 prewrite normally, then hold generation 2 while an
++	// ordinary online transaction commits a key from the unflushed suffix.
++	require.NoError(t, failpoint.Enable("tikvclient/beforePipelinedFlush", `1*off->pause`))
++	defer func() { _ = failpoint.Disable("tikvclient/beforePipelinedFlush") }()
++	errCh := make(chan error, 1)
++	go func() {
++		errCh <- bulk.ExecToErr("insert into ai_conflict_dst select * from ai_conflict_src order by id")
++	}()
++	time.Sleep(500 * time.Millisecond)
++	competitor.MustExec("insert into ai_conflict_dst values (1500, 999999, 'online-winner')")
++	require.NoError(t, failpoint.Disable("tikvclient/beforePipelinedFlush"))
++
++	select {
++	case err := <-errCh:
++		require.Error(t, err)
++		require.True(t,
++			kv.ErrWriteConflict.Equal(err) || strings.Contains(err.Error(), "Duplicate entry") || strings.Contains(err.Error(), "assertion failed"),
++			"unexpected late-conflict error: %v", err)
++	case <-time.After(30 * time.Second):
++		t.Fatal("bulk DML did not finish after releasing the second flush")
++	}
++	for _, warning := range bulk.Session().GetSessionVars().StmtCtx.GetWarnings() {
++		require.NotContains(t, warning.Err.Error(), "Fallback to standard mode")
++	}
++	fresh.MustQuery("select id, u, pad from ai_conflict_dst order by id").
++		Check(testkit.Rows("1500 999999 online-winner"))
++	fresh.MustExec("admin check table ai_conflict_dst")
++}
++
+ func TestPipelinedDMLDelete(t *testing.T) {
+ 	store := realtikvtest.CreateMockStoreAndSetup(t)
+ 	tk := testkit.NewTestKit(t, store)

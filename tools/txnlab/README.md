@@ -80,6 +80,11 @@ and 32 KiB total. The outer process kills the complete scout process group at th
 Prompt-only command/token budgets are intentionally not treated as controls; the main loop must
 curate the source packet first.
 
+Every scout candidate must include a production trigger card: a supported production workload,
+ordinary event producer, exact ordering/lifetime inequalities, default and non-default settings,
+component topology, client result plus fresh-session durable consequence, and a negative control.
+A failpoint or pause may compress that named schedule, but cannot stand in for the producer.
+
 The 32 KiB cap is calibrated, not decorative. A 47 KiB packet timed out at 75 seconds, while a
 25 KiB packet completed in about 45 seconds. Reported token usage remains observational because the
 CLI does not expose a hard output-token limit in this provider.

@@ -12,7 +12,9 @@ from tools.txnlab.scout import (
     ScoutError,
     SourceRegion,
     build_source_packet,
+    render_scout_prompt,
     run_source_packet_scout,
+    validate_scout_result,
 )
 
 
@@ -94,6 +96,63 @@ class SourcePacketScoutTest(unittest.TestCase):
         prompt = (output / "prompt.txt").read_text()
         self.assertIn("Do not use tools", prompt)
         self.assertIn("SOURCE_PACKET=", prompt)
+
+    def test_candidate_requires_concrete_production_trigger_card(self) -> None:
+        packet = build_source_packet(
+            self.config,
+            "find the owner mismatch",
+            [SourceRegion.parse("client-go:sample.go:1:3")],
+        )
+        prompt = render_scout_prompt(packet)
+        for field in (
+            "production_workload",
+            "natural_producer",
+            "ordering",
+            "defaults",
+            "topology",
+            "production_outcome",
+            "control",
+        ):
+            self.assertIn(field, prompt)
+
+        incomplete = {
+            "scope": "test",
+            "candidates": [
+                {
+                    "P": "P",
+                    "Q": "Q",
+                    "F": "F",
+                    "owners": "owner",
+                    "highest_consumer": "data loss",
+                    "oracle": "fresh read",
+                    "confidence": "medium",
+                    "anchors": ["client-go/sample.go:1"],
+                }
+            ],
+            "retired": [],
+        }
+        with self.assertRaisesRegex(ScoutError, "production_workload"):
+            validate_scout_result(incomplete)
+
+        generic = incomplete["candidates"][0] | {
+            "production_workload": "UPDATE an order row in a pessimistic transaction",
+            "natural_producer": "network error",
+            "ordering": "request A starts before request B and finishes after B commits",
+            "defaults": "MDL ON and otherwise default settings",
+            "topology": "two TiDB nodes and three healthy TiKV nodes",
+            "production_outcome": "COMMIT succeeds but a fresh session reads a missing row",
+            "control": "without request B the durable row remains present",
+        }
+        with self.assertRaisesRegex(ScoutError, "natural_producer is generic"):
+            validate_scout_result({"scope": "test", "candidates": [generic], "retired": []})
+
+        concrete = generic | {
+            "natural_producer": (
+                "a TiKV leader transfer after the old leader applies the write but before its "
+                "response reaches TiDB causes the Region request sender to relocate the batch"
+            )
+        }
+        validate_scout_result({"scope": "test", "candidates": [concrete], "retired": []})
 
 
 if __name__ == "__main__":

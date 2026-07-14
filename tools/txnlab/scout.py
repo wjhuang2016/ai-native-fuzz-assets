@@ -23,6 +23,24 @@ MAX_PACKET_BYTES = 32 * 1024
 MAX_QUESTION_CHARS = 4000
 MAX_CANDIDATES = 3
 
+PRODUCTION_CARD_FIELDS = {
+    "production_workload",
+    "natural_producer",
+    "ordering",
+    "defaults",
+    "topology",
+    "production_outcome",
+    "control",
+}
+
+GENERIC_PRODUCER_PATTERNS = (
+    r"^(?:a |an )?network (?:error|failure)$",
+    r"^(?:an? )?(?:rpc|request) (?:error|failure|timeout)$",
+    r"^(?:an? )?in[- ]flight (?:operation|request) (?:fails|returns an? error)$",
+    r"^(?:the )?process (?:pauses|stalls|crashes)$",
+    r"^(?:a )?timeout$",
+)
+
 
 class ScoutError(ValueError):
     """Raised when a source packet or scout result violates its contract."""
@@ -145,8 +163,13 @@ def render_scout_prompt(packet: dict[str, Any]) -> str:
                 "F": "user-visible failure",
                 "owners": "durable owner and finalizer graph",
                 "highest_consumer": "data loss, atomicity, false terminal truth, or serious liveness",
-                "reachability": "supported TiDB SQL/config route",
-                "schedule": "small deterministic schedule",
+                "production_workload": "supported and credible production SQL/API plus data shape",
+                "natural_producer": "ordinary concurrency, latency, failover, resource, or lifecycle event",
+                "ordering": "exact ordering and lifetime inequalities that make the event harmful",
+                "defaults": "default/non-default settings, including MDL state, with every deviation disclosed",
+                "topology": "healthy components and the exact delayed, failed, or moved boundary",
+                "production_outcome": "client result followed by a fresh-session durable consequence",
+                "control": "negative or sibling control that removes one required production condition",
                 "oracle": "strong public plus durable-state oracle",
                 "confidence": "high|medium|low",
                 "anchors": ["component/path:line"],
@@ -160,6 +183,9 @@ def render_scout_prompt(packet: dict[str, Any]) -> str:
         "the internet, issues, PRs, git history, or any file outside this prompt. Retire a shape "
         "when its highest consumer is only transient lock leakage, extra retry, logging, metrics, "
         "TiCDC-only impact, or eventual self-healing. Return JSON only, with no markdown. "
+        "A failpoint, pause, or fabricated error may only compress the timing of a named ordinary "
+        "production event; it cannot be the natural producer. Reject generic trigger descriptions "
+        "such as 'network error', 'in-flight operation fails', or 'process pauses'. "
         f"Return at most {MAX_CANDIDATES} candidates. A candidate must contain every field in "
         f"this contract: {json.dumps(contract, ensure_ascii=True, sort_keys=True)}\n\n"
         f"SOURCE_PACKET={json.dumps(packet, ensure_ascii=True, sort_keys=True)}"
@@ -198,8 +224,13 @@ def validate_scout_result(value: dict[str, Any]) -> None:
         "F",
         "owners",
         "highest_consumer",
-        "reachability",
-        "schedule",
+        "production_workload",
+        "natural_producer",
+        "ordering",
+        "defaults",
+        "topology",
+        "production_outcome",
+        "control",
         "oracle",
         "confidence",
         "anchors",
@@ -212,6 +243,17 @@ def validate_scout_result(value: dict[str, Any]) -> None:
             raise ScoutError(f"candidate {index} is missing fields: {', '.join(missing)}")
         if not isinstance(candidate["anchors"], list) or not candidate["anchors"]:
             raise ScoutError(f"candidate {index} requires at least one source anchor")
+        for field in sorted(PRODUCTION_CARD_FIELDS):
+            value = candidate[field]
+            if not isinstance(value, str) or not value.strip():
+                raise ScoutError(f"candidate {index} requires a concrete {field}")
+        producer = candidate["natural_producer"].strip().lower()
+        if any(re.fullmatch(pattern, producer) for pattern in GENERIC_PRODUCER_PATTERNS):
+            raise ScoutError(
+                f"candidate {index} natural_producer is generic; name the ordinary component event"
+            )
+        if "mdl" not in candidate["defaults"].lower():
+            raise ScoutError(f"candidate {index} defaults must disclose the MDL state")
 
 
 def _terminate_process_group(proc: subprocess.Popen[str]) -> None:

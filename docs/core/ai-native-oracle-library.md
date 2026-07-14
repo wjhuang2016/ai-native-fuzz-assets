@@ -1658,3 +1658,23 @@ specificity: GOOD; definite terminal class, later explicit COMMIT, relational pa
              one-edge checkpoint-lifetime GREEN isolate rollback ownership.
 status:      USED + EXECUTION-CONFIRMED by id2640003 / #69838.
 ```
+
+## O63 transparent_retry_vs_allowed_one_attempt_set
+
+```text
+obligation:  a transparent retry may be called incorrect only when its public or durable output is
+             impossible for every legal one-attempt execution under the same isolation contract.
+form:        record transaction snapshot age, statement forUpdateTS/current-read boundary, consistent
+             reads, locks, and session state; then construct no-retry executions on both sides of the
+             competitor commit and compare the full set with the retry output.
+red:         the retry output is absent from the complete legal one-attempt outcome set.
+invalid:     any no-retry execution reaches the same output, even if a new transaction from the final
+             database state produces a different preferred value.
+blind to:    product contracts that forbid the mixed visibility independently of isolation semantics,
+             and hidden side effects not included in the one-attempt state vector.
+sensitivity: EXECUTION-CONFIRMED as an anti-oracle on real TiKV: retry count 1 and one-attempt count 0
+             both durably produced route/policy 2/10 under pessimistic REPEATABLE-READ.
+specificity: HIGH for rejecting retry false positives caused by current-read versus consistent-read
+             visibility; requires a contract witness, not only a fresh-state differential.
+status:      USED + EXECUTION-CONFIRMED negative calibration.
+```
