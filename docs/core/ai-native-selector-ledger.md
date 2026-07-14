@@ -1857,3 +1857,29 @@ status:     VALIDATED by id2460003. Local natural-conflict RED, exact InsertID r
 stop rule:  one root per terminal-output owner and retry boundary. Values, SQL forms, delays, and
             conflict schedules are blast radius. LastInsertID/LastInsertIDSet remain terminal #69796.
 ```
+
+## S55: recovery certificate proof closure
+
+```text
+selector:   every logical commit prerequisite must have durable evidence consumed by independent
+            recovery, including proof-only predicates that intentionally write no lock
+born from:  id2550003 (failed CheckNotExists omitted from async recovery certificate)
+candidate:  commit prerequisites minus durable recovery evidence
+            intersect cross-batch effect-prefix success and natural proof failure
+prediction:
+  - one mutation changes business state and can leave a recoverable primary lock;
+  - another mutation is only a uniqueness/FK/assertion/schema/conditional proof;
+  - the proof can fail after the effect prewrite succeeds;
+  - recovery enumerates only lock-bearing members and cannot observe proof failure.
+oracle gate:
+  - require a definite proof/constraint error, not undetermined;
+  - keep proof-table state at its original value;
+  - remove only cleanup/compensation;
+  - invoke normal independent recovery after TTL;
+  - read the effect through a fresh session;
+  - change only certificate admission/evidence as the counterfactual.
+status:     VALIDATED by id2550003. Raw real-TiKV RED, SQL RED 3/3 without Region delay, MDL ON,
+            and end-to-end owner GREEN are complete.
+stop rule:  one root per omitted proof class and certificate. SQL forms, values, Region layouts,
+            delays, and process-failure forms are blast radius.
+```

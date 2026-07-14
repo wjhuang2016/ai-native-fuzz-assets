@@ -1,0 +1,56 @@
+=== RUN   TestAsyncCommitFail
+=== RUN   TestAsyncCommitFail/TestAINativeFailedCheckNotExistsMustNotRecoverPrimaryAsCommitted
+[2026/07/14 11:06:53.892 +08:00] [INFO] [service_discovery.go:1030] ["[pd] switch leader"] [new-leader=http://127.0.0.1:2379] [old-leader=]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [service_discovery.go:509] ["[pd] init cluster id"] [cluster-id=7662212494604604778]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [client.go:214] ["[tso] switch the tso leader serving url"] [new-url=http://127.0.0.1:2379]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [inner_client.go:173] ["[pd] tso provider changed to pd"]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [watcher.go:56] ["[pd] start the deadline watcher"] [source=tso]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [client.go:251] ["[tso] start tso connection contexts updater"]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [dispatcher.go:146] ["[tso] tso dispatcher created"]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [dispatcher.go:598] ["[tso] switching tso rpc concurrency"] [old=0] [new=1]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [inner_client.go:154] ["[pd] service mode changed"] [new-mode=PD_SVC_MODE]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [router_service_discovery.go:162] ["[router service] created router service discovery"] [cluster-id=7662212494604604778] [keyspace-id=4294967295] [default-discovery-key=/ms/7662212494604604778/router/registry/]
+[2026/07/14 11:06:53.893 +08:00] [INFO] [router_service_discovery.go:174] ["[router service] initializing router service discovery"] [max-retry-times=100] [retry-interval=1s]
+[2026/07/14 11:06:53.894 +08:00] [INFO] [router_service_discovery.go:260] ["[router service] update member sorted urls"] [new-sorted-urls="[]"]
+[2026/07/14 11:06:53.894 +08:00] [INFO] [router_service_discovery.go:245] ["[router service] updating nodes succeeded"] [urls="[]"] [clients-length=0]
+[2026/07/14 11:06:53.894 +08:00] [INFO] [client.go:424] ["[router] connection daemon is started"]
+[2026/07/14 11:06:53.894 +08:00] [INFO] [client.go:585] ["[router] dispatcher is started"]
+[2026/07/14 11:06:53.894 +08:00] [INFO] [client.go:509] ["[router] successfully established the leader router stream connection"] [url=http://127.0.0.1:2379]
+[2026/07/14 11:06:53.894 +08:00] [INFO] [inner_client.go:91] ["[pd] start router client initializer"]
+[2026/07/14 11:06:53.897 +08:00] [INFO] [store_cache.go:572] ["change store resolve state"] [store=1] [addr=127.0.0.1:20160] [from=unresolved] [to=resolved] [liveness-state=reachable]
+[2026/07/14 11:06:53.898 +08:00] [INFO] [pd.go:434] ["adaptive update ts interval state transition"] [configuredInterval=2ms] [prevAdaptiveUpdateInterval=2ms] [newAdaptiveUpdateInterval=2ms] [requiredStaleness=0s] [prevState=unknown(0)] [newState=unadjustable]
+[2026/07/14 11:06:53.903 +08:00] [INFO] [lock_resolver.go:1631] ["txn lock cleanup resolve-lock rpc finished"] [action=commit] [txnStartTS=467664472711102471] [commitTS=467664472711102473] [regionID=2] [resolveLite=true] [resolvedByCheckTxnStatus=false]
+[2026/07/14 11:06:54.106 +08:00] [INFO] [2pc.go:1655] ["[failpoint] injected skip cleanup secondaries on failure"] [txnStartTS=467664480208683020]
+[2026/07/14 11:06:54.108 +08:00] [INFO] [lock_resolver.go:1300] ["resolve async commit locks"] [startTS=467664480208683020] [commitTS=467664480208683022] [TxnStatus="ttl:3000 commit_ts:467664480208683022 action: NoAction"]
+    ai_native_async_checknotexists_recovery_probe_test.go:108: 
+        	Error Trace:	/Users/bba/pc/ai-native-fuzz-assets/.txnlab/worktrees/campaign.txn.terminal.20260714/client-go/integration_tests/ai_native_async_checknotexists_recovery_probe_test.go:108
+        	            				/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268
+        	Error:      	Expected error with "not exist" in chain but got nil.
+        	Test:       	TestAsyncCommitFail/TestAINativeFailedCheckNotExistsMustNotRecoverPrimaryAsCommitted
+[2026/07/14 11:06:54.109 +08:00] [INFO] [lock_resolver.go:1530] ["txn lock cleanup resolve-region rpc finished"] [action=commit] [txnStartTS=467664480208683020] [commitTS=467664480208683022] [regionID=12] [keyCount=1]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [router_service_discovery.go:273] ["[router service] exit check member loop"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:277] ["[tso] exit tso connection contexts updater"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [watcher.go:73] ["[pd] exit the deadline watcher"] [source=tso]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:430] ["[router] connection daemon is exiting"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:606] ["[router] stop fetching the pending router requests due to context canceled"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:587] ["[router] dispatcher is exiting"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [router_service_discovery.go:315] ["[router service] exit health check member loop"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:592] ["[router] dispatcher exited"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [resource_manager_client.go:341] ["[resource manager] exit resource token dispatcher"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [inner_client.go:96] ["[pd] exit router client initializer"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [dispatcher.go:207] ["[tso] stop fetching the pending tso requests due to context canceled"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [dispatcher.go:149] ["[tso] exit tso dispatcher"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [service_discovery.go:562] ["[pd] exit member loop due to context canceled"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [stream.go:366] ["tsoStream.recvLoop ended"] [stream=127.0.0.1:2379-1] [error="rpc error: code = Canceled desc = context canceled"] [errorVerbose="rpc error: code = Canceled desc = context canceled\ngithub.com/tikv/pd/client/clients/tso.(*tsoStream).recvLoop\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/github.com/tikv/pd/client@v0.0.0-20260708075407-4e05b9d2c2d3/clients/tso/stream.go:434\nruntime.goexit\n\t/Users/bba/.gvm/pkgsets/go1.25.1/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.25.10.darwin-arm64/src/runtime/asm_arm64.s:1268"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [router_service_discovery.go:287] ["[router service] closing router service discovery"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [router_service_discovery.go:303] ["[router service] is closed"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:155] ["[tso] closing tso client"]
+[2026/07/14 11:06:54.110 +08:00] [INFO] [client.go:160] ["[tso] close tso client"]
+[2026/07/14 11:06:54.111 +08:00] [INFO] [client.go:162] ["[tso] tso client is closed"]
+[2026/07/14 11:06:54.111 +08:00] [INFO] [service_discovery.go:653] ["[pd] close service discovery client"]
+[2026/07/14 11:06:54.111 +08:00] [INFO] [inner_client.go:275] ["[pd] close client successfully"]
+--- FAIL: TestAsyncCommitFail (0.22s)
+    --- FAIL: TestAsyncCommitFail/TestAINativeFailedCheckNotExistsMustNotRecoverPrimaryAsCommitted (0.22s)
+FAIL
+FAIL	integration_tests	0.992s
+FAIL

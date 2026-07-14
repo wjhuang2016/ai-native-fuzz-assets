@@ -612,3 +612,18 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   lower-frequency trigger because it needs diagnostic DML and a late cancellation window.
 - Counting rule: DML verbs, explain formats, kill sources, timeouts, and timing windows are blast
   radius. Reopen only for another eager-effect owner or lazy terminal consumer.
+
+## 2026-07-14 update: id2550003
+
+- Remote `found_bug`: 124 surfaces, 101 distinct root causes, 47 high-severity rows, 109 confirmed
+  rows.
+- New root: `async-recovery-omits-failed-checknotexists-proof`.
+- Consequence: C3 durable partial outcome. `COMMIT` returns duplicate, while later lock recovery
+  commits an unrelated account/inventory/ledger mutation; application retry can apply it twice.
+- Distinctness: #69831 crossed the async recovery frontier after all prewrites succeeded and then
+  returned a late age error. Here one prewrite batch really fails, but its proof-only mutation was
+  never represented in the recovery certificate.
+- Frequency calibration: critical atomicity consequence; async commit is opt-in and cleanup must be
+  interrupted, while lazy uniqueness, cross-Region tables, and ordinary prewrite ordering are natural.
+- Counting rule: candidate schemas, values, business effects, Region layouts, and cleanup failures are
+  blast radius. Reopen only for another proof class or certificate owner.

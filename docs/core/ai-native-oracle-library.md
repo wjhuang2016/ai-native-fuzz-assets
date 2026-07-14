@@ -1598,3 +1598,22 @@ blind to:    later SQL functions that do not expose the OK packet, inferred retr
              different final state, and fields always overwritten by successful re-entry.
 status:      USED + EXECUTION-CONFIRMED by id2460003 / #69827.
 ```
+
+## O60 duplicate_error_vs_fresh_cross_table_durable_state
+
+```text
+obligation:  a definite uniqueness failure aborts every effect in the same logical transaction, even
+             when proof-only and effect mutations are owned by different Region batches.
+form:        create an existing unique value; in one optimistic transaction insert then delete a
+             tentative duplicate and update an independent business table; interrupt only cleanup;
+             expire the remaining lock; read both tables from a fresh session.
+red:         COMMIT returns definite duplicate; proof table remains original; business value changes.
+green:       the same duplicate leaves every business effect absent or rolled back.
+catches:     recovery/checkpoint certificates that cover lock-bearing effects but omit uniqueness,
+             FK, assertion, schema, or conditional proof prerequisites.
+blind to:    one atomic storage batch, proof failures classified as undetermined, and tests that read
+             only the constrained table or mock the recovery decision.
+sensitivity: EXECUTION-CONFIRMED by id2550003 on real TiKV, including 3/3 SQL RED without Region delay.
+specificity: GOOD; exact terminal class, two-table durable state, normal resolver, and one-owner GREEN.
+status:      USED + EXECUTION-CONFIRMED.
+```

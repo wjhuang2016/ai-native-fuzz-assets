@@ -3550,3 +3550,22 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   and real-TiKV REDs ran with MDL enabled and no fault injection.
 - Pause gate: explicit values, INSERT forms, delays, and conflict schedules are blast radius. Reopen
   only for another protocol-output owner or replay boundary.
+
+## id2550003 - Async recovery commits an effect after uniqueness proof failure
+
+- Target: `target.txn.async-checknotexists-proof-excluded-from-recovery.v1`.
+- Selector: `RECOVERY_CERTIFICATE_PROOF_CLOSURE`.
+- **P**: the primary async lock and its secondary list form a complete commit certificate.
+- **Q**: every logical prerequisite, including proof-only predicates, succeeded.
+- **F**: optimistic delete-your-writes becomes `CheckNotExists`; it can return `AlreadyExist` in a
+  separate Region but is excluded from `asyncSecondaries` and leaves no durable proof member.
+- C3 oracle: `COMMIT` returns a definite duplicate error; the candidate table retains only its
+  original row; a fresh session resolves the account primary as committed and observes `0 -> -100`.
+- Counterfactual: reject async commit when `hasNoNeedCommitKeys` is true. The same SQL, Region layout,
+  duplicate, cleanup loss, and fresh read leave balance `0`.
+- Environment: current TiDB/client-go and real TiKV, MDL ON, production-compatible async safe window;
+  the SQL RED reproduced 3/3 after Region-delay injection was removed.
+- Status: **CONFIRMED**, remote `found_bug id2550003`, high severity / critical consequence. Post-RED
+  TiDB, client-go, and TiKV issue search found no exact root.
+- Pause gate: emails, tables, balances, Region counts, delays, and cleanup-failure forms are blast
+  radius. Reopen only for another proof type or recovery certificate.

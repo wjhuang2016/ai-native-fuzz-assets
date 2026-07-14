@@ -2210,3 +2210,22 @@ specialized path 绕过、另一安全消费者仍信任 side state、public err
 `docs/method-cases/ai-native-id2340003-pipelined-undetermined-promotion-method-case.md`、
 `scaffolds/client-go-tests/pipelined_undetermined_probe_test.go`。暂停门：不枚举 DML/error/timeout/key-count
 变体；下一轮迁移 selector 到另一个 specialized terminal owner。
+
+**2026-07-14 txn critical hit：`id2550003` 证明 recovery certificate 只覆盖 lock-bearing keys
+会漏掉失败的 proof-only mutation。** 之前 `ASYNC_SECONDARY_SET_COMPLETENESS` 只问 accepted async
+prewrite key 是否都在 secondaries，因此把“不写 lock”的 `CheckNotExists` 当成天然可排除成员。新一轮把
+集合改成“所有逻辑提交前提减去 durable recovery evidence”，立即发现 current client-go 允许含
+`CheckNotExists` 的事务走 async commit，却在 `asyncSecondaries` 中排除它。跨 Region 时 business primary
+可先 prewrite 成功，proof batch 随后真实返回 `AlreadyExist`；若错误后的后台 cleanup 因 TiDB exit/OOM/
+rolling restart 或 TiKV 路径长期失败而没完成，后续读在 TTL 后会用空 certificate 恢复 primary 为 commit。
+
+真实 TiDB SQL 在 MDL 默认 ON、lazy uniqueness 默认 OFF-in-place、async 显式 ON、1PC OFF 下复现：事务
+先插入已有 email 的 tentative row，再删除自己的 insert，同时将账户 `0 -> -100`；`COMMIT` 返回明确
+duplicate，但 fresh session 触发 `ResolveLock action=commit` 后读到 `-100`。移除 200 ms Region delay 后
+连续 3/3 RED。仅加入 `hasNoNeedCommitKeys => checkAsyncCommit=false`，相同 SQL/Region/fault 变 GREEN，
+余额保持 0。远端 `found_bug id2550003` 已入库：124 surfaces、101 roots、47 high、109 confirmed；post-RED
+TiDB/client-go/TiKV issue 搜索无 exact root，#65757 是不同的 stale-secondary/minCommitTS 问题。新增 S55
+`RECOVERY_CERTIFICATE_PROOF_CLOSURE` 与 O60；资产入口：
+`assets/store/txn-async-checknotexists-proof-closure-results.jsonl`、
+`docs/bug-drafts/ai-native-async-checknotexists-recovery-partial-commit-draft.md`、
+`docs/method-cases/ai-native-id2550003-recovery-certificate-proof-closure.md`。临时源码改动已归位。

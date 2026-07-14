@@ -1974,3 +1974,26 @@ backward-slice to owners, intersect with accepted-retry mutations, subtract rese
 successful-attempt overwrite guarantees, then force zero-work re-entry. This removes the old
 value/flag-pair shape assumption that missed singleton `InsertID`. Stop this owner and continue from
 a different public output owner.
+
+## Recovery-certificate proof-closure tick: failed uniqueness proof omitted, EXECUTED (2026-07-14)
+
+This tick revisited no terminal root. It corrected the set definition behind the previously negative
+async-secondary pass: recovery completeness must cover every logical commit prerequisite, not only
+mutations that can leave an accepted lock.
+
+```text
+P:           primary async lock plus listed secondaries is a complete recovery certificate.
+Q:           every prerequisite for committing the logical transaction succeeded.
+F:           cross-Region CheckNotExists returned AlreadyExist but wrote no lock and was omitted.
+RAW RED:     definite ErrKeyExist; empty async recovery set; independent resolver committed primary.
+SQL RED:     MDL ON; COMMIT duplicate; fresh account balance 0 -> -100; 3/3 without Region delay.
+EXACT GREEN: only hasNoNeedCommitKeys => no async; identical SQL/fault leaves balance 0.
+INTEGRATE:   id2550003 high / critical consequence; 124 surfaces, 101 roots, 47 high, 109 confirmed.
+```
+
+Method improvement: replace `accepted lock keys - recovery members` with
+`all commit prerequisites - durable recovery evidence`. Partition candidates into effect mutations and
+proof-only predicates, force an effect prefix to succeed while a proof fails naturally, remove only
+compensation, then invoke an independent recovery owner. The new selector is
+`RECOVERY_CERTIFICATE_PROOF_CLOSURE`; the C3 oracle is definite constraint failure versus fresh durable
+business state. Async commit is opt-in, but lazy uniqueness and MDL remained at their defaults.
