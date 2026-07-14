@@ -57,6 +57,30 @@ Ranking must include frequency. This root has critical terminal-integrity conseq
 frequency because it needs `EXPLAIN ANALYZE` DML and a narrow late-cancellation window. The selector
 should next target ordinary DML/RETURNING or import/stream paths with wider post-effect lazy work.
 
+## Negative calibration: IMPORT INTO terminal job lookup
+
+The same source shape does not by itself prove a bug. `IMPORT INTO` waits for a distributed task to
+finish and then calls `fillJobInfo` with the original request context. A source-only pass suggested
+that cancellation after task success might make the SQL fail after imported rows were durable.
+
+A deterministic real-TiKV probe cancelled that context exactly after `waitTask` observed task
+success and before `fillJobInfo`. The imported rows were durable, but the SQL still returned success:
+the internal job lookup did not promote the cancelled context into a public error on this path.
+This candidate is retired.
+
+Add a fallibility reachability gate before building a full RED:
+
+```text
+post-effect call accepts an error-capable input
+  is not enough
+
+require:
+  supported producer -> exact consumer -> public terminal error
+```
+
+For context and killer candidates, probe the concrete consumer first. Do not infer public
+cancellation behavior merely because a function accepts `context.Context`.
+
 ## Terminal rule
 
 This owner is terminal. Do not enumerate INSERT/DELETE forms, kill sources, explain formats, delays,
