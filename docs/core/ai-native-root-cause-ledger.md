@@ -686,3 +686,26 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   but does not change surface/root/bug counts or warrant a separate issue.
 - Reachability calibration: `tidb_rc_write_check_ts` defaults to OFF, and the OFF control is GREEN.
   The reached consequence is silent lost write, but it is not a default-config critical finding.
+
+## 2026-07-14 update: id2640003
+
+- Remote `found_bug`: 127 surfaces, 104 distinct root causes, 50 high-severity rows, 112 confirmed
+  rows.
+- New root: `fk-cascade-savepoint-released-before-final-lock-result`.
+- Upstream: [TiDB #69838](https://github.com/pingcap/tidb/issues/69838), labeled
+  `severity/critical`, `component/executor`, `sig/transaction`, and `found-by-ai`.
+- Consequence: C3 statement-atomicity violation. A pessimistic multi-table UPDATE returns definite
+  error 1205; a later COMMIT of the still-open explicit transaction makes that failed statement's
+  parent-key mutation and generated `ON UPDATE CASCADE` child mutation durable.
+- Production trigger: a tenant/account primary-key migration includes a no-op migration-guard row as
+  a database mutex. An older batch worker retains that row for more than the default 50-second lock
+  timeout because of a long batch, hot Region, server-busy backoff, or storage pressure. The racing
+  service catches 1205 as a retryable statement conflict and commits earlier audit/progress work.
+- Verification: mock and real-TiKV RED, default-settings 50-second real-TiKV RED with MDL ON, and
+  exact checkpoint-lifetime GREEN are complete. The fresh state is `2/2` on RED and `1/1` on GREEN.
+- Distinctness: #69828 loses final lock ownership and permits two successful transactions to leave an
+  FK orphan. This root loses rollback ownership after a definite statement error. Retaining the FK
+  checkpoint through final locks closes this schedule without closing #69828's union-lock-set defect.
+- Counting rule: timeout values, guard rows, parent/child schemas, migration identifiers, and lock
+  producers are blast radius. Reopen only for another checkpoint owner, release boundary, or later
+  fallible highest consumer.

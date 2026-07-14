@@ -1636,3 +1636,25 @@ specificity: GOOD; real conflict-evidence reclamation, terminal result, fresh st
              and exact owner GREEN isolate commit admission from GC and DML assertion behavior.
 status:      USED + EXECUTION-CONFIRMED by id2580003 / #69833.
 ```
+
+## O62 failed_statement_vs_fresh_parent_child_state
+
+```text
+obligation:  a statement that returns a definite error contributes no durable mutation when its
+             surviving explicit transaction is later committed.
+form:        execute a parent mutation with generated FK cascade; force a supported terminal error
+             after intermediate publication; commit the still-open transaction; read both parent and
+             child from a fresh session. Include an always-rollback client behavior as a non-trigger.
+red:         statement returns 1205, COMMIT succeeds, and fresh parent/child both contain the failed
+             statement's new identifier.
+green:       the same 1205 and later COMMIT preserve the pre-statement parent/child state.
+catches:     savepoints, checkpoints, undo logs, compensation tokens, or staging handles released
+             before the enclosing public operation has crossed every fallible finalizer.
+blind to:    autocommit paths that abort the whole transaction, clients that always roll back after the
+             error, and internal stage counters without a fresh durable read.
+sensitivity: EXECUTION-CONFIRMED by id2640003 on mock and real TiKV, including default 50-second
+             lock timeout and MDL ON.
+specificity: GOOD; definite terminal class, later explicit COMMIT, relational parent/child state, and
+             one-edge checkpoint-lifetime GREEN isolate rollback ownership.
+status:      USED + EXECUTION-CONFIRMED by id2640003 / #69838.
+```

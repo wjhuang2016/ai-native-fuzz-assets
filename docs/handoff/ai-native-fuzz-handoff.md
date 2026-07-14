@@ -4,6 +4,43 @@
 
 ---
 
+**2026-07-14 rollback-checkpoint horizon pass 命中新的 critical-consequence statement-atomicity root
+`id2640003`: 悲观 FK cascade UPDATE 返回 1205 后，同一显式事务后续 COMMIT 会把失败语句的 parent/child
+修改持久化。** 候选来自 current source 的 rollback-owner 分析，不是 PR review 或 issue seed。FK cascade
+为了让 nested executor 看见主语句修改，会先做 intermediate `StmtCommit`；`prepareFKCascadeContext` 为此
+建立 transaction savepoint，但 `handleStmtForeignKeyTrigger` 在 cascade 本身成功后立即 release。外层
+`handlePessimisticDML` 此后仍要执行 final `LockKeys`，该步骤返回 terminal error 时，generic
+`StmtRollback` 已无法撤销前面跨 stage 发布的 parent/child 修改。
+
+真实生产触发已写到业务层：租户、商户或账号 ID 迁移更新 parent primary key，并通过
+`ON UPDATE CASCADE` 修改 subscription/settlement/routing child；同一 multi-table UPDATE 用
+`migration_guard.version=migration_guard.version` 作为 database mutex。旧 migration/reconciliation
+worker 因大批次、hot Region、TiKV server-busy backoff 或 storage pressure 持有 guard 超过默认 50s；
+新 worker 在 parent/cascade 已发布后，final LockKeys 等 guard 超时并收到 1205。显式事务不会被 1205
+自动结束；把该错误当成 retryable statement conflict、需要保留此前 audit/progress 的服务随后 COMMIT，
+就会触发。任何总在 1205 后整事务 ROLLBACK 的服务是明确 non-trigger control。
+
+mock 与 real-TiKV 1s 压缩 RED 均为 UPDATE error 1205 + COMMIT success + fresh `(parent,child)=(2,2)`；
+默认参数 real-TiKV RED 明确断言 `MDL=1`、`innodb_lock_wait_timeout=50`、pessimistic in-place check=1、
+FK=1，`LockKeys_time=50.0017s` 后仍得到 `(2,2)`，不是调短 timeout 制造的现象。精确 owner GREEN 只把
+FK savepoint 保留到 final lock 成功，并在 post-trigger terminal lock error 回滚到该 checkpoint；相同
+1205 后 fresh state 恢复为 `(1,1)`，mock/real TiKV 都通过。
+
+该 root 与 #69828 不同：#69828 丢的是 final lock owner，两个事务都成功后留下 orphan；本 root 丢的是
+rollback owner，用户收到 definite statement error 后数据仍能提交。新 selector 为
+`ROLLBACK_CHECKPOINT_FALLIBILITY_HORIZON`：把 savepoint/checkpoint 记为
+`protects(C,effects,until=public terminal boundary)`，release 前必须枚举后续所有 fallible lock、validation、
+render、ack/response consumer。远端 `found_bug id2640003` 已 issue-filed/high；当前 127 surfaces、104 roots、
+50 high、112 confirmed。上游 [#69838](https://github.com/pingcap/tidb/issues/69838) 带
+`severity/critical`、`component/executor`、`sig/transaction`、`found-by-ai`。资产入口：
+`docs/method-cases/ai-native-id2640003-rollback-checkpoint-fallibility-horizon.md`、
+`docs/github-issues/id2640003-fk-cascade-final-lock-timeout-partial-commit.md`、
+`scaffolds/tidb-tests/ai_native_fk_cascade_final_lock_timeout_test.go`、
+`assets/store/logs/txn-fk-cascade-final-lock-timeout-real-tikv-defaults-red-20260714.log`。该 root 已 terminal；
+禁止枚举 timeout、guard row、FK shape、identifier 或 lock-hold cause 变体。
+
+---
+
 **2026-07-14 fast-path resource-closure pass 验证了一个 severe sibling，但不新增 bug/root 计数：
 悲观 RC `UPDATE IGNORE` 在并发事务已经释放 UNIQUE value 后，仍可能静默跳过合法更新。** 真实业务
 场景是账号名、外部订单号等唯一业务标识回收：A 开启 pessimistic READ COMMITTED transaction，先读取

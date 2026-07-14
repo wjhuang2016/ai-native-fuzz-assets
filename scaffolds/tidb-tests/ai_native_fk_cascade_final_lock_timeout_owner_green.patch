@@ -1,0 +1,47 @@
+diff --git a/pkg/executor/adapter.go b/pkg/executor/adapter.go
+index 0cee5996d2..b4e9943a6e 100644
+--- a/pkg/executor/adapter.go
++++ b/pkg/executor/adapter.go
+@@ -806,9 +806,6 @@ func (a *ExecStmt) handleStmtForeignKeyTrigger(ctx context.Context, e exec.Execu
+ 		}
+ 		return err
+ 	}
+-	if stmtCtx.ForeignKeyTriggerCtx.SavepointName != "" {
+-		a.Ctx.GetSessionVars().TxnCtx.ReleaseSavepoint(stmtCtx.ForeignKeyTriggerCtx.SavepointName)
+-	}
+ 	return nil
+ }
+ 
+@@ -1233,6 +1230,12 @@ func (a *ExecStmt) handlePessimisticDML(ctx context.Context, e exec.Executor) (e
+ 		}
+ 		e, err = a.handlePessimisticLockError(ctx, err)
+ 		if err != nil {
++			stmtCtx := sctx.GetSessionVars().StmtCtx
++			if stmtCtx.ForeignKeyTriggerCtx.SavepointName != "" {
++				if rollbackErr := a.handleFKTriggerError(stmtCtx); rollbackErr != nil {
++					return nil, errors.Errorf("rollback foreign key cascade after final lock error failed: %v, original_err: %v", rollbackErr, err)
++				}
++			}
+ 			if exeerrors.ErrDeadlock.Equal(err) {
+ 				metrics.StatementDeadlockDetectDuration.Observe(time.Since(startLocking).Seconds())
+ 			}
+@@ -1292,6 +1295,9 @@ func (a *ExecStmt) handlePessimisticDML(ctx context.Context, e exec.Executor) (e
+ 				continue
+ 			}
+ 			updateFKCheckLockStats(e, time.Since(startLock))
++			if name := sctx.GetSessionVars().StmtCtx.ForeignKeyTriggerCtx.SavepointName; name != "" {
++				sctx.GetSessionVars().TxnCtx.ReleaseSavepoint(name)
++			}
+ 			return nil
+ 		}
+ 
+@@ -1323,6 +1329,9 @@ func (a *ExecStmt) handlePessimisticDML(ctx context.Context, e exec.Executor) (e
+ 			continue
+ 		}
+ 		updateFKCheckLockStats(e, time.Since(startLock))
++		if name := sctx.GetSessionVars().StmtCtx.ForeignKeyTriggerCtx.SavepointName; name != "" {
++			sctx.GetSessionVars().TxnCtx.ReleaseSavepoint(name)
++		}
+ 
+ 		return nil
+ 	}

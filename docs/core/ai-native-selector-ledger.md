@@ -1974,3 +1974,32 @@ stop rule:  one root per state-owner/freshness/error-policy triple. FK/index sha
             values, and concurrent business objects are blast radius unless the owner or terminal
             policy changes.
 ```
+
+## S59: rollback checkpoint fallibility horizon
+
+```text
+selector:   an internal savepoint/checkpoint owns rollback of intermediate effects, but code releases
+            it when a nested operation succeeds while the enclosing user operation can still fail
+born from:  id2640003 (FK savepoint releases before final pessimistic LockKeys can return 1205)
+candidate:  intermediate publication or irreversible staging
+            intersect rollback checkpoint ownership and release
+            intersect later fallible locks/validation/render/ack/response consumers
+            minus equivalent rollback transfer or whole-transaction fail-closed behavior
+prediction:
+  - nested execution needs StmtCommit/Flush/Publish so a later nested consumer can see effects;
+  - a savepoint or undo owner exists specifically because generic stage rollback is insufficient;
+  - the savepoint releases at nested success rather than the public statement terminal boundary;
+  - a later terminal error leaves the explicit transaction alive and therefore exposes old effects
+    when the client commits.
+oracle gate:
+  - name the supported workload and every effect owned by the checkpoint;
+  - enumerate every public error site after checkpoint release;
+  - trigger one natural post-release terminal failure under production settings;
+  - commit any surviving explicit transaction and read fresh durable state;
+  - retain the checkpoint through only the suspected consumer and rerun the identical schedule;
+  - include the client behavior that reaches COMMIT and the always-ROLLBACK non-trigger control.
+status:     VALIDATED by id2640003. Mock and real-TiKV RED/GREEN, default MDL ON, default 50-second
+            lock-timeout RED, and upstream #69838 are complete.
+stop rule:  one root per checkpoint owner/release boundary/highest consumer. Timeout values, guard
+            rows, FK shapes, and schedule lengths are blast radius.
+```

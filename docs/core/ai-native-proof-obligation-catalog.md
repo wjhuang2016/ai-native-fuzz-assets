@@ -3591,3 +3591,24 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   upstream [#69833](https://github.com/pingcap/tidb/issues/69833).
 - Pause gate: do not enumerate UPDATE forms, durations, GC phases, assertion settings, or compaction
   triggers. Reopen only for another retired owner or effectful consumer.
+
+## id2640003 - Failed FK cascade statement survives final lock timeout
+
+- Target: `target.txn.fk-cascade-post-trigger-lock-timeout-atomicity.v1`.
+- Selector: `ROLLBACK_CHECKPOINT_FALLIBILITY_HORIZON`.
+- **P**: the FK transaction savepoint owns rollback of parent and cascade mutations that cross
+  intermediate `StmtCommit` publication.
+- **Q**: successful completion of the nested FK trigger proves that savepoint can be released.
+- **F**: the enclosing pessimistic statement still has a fallible final `LockKeys` phase; generic
+  statement rollback cannot undo previously published stages after the savepoint is gone.
+- C3 oracle: with default 50-second timeout and MDL ON, UPDATE returns 1205 and later COMMIT succeeds;
+  a fresh session reads parent/child `2/2` instead of `1/1`.
+- Production trigger: tenant/account key migration with `ON UPDATE CASCADE` and a no-op guard row in
+  the same multi-table UPDATE; an older batch holds that guard >50s; the service catches 1205 and
+  commits earlier audit/progress work before retrying the migration.
+- Counterfactual: retain the FK savepoint through final pessimistic locking and roll back to it on
+  terminal post-trigger error. The same 1205 schedule leaves fresh state `1/1` on mock and real TiKV.
+- Status: **ISSUE-FILED**, remote `found_bug id2640003`, high severity / critical consequence,
+  upstream [#69838](https://github.com/pingcap/tidb/issues/69838).
+- Pause gate: guard rows, timeout values, FK shapes, identifiers, and natural lock-hold causes are
+  blast radius. Reopen only for another checkpoint owner, release boundary, or highest consumer.

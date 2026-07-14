@@ -3475,3 +3475,33 @@ the identical local and real-TiKV schedule to GREEN.
 
 Store the selector as `VALUE_REPLACEMENT_PROOF_REVALIDATION`. Stop after one root per
 proof/replacement/consumer triple; values, retry counts, timing, and workload shapes are blast radius.
+
+## Keep rollback capabilities alive through the public fallibility horizon
+
+An internal savepoint is not scoped to the nested helper that happens to create it. It is scoped to
+the effects it must undo and the public terminal boundary those effects belong to. Record it as:
+
+```text
+protects(checkpoint=C, effects=E, until=public terminal boundary T)
+```
+
+After every intermediate `StmtCommit`, flush, stage release, publish, or external apply, enumerate the
+remaining fallible consumers before `T`: final locks, validation, rendering, encoding, cancellation,
+acknowledgment, response writing, and commit publication. Releasing `C` is safe only if the release
+post-dominates those consumers or atomically transfers `E` to an equivalent rollback owner.
+
+Build one production-first failure after release. If the enclosing explicit transaction survives the
+error, commit it and compare fresh durable state; internal mem-buffer observations are not enough. The
+production card must also name why the application reaches COMMIT after the error. For lock wait 1205,
+one valid shape is a service that treats it as a retryable statement conflict and preserves earlier
+audit/progress work. Always-ROLLBACK clients are the non-trigger control.
+
+`id2640003` calibrates the method. FK cascade execution publishes parent and child mutations through
+intermediate `StmtCommit`, releases its internal savepoint, and only then waits on an unchanged guard
+row in final `LockKeys`. With default MDL ON and the default 50-second timeout, UPDATE returns 1205;
+a later COMMIT makes parent and child `2/2`. Retaining the savepoint through final locking leaves them
+`1/1` under the same error on mock and real TiKV.
+
+Store the selector as `ROLLBACK_CHECKPOINT_FALLIBILITY_HORIZON`. It is distinct from lock-set closure:
+one asks whether published effects retain serialization ownership; this one asks whether they retain
+rollback ownership until the whole public operation is terminal.

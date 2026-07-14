@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 13:31:53 +0800
+Generated at: 2026-07-14 15:17:20 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -53,3 +53,4 @@ Generated at: 2026-07-14 13:31:53 +0800
 | 2550003 | issue-filed | high | atomicity/data-integrity | COMMIT | optimistic transaction / lazy uniqueness / async commit recovery | `async-recovery-omits-failed-checknotexists-proof` | Async commit can commit business writes after a duplicate-key proof fails | [https://github.com/pingcap/tidb/issues/69832](https://github.com/pingcap/tidb/issues/69832) |
 | 2580003 | issue-filed | high | atomicity/data-integrity | COMMIT | optimistic transaction / GC safe point / long transaction | `commit-does-not-check-gc-safe-point-before-prewrite` | Expired optimistic transaction can resurrect a row deleted before GC | [https://github.com/pingcap/tidb/issues/69833](https://github.com/pingcap/tidb/issues/69833) |
 | 2610003 | issue-filed | high | atomicity/data-integrity | COMMIT | cached table / optimistic 2PC / CommitTsExpired retry | `commit-ts-expired-retry-bypasses-upper-bound-check` | CommitTsExpired retry can commit cached-table writes after the write lease expires | [https://github.com/pingcap/tidb/issues/69836](https://github.com/pingcap/tidb/issues/69836) |
+| 2640003 | issue-filed | high | atomicity/data-integrity | UPDATE | pessimistic transaction / ON UPDATE CASCADE / final LockKeys | `fk-cascade-savepoint-released-before-final-lock-result` | Failed pessimistic FK cascade update can be committed after lock wait timeout | [https://github.com/pingcap/tidb/issues/69838](https://github.com/pingcap/tidb/issues/69838) |

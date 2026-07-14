@@ -2056,3 +2056,31 @@ Method improvement: store proof facts as argument-bearing tokens such as
 `checked(commitTS=x, lease=L)`, not booleans such as `commitTSChecked=true`. Enumerate every assignment
 to either argument before the irreversible consumer; require exact revalidation, a proven monotonic
 implication, or fail-closed behavior. The new selector is `VALUE_REPLACEMENT_PROOF_REVALIDATION`.
+
+## Rollback-checkpoint horizon tick: failed FK statement later commits, EXECUTED (2026-07-14)
+
+This tick started from current-source rollback ownership. Issues and history stayed closed until local
+and real-TiKV RED plus exact owner GREEN.
+
+```text
+P:            FK savepoint can undo all parent/cascade stages crossing intermediate StmtCommit.
+Q:            nested FK-trigger success means the savepoint can be released.
+F:            outer final LockKeys can still return a terminal error after release.
+MOCK RED:     UPDATE 1205; later COMMIT; fresh parent/child = 2/2.
+LIVE RED:     real TiKV; same result with one-second compressed timeout.
+DEFAULT RED:  MDL=1; lock timeout=50; LockKeys=50.0017s; fresh state 2/2.
+OWNER GREEN:  retain checkpoint through final locks; same 1205; fresh state 1/1.
+INTEGRATE:    id2640003 high / critical consequence; #69838; 127 surfaces, 104 roots, 50 high,
+              112 confirmed.
+```
+
+The production shape is a tenant/account key migration with `ON UPDATE CASCADE` and a no-op guard-row
+assignment in the same multi-table UPDATE. An older long-running migration holds the guard beyond the
+default timeout because of a large batch, hot Region, server-busy backoff, or storage pressure. The
+racing service catches 1205 as a retryable statement conflict and commits earlier audit/progress work;
+an always-ROLLBACK service is the explicit non-trigger.
+
+Method improvement: model each rollback capability as `protects(C,E,until=T)` and compare its release
+with every later public error site. Nested success is not the terminal boundary of the enclosing user
+operation. The new selector is `ROLLBACK_CHECKPOINT_FALLIBILITY_HORIZON`; stop after one checkpoint
+owner/release/highest-consumer root.
