@@ -1,0 +1,49 @@
+diff --git a/pkg/executor/insert_common.go b/pkg/executor/insert_common.go
+--- a/pkg/executor/insert_common.go
++++ b/pkg/executor/insert_common.go
+@@
+ 	sessVars := e.Ctx().GetSessionVars()
+ 	retryInfo := sessVars.RetryInfo
+-	if retryInfo.Retrying {
+-		id, ok := retryInfo.GetCurrAutoIncrementID()
+-		if ok {
+-			err := setDatumAutoIDAndCast(e.Ctx(), &d, id, c)
+-			if err != nil {
+-				return types.Datum{}, err
+-			}
+-			return d, nil
+-		}
+-	}
+-
+ 	var err error
+ 	var recordID int64
++	consumedRetryID := false
+ 	if !hasValue {
+ 		d.SetNull()
+ 	}
+@@
+ 			return types.Datum{}, err
+ 		}
+ 	}
++	if retryInfo.Retrying {
++		id, ok := retryInfo.GetCurrAutoIncrementID()
++		consumedRetryID = ok
++		if ok && (d.IsNull() || (recordID == 0 && sessVars.SQLMode&mysql.ModeNoAutoValueOnZero == 0)) {
++			err := setDatumAutoIDAndCast(e.Ctx(), &d, id, c)
++			if err != nil {
++				return types.Datum{}, err
++			}
++			return d, nil
++		}
++	}
+ 	// Use the value if it's not null and not 0.
+@@
+-		retryInfo.AddAutoIncrementID(recordID)
++		if !consumedRetryID {
++			retryInfo.AddAutoIncrementID(recordID)
++		}
+@@
+-	retryInfo.AddAutoIncrementID(recordID)
++	if !consumedRetryID {
++		retryInfo.AddAutoIncrementID(recordID)
++	}

@@ -2003,3 +2003,33 @@ status:     VALIDATED by id2640003. Mock and real-TiKV RED/GREEN, default MDL ON
 stop rule:  one root per checkpoint owner/release boundary/highest consumer. Timeout values, guard
             rows, FK shapes, and schedule lengths are blast radius.
 ```
+
+## S60: retry cache provenance and identity
+
+```text
+selector:   replay retains a positional cache across attempts, re-executes a dynamic producer, and
+            applies the old element to the same ordinal without proving semantic provenance or
+            logical-row identity
+born from:  id2670003 (old explicit auto-ID 100 overwrites current retry ID 200)
+candidate:  retry/recovery caches of IDs, handles, offsets, ordinals, indexes, slots, or resolved keys
+            intersect dynamic rowsets or reconstructed requests
+            intersect irreversible row/index/commit/publication consumers
+            minus stable-key binding, provenance validation, recomputation, or fail-closed behavior
+prediction:
+  - the cache was introduced for generated or stable values and therefore looks safe by type;
+  - user-supplied and generated values are stored in one scalar array;
+  - replay can change row count, ordering, identity, or explicit input while retaining the ordinal;
+  - the cache wins before the current input is parsed or compared;
+  - the result combines identity from one attempt with content from another.
+oracle gate:
+  - enumerate the complete legal one-attempt output set under the same isolation contract;
+  - keep one stable producer key while changing the semantic identity carried by that key;
+  - prove a real retry and read final state from a fresh session;
+  - compare producer identity and durable consumer identity with an anti-join;
+  - classify every cached element as generated versus explicit and name its logical owner;
+  - rerun the same conflict after validating only the cache-consumption edge.
+status:     VALIDATED by id2670003. Real-TiKV RED/GREEN, default MDL ON, natural 9007,
+            allowed-outcome proof, and upstream #69845 are complete.
+stop rule:  one root per cache/provenance/logical-owner/highest-consumer tuple. Values, SQL forms,
+            source tables, delays, and conflict keys are blast radius.
+```

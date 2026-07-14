@@ -3547,3 +3547,35 @@ Declining the retry and returning 9007 was GREEN but was not owner proof: fail-c
 remove a supported result without repairing a violated contract. Store this gate as
 `RETRY_ALLOWED_ONE_ATTEMPT_SET`. Reopen only when no legal single attempt can produce the retry's
 terminal result or durable state.
+
+## Bind replay caches to provenance and logical identity
+
+A replay cache is not safe merely because the element type is unchanged. Every retained scalar must
+carry the arguments that make it reusable:
+
+```text
+certificate(value, provenance, logical_owner, input_generation, validity_predicate)
+```
+
+The dangerous shape is a positional buffer consumed by a producer that is re-read or rebuilt:
+
+```text
+old attempt: position 2 -> explicit entity ID 100, payload old
+new attempt: position 2 -> explicit entity ID 200, payload new
+bad replay:  cached value 100 overwrites current ID before current input is classified
+```
+
+Generate candidates by intersecting retry-retained arrays/maps with dynamic producers and identity-
+bearing consumers. For every hit, ask whether the cached value was generated or user supplied, what
+logical object it belongs to, whether ordinal position is a stable key, and whether the current value
+is parsed and compared before the cache wins.
+
+`id2670003` calibrates the selector. A real-TiKV autocommit `INSERT ... SELECT` gets a natural `9007`
+after a stable staging slot changes from `100/old` to `200/new`. The successful retry commits
+`100/new`; neither legal one-attempt ordering can produce that pair. Classifying current explicit
+input before cache reuse keeps the same retry and commits `200/new`.
+
+Historical dedup must compare obligations, not keywords. #20629 already showed that retry row count
+can grow and made the generated-ID array refillable. The new obligation is semantic validity of a
+full cache element after row identity changes. Store the selector as
+`RETRY_CACHE_PROVENANCE_AND_IDENTITY` and stop after one cache/provenance/owner/consumer tuple.

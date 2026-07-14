@@ -1678,3 +1678,24 @@ specificity: HIGH for rejecting retry false positives caused by current-read ver
              visibility; requires a contract witness, not only a fresh-state differential.
 status:      USED + EXECUTION-CONFIRMED negative calibration.
 ```
+
+## O64 retry_output_vs_source_target_identity_closure
+
+```text
+obligation:  a transparent retry must not combine an identity token from one attempt with content
+             read for another identity in the successful attempt.
+form:        use a stable source slot carrying explicit target ID plus payload; replace both under an
+             ordinary concurrent transaction; force a natural retry on another shared target row;
+             compare fresh source and target through an identity anti-join.
+red:         statement succeeds with retry count >0, source is 200/new, target is 100/new, and the
+             output is absent from the complete legal one-attempt set {100/old, 200/new}.
+green:       the same conflict and retry leave source and target 200/new and the anti-join is empty.
+catches:     positional retry caches that omit generated/explicit provenance, stable owner keys, or
+             current-value validation before row/index/commit consumers.
+blind to:    identity changes already legal within one attempt, caches keyed by stable logical owner,
+             and tests that compare payload only or use the final-state control as the whole oracle.
+sensitivity: EXECUTION-CONFIRMED by id2670003 on real TiKV with a natural 9007 and MDL ON.
+specificity: HIGH; complete outcome-set proof, stable source key, source-target anti-join, and one-edge
+             cache-use GREEN isolate row-identity binding.
+status:      USED + EXECUTION-CONFIRMED by id2670003 / #69845.
+```

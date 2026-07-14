@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-14
 
-- Remote `found_bug`: `MAX(id)=2640003`, `COUNT(*)=127`, `COUNT(DISTINCT root_cause_id)=104`
-- High-severity entries: 50 total
+- Remote `found_bug`: `MAX(id)=2670003`, `COUNT(*)=128`, `COUNT(DISTINCT root_cause_id)=105`
+- High-severity entries: 51 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -61,6 +61,7 @@ Last verified: 2026-07-14
 | 2580003 | issue-filed | atomicity / data integrity | `commit-does-not-check-gc-safe-point-before-prewrite` | An expired optimistic transaction can recreate a row deleted and reclaimed by GC. | [issue](https://github.com/pingcap/tidb/issues/69833) | [case](../method-cases/ai-native-id2580003-safe-point-retirement-consumer-closure.md) |
 | 2610003 | issue-filed | atomicity / data integrity | `commit-ts-expired-retry-bypasses-upper-bound-check` | CommitTsExpired retry can commit beyond a cached-table write lease and persist stale cache output. | [issue](https://github.com/pingcap/tidb/issues/69836), [draft](../bug-drafts/ai-native-cached-table-commit-ts-retry-draft.md) | [case](../method-cases/ai-native-id2610003-value-replacement-proof-revalidation.md) |
 | 2640003 | issue-filed | atomicity / data integrity | `fk-cascade-savepoint-released-before-final-lock-result` | A failed FK cascade UPDATE can later be committed after default lock wait timeout. | [issue](https://github.com/pingcap/tidb/issues/69838), [draft](../bug-drafts/ai-native-fk-cascade-final-lock-timeout-partial-commit-draft.md) | [case](../method-cases/ai-native-id2640003-rollback-checkpoint-fallibility-horizon.md) |
+| 2670003 | issue-filed | atomicity / data integrity | `retry-autoid-positional-cache-overwrites-current-explicit-id` | Autocommit retry can combine an old explicit entity ID with the successful attempt's new payload. | [issue](https://github.com/pingcap/tidb/issues/69845), [draft](../bug-drafts/ai-native-autoid-retry-mixed-row-draft.md) | [case](../method-cases/ai-native-id2670003-retry-cache-row-identity.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

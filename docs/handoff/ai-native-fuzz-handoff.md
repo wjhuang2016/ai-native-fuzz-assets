@@ -4,6 +4,40 @@
 
 ---
 
+**2026-07-14 retry-cache provenance pass 命中新的 critical-consequence data-integrity root
+`id2670003`: autocommit `INSERT ... SELECT` 透明重试会把失败轮次的显式业务 ID 与成功轮次的新 payload
+拼成一条静默提交的数据。** 候选来自 current source 的 replay-cache owner 分析，不是 PR review 或
+issue seed。`adjustAutoIncrementDatum` 在第一轮把显式 nonzero auto-increment 输入与真正生成的 ID 一起
+放进 `RetryInfo.autoIncrementIDs`；重试时又在解析当前 datum 前按 ordinal 消费旧值。动态 source 同一
+位置从 `100/old` 变为 `200/new` 后，第二轮因此实际写入 `100/new`。
+
+真实生产形态是 migration/reconciliation batch 从稳定 staging slot 读取 `target_id,payload`，显式写入
+auto-increment materialization；普通 incremental publisher 把某 slot 的外部 ID 映射从 100 修正为 200，
+同时更新 batch 也覆盖的另一条 hot target entity。大扫描、表达式计算、正常 storage latency 或 backoff
+让 batch 的旧 snapshot 留在 flight；publisher commit 后，batch 在 hot row prewrite 命中真实 9007，
+TiDB 按 classic 默认自动重放 autocommit statement。无节点故障、failpoint、DDL 或非默认 SQL 参数。
+
+真实 TiKV RED 明确断言 MDL=1、autocommit=1、tidb_retry_limit=10、
+pessimistic-auto-commit=false；slow log 为 `Exec_retry_count=1`、`Succ=true`、
+`IsExplicitTxn=false`，fresh source 为 `200/new`，target 为 `100/new`。完整合法单轮结果集合只有
+`{100/old,200/new}`，所以这不是 same-final-state oracle 过强。精确 owner GREEN 在 cache reuse 前分类
+当前输入，只对本轮确实需要生成的 ID 复用旧缓存；相同时序保留 retry=1，target 恢复 `200/new`。
+
+post-RED 去重发现历史 #20629/#20659，但其义务是生成 ID buffer 耗尽后继续分配、避免报错；本 root
+是 full buffer 中显式 ID 缺少 provenance/logical-owner binding，最终静默数据错配。新 selector
+`RETRY_CACHE_PROVENANCE_AND_IDENTITY` 要求 replay cache 记录
+`certificate(value,provenance,logical_owner,generation,predicate)`，不能只保存 scalar/ordinal。远端
+`found_bug id2670003` 已 issue-filed/high；当前 128 surfaces、105 roots、51 high、113 confirmed。上游
+[#69845](https://github.com/pingcap/tidb/issues/69845) 已带 `severity/critical`、`component/executor`、
+`sig/transaction`、`found-by-ai`。资产入口：
+`docs/method-cases/ai-native-id2670003-retry-cache-row-identity.md`、
+`docs/github-issues/id2670003-autoid-retry-mixes-old-id-new-payload.md`、
+`scaffolds/tidb-tests/ai_native_autoid_retry_mixed_row_test.go`、
+`runs/autoid-retry-mixed-row-real-tikv-20260714/`。该 root 已 terminal；禁止枚举 ID、表名、SQL 形态、
+delay 或 hot-row 变体。
+
+---
+
 **2026-07-14 rollback-checkpoint horizon pass 命中新的 critical-consequence statement-atomicity root
 `id2640003`: 悲观 FK cascade UPDATE 返回 1205 后，同一显式事务后续 COMMIT 会把失败语句的 parent/child
 修改持久化。** 候选来自 current source 的 rollback-owner 分析，不是 PR review 或 issue seed。FK cascade

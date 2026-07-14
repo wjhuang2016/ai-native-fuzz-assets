@@ -4,9 +4,9 @@
 
 ## Current remote snapshot (2026-07-14)
 
-`found_bug`: 126 surfaces, 103 distinct root causes, 49 high-severity rows, and 111 confirmed rows.
-The newest entry is `id2610003`, a confirmed high root from value-replacement proof
-revalidation in the transaction campaign.
+`found_bug`: 128 surfaces, 105 distinct root causes, 51 high-severity rows, and 113 confirmed rows.
+The newest entry is `id2670003`, an issue-filed high root from retry-cache provenance and
+row-identity binding in the transaction campaign.
 
 ## Counting convention
 
@@ -709,3 +709,27 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: timeout values, guard rows, parent/child schemas, migration identifiers, and lock
   producers are blast radius. Reopen only for another checkpoint owner, release boundary, or later
   fallible highest consumer.
+
+## 2026-07-14 update: id2670003
+
+- Remote `found_bug`: 128 surfaces, 105 distinct root causes, 51 high-severity rows, 113 confirmed
+  rows.
+- New root: `retry-autoid-positional-cache-overwrites-current-explicit-id`.
+- Upstream: [TiDB #69845](https://github.com/pingcap/tidb/issues/69845), labeled
+  `severity/critical`, `component/executor`, `sig/transaction`, and `found-by-ai`.
+- Consequence: C3 silent persistent row-identity corruption. A successful autocommit
+  `INSERT ... SELECT` retry combines explicit ID `100` from the failed attempt with payload `new`
+  read by the successful attempt, while the current source mapping is ID `200`.
+- Production trigger: a migration/reconciliation batch copies explicit external IDs from stable
+  staging slots into an auto-increment target. A normal incremental publisher corrects one slot's
+  mapping and updates another hot target entity while the batch scans. The hot-row prewrite conflict
+  triggers transparent retry; no node failure, failpoint, DDL, or non-default SQL variable is needed.
+- Verification: real TiKV records `9007`, `Exec_retry_count=1`, `Succ=true`, default MDL ON, and
+  fresh target `100/new` versus source `200/new`. Current-datum classification before positional
+  cache reuse retains the same retry and produces `200/new`.
+- Distinctness: #20629/#20659 closes generated-ID buffer exhaustion by allocating after the buffer
+  empties. This root is not exhaustion or an error; explicit business IDs share that buffer and are
+  rebound by ordinal to a changed retry row.
+- Counting rule: external IDs, staging schemas, DML syntax, hot-row choice, scan delays, and conflict
+  timing are blast radius. Reopen only for another retry cache, provenance class, or logical-owner
+  binding.

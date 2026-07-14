@@ -3612,3 +3612,27 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   upstream [#69838](https://github.com/pingcap/tidb/issues/69838).
 - Pause gate: guard rows, timeout values, FK shapes, identifiers, and natural lock-hold causes are
   blast radius. Reopen only for another checkpoint owner, release boundary, or highest consumer.
+
+## id2670003 - Retry cache rebinds an old explicit ID to a new payload
+
+- Target: `target.txn.autoid-retry-positional-identity.v1`.
+- Selector: `RETRY_CACHE_PROVENANCE_AND_IDENTITY`.
+- **P**: a cached auto-increment value is a generated allocation reusable for the same logical row.
+- **Q**: `RetryInfo.autoIncrementIDs[i]` may replace the current retry datum at ordinal `i`.
+- **F**: `INSERT ... SELECT` re-reads a stable staging slot whose explicit target ID changes from
+  `100` to `200`; the positional cache is consumed before current-datum parsing and has no
+  generated/explicit provenance or logical-owner binding.
+- C3 oracle: the complete legal one-attempt set is `{100/old, 200/new}`. Real TiKV returns success
+  after one natural `9007` retry, but fresh source/target state is `200/new` versus `100/new`.
+- Production trigger: a normal migration or reconciliation batch copies explicit external IDs into
+  an auto-increment materialization while an incremental publisher corrects one staging mapping and
+  updates another shared hot entity. Classic defaults, MDL ON, one TiDB, and one TiKV suffice.
+- Counterfactual: classify the current datum before positional reuse and reuse the cached value only
+  when the current input needs generated allocation. The same retry commits `200/new` and the
+  source-target anti-join is empty.
+- Historical boundary: #20629/#20659 handles generated-ID buffer exhaustion and error avoidance;
+  this root is silent explicit-ID identity rebinding with a full buffer.
+- Status: **ISSUE-FILED**, remote `found_bug id2670003`, high severity / critical consequence,
+  upstream [#69845](https://github.com/pingcap/tidb/issues/69845).
+- Pause gate: IDs, table names, synchronization products, delays, ordering clauses, and conflict keys
+  are blast radius. Reopen only for another cache/provenance/logical-owner tuple.

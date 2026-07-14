@@ -2106,3 +2106,31 @@ final-state control is only one member candidate, not the oracle by itself.
 
 Method improvement: `RETRY_ALLOWED_ONE_ATTEMPT_SET`. A fail-closed GREEN is not causal proof unless
 the original output is first shown to be outside every legal one-attempt outcome.
+
+## Retry cache provenance pass: explicit ID/payload recombination (2026-07-14)
+
+This tick started from current-source retry ownership and did not use a PR-review finding. The
+historical issue search stayed closed until local and real-TiKV RED plus exact owner GREEN.
+
+```text
+P:            cached auto ID is reusable for the same logical retry row.
+Q:            positional cache element i may replace current auto-ID datum i.
+F:            dynamic source changes explicit ID 100->200, but cache lacks provenance/owner binding.
+LIVE RED:     real 9007; Exec_retry_count=1; Succ=true; source 200/new; target 100/new.
+ALLOWED SET:  {100/old, 200/new}; mixed 100/new is impossible in one coherent attempt.
+OWNER GREEN:  classify current explicit datum before cache reuse; same retry; target 200/new.
+DEDUP:        #20629/#20659 owns generated-ID buffer exhaustion, not silent identity rebinding.
+INTEGRATE:    id2670003 high / critical consequence; #69845; 128 surfaces, 105 roots, 51 high,
+              113 confirmed.
+```
+
+The production shape is a batch migration/reconciliation job copying explicit external IDs from
+stable staging slots into an auto-increment materialization. A normal incremental publisher corrects
+one slot mapping and touches another hot entity covered by the batch. Scan work or storage latency
+keeps the old attempt alive until the publisher commits; the hot-row conflict naturally triggers
+autocommit retry. No node failure or non-default SQL setting is involved.
+
+Method improvement: model replay values as
+`certificate(value,provenance,logical_owner,generation,predicate)`, not raw array elements. Add
+`RETRY_CACHE_PROVENANCE_AND_IDENTITY` after allowed-outcome admission and before expensive fault
+design. Stop after one cache/provenance/owner/consumer root.
