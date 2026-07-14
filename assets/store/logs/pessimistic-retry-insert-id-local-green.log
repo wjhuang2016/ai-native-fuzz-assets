@@ -1,0 +1,13 @@
+commit=b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+counterfactual=StatementContext.ResetForRetry clears InsertID
+backend=unistore
+mdl=ON
+natural_conflict=true
+exec_retry_count=1
+retry_affected=0
+retry_insert_id=0
+control_affected=0
+control_insert_id=0
+destination_rows=[[2,1]]
+sink_rows=[["control",0],["retry",0]]
+verdict=GREEN

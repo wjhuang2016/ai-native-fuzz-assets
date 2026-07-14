@@ -3359,3 +3359,32 @@ Go and reduced more than 600 expression clones to the one already-terminal RAND 
 non-RAND result justified moving the owner boundary to statement materializations; it did not prove
 the subsystem safe. This is the intended division: machines enumerate ownership debt, while P/Q/F,
 consumer ranking, natural RED, and counterfactual decide the verdict.
+
+## Start reset-differential scans from public consumers
+
+State-layout scans inherit accidental assumptions from the first hit. The value/flag-pair scanner
+found `LastInsertID + LastInsertIDSet`, but missed singleton `InsertID`. Reverse the inventory:
+
+```text
+public response field
+  -> terminal encoder
+  -> session/statement owner
+  -> all pre-retry setters
+  -> retry reset/restore/rebuild coverage
+  -> successful-attempt overwrite guarantee
+```
+
+Keep only owners that can be set by a failed attempt, survive an accepted retry, and remain unset
+during a successful zero-work re-entry. This method naturally covers singleton fields, nested
+owners, and computed terminal values without naming conventions.
+
+The strong oracle must observe the protocol boundary. Pair the retried result with one direct
+execution from the same final database state, then persist both client-visible outputs. Internal
+field inspection is supporting attribution; it is not the verdict.
+
+`id2460003` calibrates this method. Explicit auto-increment input wrote `StmtCtx.InsertID=42`; a
+unique-key conflict plus gate forced one retry whose successful attempt inserted zero rows.
+`database/sql.Result.LastInsertId()` returned 42, while the same-state control returned 0 and only
+the competitor row existed. Clearing exactly `InsertID` at `ResetForRetry` made both arms return 0.
+Store the selector as `PROTOCOL_OUTPUT_RESET_DIFFERENTIAL` and the oracle as
+`ZERO_ROW_RETRY_OK_PACKET_VS_SAME_STATE_CONTROL`.

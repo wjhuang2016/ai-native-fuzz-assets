@@ -3532,3 +3532,21 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
 - Pause gate: recursive/nonrecursive CTEs, consumer counts, query shapes, SQL verbs, delays, and
   conflict schedules are blast radius. Reopen only for another materialization lifecycle or replay
   boundary.
+
+## id2460003 - Pessimistic retry publishes failed-attempt explicit insert ID
+
+- Target: `target.txn.pessimistic-retry-explicit-insert-id.v1`.
+- Selector: `PROTOCOL_OUTPUT_RESET_DIFFERENTIAL`.
+- **P**: statement rollback and executor rebuild make the retry the only visible successful attempt.
+- **Q**: every MySQL OK-packet field belongs to that successful attempt or documented surviving
+  statement-entry state.
+- **F**: explicit nonzero auto-increment input writes `StmtCtx.InsertID`; `ResetForRetry` omits it;
+  successful zero-row re-entry leaves it untouched; `session.LastInsertID` publishes it.
+- C3 oracle: driver result is retry `(affected=0,id=42)` versus same-state control `(0,0)`; the
+  destination contains only the competitor row and the sink stores `retry=42,control=0`.
+- Counterfactual: clear only `InsertID` in `ResetForRetry`; retry count and business rows remain the
+  same while both protocol results and sink values become zero.
+- Status: **ISSUE-FILED**, remote `found_bug id2460003`, high consequence, upstream #69827. Local
+  and real-TiKV REDs ran with MDL enabled and no fault injection.
+- Pause gate: explicit values, INSERT forms, delays, and conflict schedules are blast radius. Reopen
+  only for another protocol-output owner or replay boundary.

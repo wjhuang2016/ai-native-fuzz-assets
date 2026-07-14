@@ -1582,3 +1582,19 @@ green:       all keys absent or all keys visible under one coherent transaction 
 blind to:    one-region controls and tests that infer atomicity from a nil/error return alone.
 status:      HYPOTHESIS; registered for S50, not yet execution-validated.
 ```
+
+## O59 zero_row_retry_ok_packet_vs_same_state_control
+
+```text
+obligation:  a successful transparent retry publishes only terminal fields owned by its successful
+             attempt or by state explicitly defined to survive the statement.
+form:        force a failed attempt to set terminal owner O; make successful re-entry perform zero
+             work; read the actual client protocol field; compare with direct execution from the
+             same final database state; persist both values in a sink.
+red:         retry and control have identical success and durable business effects but different
+             protocol output, and the sink preserves the failed-attempt value.
+green:       retry equals control; resetting exactly O changes only the terminal field and sink.
+blind to:    later SQL functions that do not expose the OK packet, inferred retries, controls with a
+             different final state, and fields always overwritten by successful re-entry.
+status:      USED + EXECUTION-CONFIRMED by id2460003 / #69827.
+```

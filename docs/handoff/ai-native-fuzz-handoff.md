@@ -4,6 +4,33 @@
 
 ---
 
+**2026-07-14 consumer-first terminal-output pass 命中新的 high correctness root `id2460003`:
+悲观 RC retry 会把失败 attempt 的显式 auto-increment ID 放进成功语句的 MySQL OK packet。** 这次
+不是从 PR review、issue 或历史修复出发,而是从公共终端消费者反向切片:server 写 OK packet 时调用
+`session.LastInsertID()`,它会 fallback 到 `StmtCtx.InsertID`;显式非零 auto-increment 输入会在第一次
+attempt 写这个 singleton field,但 `ResetForRetry()` 没有清理它。
+
+自然冲突矩阵让第一 attempt 计算 `id=42` 后撞 unique key;竞争事务同时写入 gate,使成功 retry
+插入 0 行。local RED 为 `retry=(affected=0,insert_id=42)`,同 final state direct control 为
+`control=(0,0)`,sink 持久化为 `retry=42,control=0`;只加 `InsertID=0` 的精确反事实变为全绿且 retry
+仍为 1。testbed `8220955` 的 `database/sql + go-sql-driver/mysql` real-TiKV lift 得到同样结果,slow
+log 记录 `Exec_retry_count=1,Result_rows=0,Succ=true`,MDL default ON,无 failpoint,测试 schema 已删除。
+
+新 selector `PROTOCOL_OUTPUT_RESET_DIFFERENTIAL` 不再假设状态必须是 value/flag 对:先枚举 OK packet、
+错误、warning、row count、generated ID 等公共输出,反向切到 mutable owner,与 retry 前可变字段相交,
+再减掉 reset 覆盖和成功 attempt 必然覆写项,最后用 zero-work re-entry 暴露 survivor。它修复了旧
+`value + Set/Valid/Dirty/...` scanner 漏掉 singleton `InsertID` 的盲区。远端 `found_bug id2460003`
+已入库;当前 121 surfaces、98 roots、44 high、106 confirmed。上游
+[#69827](https://github.com/pingcap/tidb/issues/69827) 已带 `found-by-ai`、`severity/major`、
+`component/executor`。这与 #69796 不同:#69796 owns `LastInsertID/LastInsertIDSet`,本 root owns
+`InsertID`;只应用 #69796 的清理不能修复。资产入口:
+`assets/store/pessimistic-retry-insert-id-results.jsonl`、
+`docs/method-cases/ai-native-id2460003-protocol-output-retry-method-case.md`、
+`scaffolds/tidb-tests/ai_native_pessimistic_retry_insert_id_test.go`。该 owner 已 terminal;禁止枚举
+显式 ID、INSERT 形状、delay 或冲突变体。下一轮从不同 terminal output owner 继续。
+
+---
+
 **2026-07-14 current-source pass 再命中 high correctness root `id2430003`:悲观 RC retry 会复用失败
 attempt 已完成的 materialized CTE,成功提交 mixed-attempt row。** 候选从 #69823 的负边界产生:Go AST
 scanner 把 `pkg/expression` 600+ Clone 压缩后,非 RAND 候选为零,因此把 owner 边界外移到 statement-owned

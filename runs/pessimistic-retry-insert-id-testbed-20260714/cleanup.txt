@@ -1,0 +1,2 @@
+schema_count=0
+tidb_enable_metadata_lock=1

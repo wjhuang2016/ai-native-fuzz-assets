@@ -1,0 +1,21 @@
+{
+  "version": "8.0.11-TiDB-v9.0.0-beta.2.pre-1895-g5c9198e948",
+  "mdl_enabled": 1,
+  "retry_affected": 0,
+  "retry_insert_id": 42,
+  "control_affected": 0,
+  "control_insert_id": 0,
+  "destination_rows": [
+    [2, 1]
+  ],
+  "sink_rows": [
+    {
+      "arm": "control",
+      "reported_id": 0
+    },
+    {
+      "arm": "retry",
+      "reported_id": 42
+    }
+  ]
+}

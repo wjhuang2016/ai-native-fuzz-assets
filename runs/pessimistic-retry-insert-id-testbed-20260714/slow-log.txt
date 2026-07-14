@@ -1,0 +1,8 @@
+TiDB version: 8.0.11-TiDB-v9.0.0-beta.2.pre-1895-g5c9198e948
+Conn_ID: 3397412426
+Exec_retry_time: 8.002645055
+Exec_retry_count: 1
+Query_time: 8.005136303
+Result_rows: 0
+Succ: true
+IsExplicitTxn: true

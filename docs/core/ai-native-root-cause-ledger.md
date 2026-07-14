@@ -562,3 +562,18 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: recursive/nonrecursive forms, consumer counts, CTE query shapes, DML verbs, delays,
   and conflict schedules are blast radius. Reopen only for another materialization owner or replay
   boundary.
+
+## 2026-07-14 update: id2460003
+
+- Remote `found_bug`: 121 surfaces, 98 distinct root causes, 44 high-severity rows, 106 confirmed
+  rows.
+- New root: `pessimistic-retry-publishes-failed-attempt-insert-id`.
+- Upstream: [TiDB #69827](https://github.com/pingcap/tidb/issues/69827), labeled
+  `severity/major`, `component/executor`, and `found-by-ai`.
+- Consequence: C3 false terminal truth. A successful zero-row INSERT returns an explicit generated
+  ID from a rolled-back attempt; applications can durably associate later data with that absent ID.
+- Distinctness: #69796 owns `LastInsertID` and `LastInsertIDSet` mutated by
+  `LAST_INSERT_ID(expr)`. This root owns singleton `InsertID` mutated by explicit nonzero
+  auto-increment input. The #69796 field reset does not close this owner.
+- Counting rule: explicit values, INSERT forms, sleep durations, and conflict schedules are blast
+  radius. Reopen only for another terminal-output owner or replay boundary.

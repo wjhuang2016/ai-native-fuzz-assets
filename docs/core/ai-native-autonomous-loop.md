@@ -1953,3 +1953,24 @@ Method improvement: retry side-effect inventory now follows capability ownership
 The strong oracle is owner identity plus independent contention plus cleanup recovery. Row-dependent
 arguments prevent constant evaluation from polluting the zero-work control. Stop advisory-lock
 variants; generate the next target from a different external capability owner.
+
+## MDL-on protocol-output tick: stale explicit insert ID, EXECUTED (2026-07-14)
+
+This tick generated candidates from current-source terminal consumers. Public issues, fixes,
+history, and PR review remained closed until local RED.
+
+```text
+P:           rollback plus ResetForRetry rebuild a successful statement attempt.
+Q:           the OK packet contains only successful-attempt output.
+F:           failed-attempt InsertID survives; zero-work retry does not overwrite it.
+LOCAL RED:   retry=1; retry result 0/42; same-state control 0/0; sink 42/0.
+EXACT GREEN: clear only InsertID; retry remains 1; both results and sink become 0/0.
+LIVE RED:    real TiKV through database/sql; slow log proves retry=1; MDL=1.
+INTEGRATE:   id2460003 high; #69827; singleton protocol-output owner.
+```
+
+Method improvement: reset-differential generation is now consumer-first. Enumerate terminal fields,
+backward-slice to owners, intersect with accepted-retry mutations, subtract reset coverage and
+successful-attempt overwrite guarantees, then force zero-work re-entry. This removes the old
+value/flag-pair shape assumption that missed singleton `InsertID`. Stop this owner and continue from
+a different public output owner.

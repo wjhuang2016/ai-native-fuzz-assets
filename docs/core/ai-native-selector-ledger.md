@@ -1831,3 +1831,29 @@ status:     VALIDATED by id2430003. Local natural-conflict RED, exact CTE-storag
 stop rule:  one root per materialization lifecycle and replay boundary. CTE forms, consumers, SQL
             verbs, delays, and schedules are blast radius.
 ```
+
+## S54: consumer-first protocol output reset differential
+
+```text
+selector:   start at a public terminal output, slice backward to its mutable owner, and compare
+            accepted-retry reset coverage with all pre-retry mutations and successful-attempt writes
+born from:  id2460003 (failed-attempt explicit InsertID reaches a successful OK packet)
+candidate:  public terminal consumers intersect owners mutated before accepted retry
+            minus reset/restore/rebuild/version coverage
+            minus owners guaranteed to be overwritten by every successful attempt
+prediction:
+  - a failed attempt mutates a statement or session output owner;
+  - transparent retry accepts the later error and returns success;
+  - zero-work re-entry does not execute the owner setter;
+  - response encoding reads the surviving owner into an OK packet, warning, status, or error.
+oracle gate:
+  - observe the actual client protocol field, not only an internal struct or later SQL function;
+  - prove retry count and successful zero work;
+  - compare with direct execution from the same final database state;
+  - persist the reported value through one downstream consumer;
+  - reset exactly one owner as the counterfactual.
+status:     VALIDATED by id2460003. Local natural-conflict RED, exact InsertID reset GREEN,
+            driver-level real-TiKV RED, MDL ON, and upstream #69827 are complete.
+stop rule:  one root per terminal-output owner and retry boundary. Values, SQL forms, delays, and
+            conflict schedules are blast radius. LastInsertID/LastInsertIDSet remain terminal #69796.
+```
