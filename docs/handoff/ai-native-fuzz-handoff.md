@@ -4,6 +4,32 @@
 
 ---
 
+**2026-07-14 fast-path resource-closure pass 验证了一个 severe sibling，但不新增 bug/root 计数：
+悲观 RC `UPDATE IGNORE` 在并发事务已经释放 UNIQUE value 后，仍可能静默跳过合法更新。** 真实业务
+场景是账号名、外部订单号等唯一业务标识回收：A 开启 pessimistic READ COMMITTED transaction，先读取
+目标行 `(1,10)` 与旧 owner `(2,20)`；普通 cleanup 事务 B 删除 `(2,20)` 并提交；fresh observer 已确认
+20 可用；A 再按主键执行 `UPDATE IGNORE ... SET u=20 WHERE id=1`。要求精确时序
+`A.latestOracleTS < B.commitTS < A.UPDATE`，所有 TiDB/PD/TiKV 都健康、MDL default ON、无 failpoint。
+
+当前源码在 `tidb_rc_write_check_ts=ON` 时把 Point Update 判为可复用旧 TSO，但这个 P 只覆盖目标 row。
+`UPDATE IGNORE` 的 `DupKeyCheckInPlace` 还会通过 transaction snapshot 读取新 unique-index key；它看到
+旧 index entry 后返回 `ErrKeyExists`，随后 IGNORE 跳过该 row。因为 mutation set 已空，后续 TiKV
+prewrite/lock conflict 没有机会触发 retry。local 与 real-TiKV RED 都得到 SQL success、`ROW_COUNT()=0`、
+fresh durable row 仍为 `(1,10,100)`；release-before-BEGIN 与 `tidb_rc_write_check_ts=OFF` 都 GREEN。只让
+`physicalop.Update{IgnoreError:true}` 退出旧-TS selector 后，同一 real-TiKV schedule 变为 `(1,20,101)`。
+
+必须披露 reachability：`tidb_rc_write_check_ts` 当前默认 OFF，所以它只影响显式开启 TSO 优化的生产
+集群，不能包装成 default-config critical。根因级去重后，它与此前 RC `INSERT IGNORE` + FK helper 的
+snapshot-owner split 相同，只是隐藏 consumer 从 FK parent read 扩到 unique-index duplicate read；因此
+不新增 ID、不单独提 issue。方法论新增 S58 `FAST_PATH_EXECUTION_RESOURCE_CLOSURE`：看到 PointGet/
+single-row/no-new-TS 证明后，必须列全 target row、unique index、FK、cascade、trigger、default/sequence
+等实际资源，并为每个资源记录 snapshot owner、freshness/conflict proof 与 error policy。资产入口：
+`docs/bug-drafts/ai-native-rc-update-ignore-freed-unique-sibling.md`、
+`assets/store/txn-rc-update-ignore-freed-unique-results.jsonl`、
+`assets/store/logs/txn-rc-update-ignore-freed-unique-20260714.log`。
+
+---
+
 **2026-07-14 value-replacement pass 命中新的 critical-consequence data-integrity root
 `id2610003`: `CommitTsExpired` 重试可以绕过 cached-table commitTS 上界检查，在 WRITE lease 过期后
 仍成功提交。** 候选完全来自 current source 的 proof owner 分析：TiDB 为 cached-table commit 获取

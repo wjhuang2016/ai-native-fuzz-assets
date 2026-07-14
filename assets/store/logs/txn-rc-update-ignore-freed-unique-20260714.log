@@ -1,0 +1,31 @@
+candidate: pessimistic RC UPDATE IGNORE after a concurrent transaction frees the target unique key
+source_commit: 2964713e267eac6eab92c4be53e9ad0641df2e9f
+configuration: MDL=ON, tidb_rc_write_check_ts=ON (non-default), no failpoint
+
+local RED:
+  expected ROW_COUNT()=[1]
+  actual   ROW_COUNT()=[0]
+  current-behavior diagnostic committed and fresh observer saw only (1,10,100)
+
+negative controls:
+  unique key freed before writer BEGIN -> ROW_COUNT()=1, final row updated
+  tidb_rc_write_check_ts=OFF -> ROW_COUNT()=1, final row updated
+
+real TiKV RED:
+  nightly PD/TiKV healthy at 127.0.0.1:2379 / 127.0.0.1:20160
+  expected ROW_COUNT()=[1]
+  actual   ROW_COUNT()=[0]
+  no injected fault; ordinary two-session delete/commit ordering
+
+owner GREEN A:
+  planSkipGetTsoFromPD returns false for physicalop.Update with IgnoreError
+  local and real-TiKV tests pass; fresh observer sees (1,20,101)
+
+owner GREEN B:
+  transaction-owned helper snapshot receives RCCheckTS
+  target passes, but this changes an existing conflict-observation stage and is too broad
+
+dedup:
+  no exact upstream issue found by UPDATE IGNORE / RC / unique-key searches
+  local root already exists as STATE_OWNER_SPLIT_IN_WRITE_FASTPATH from RC INSERT IGNORE + FK
+  verdict: validated severe sibling, no new root and no new bug count

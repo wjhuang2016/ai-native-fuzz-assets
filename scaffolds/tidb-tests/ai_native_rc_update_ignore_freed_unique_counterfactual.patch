@@ -1,0 +1,7 @@
+diff --git a/pkg/sessiontxn/isolation/readcommitted.go b/pkg/sessiontxn/isolation/readcommitted.go
+--- a/pkg/sessiontxn/isolation/readcommitted.go
++++ b/pkg/sessiontxn/isolation/readcommitted.go
+@@ -288,0 +289,3 @@
++		if v.IgnoreError {
++			return false
++		}

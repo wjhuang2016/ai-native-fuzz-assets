@@ -2045,6 +2045,13 @@ network, runtime, CPU, or scheduling pause longer than the fixed five-second cac
 remains healthy. A primary lock must remain live: current client-go gives a roughly 4 MiB write about
 12 seconds, whereas the small-transaction three-second TTL is a negative control.
 
+This must be written as a production trigger card before issue promotion: supported workload, natural
+event producer, exact ordering/lifetime inequalities, healthy/unhealthy component topology, public
+terminal result, and fresh durable-state consequence. "Network failure" or "an in-flight RPC returns
+an error" is not a producer description. Failpoints may compress the named schedule, but cannot
+replace it. A candidate without this card remains SOURCE/LOCAL evidence even when its injected RED is
+deterministic.
+
 Method improvement: store proof facts as argument-bearing tokens such as
 `checked(commitTS=x, lease=L)`, not booleans such as `commitTSChecked=true`. Enumerate every assignment
 to either argument before the irreversible consumer; require exact revalidation, a proven monotonic

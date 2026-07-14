@@ -66,9 +66,39 @@ step was to follow the proof obligation into the FK helper and ask who owns the 
 small matrix then separated a false rejection from a silent lost write. `INSERT IGNORE` was the
 severity amplifier: it turned the same stale read into a successful-looking statement.
 
+## Sibling closure: unique-index reads in `UPDATE IGNORE`
+
+A later current-source pass reused the selector without enumerating FK shapes. A pessimistic RC
+point `UPDATE IGNORE` changed a UNIQUE value after another transaction deleted its old owner. The
+outer PointGet row was unchanged, so the fast path's normal target-row conflict check was green, but
+the in-place duplicate checker read the released unique key through the transaction snapshot. It
+returned stale `ErrKeyExists`; `IGNORE` skipped the row, leaving no mutation that TiKV could use to
+force a retry.
+
+This improves the selector from "look for a helper that calls `txn.GetSnapshot`" to an execution
+resource closure:
+
+```text
+outer plan proof
+  -> enumerate every correctness read performed after the plan read
+  -> map each row/index/FK/cascade/trigger resource to its snapshot owner
+  -> map conflict/error to retry, fail, ignore, or partial continuation
+  -> mutate one hidden resource while keeping the outer access key unchanged
+```
+
+The production schedule is ordinary account/order identifier release: writer A reads existing rows,
+cleanup B deletes the current unique owner and commits, then A uses `UPDATE IGNORE` to claim the now
+free identifier. The exact inequality is `A.latestOracleTS < B.commitTS < A.UPDATE`; all nodes are
+healthy and MDL is ON. Current source returns success with zero affected rows and persists the old
+value. A fresh TSO or excluding `Update.IgnoreError` from the fast path makes the same schedule
+GREEN.
+
+The sibling requires `tidb_rc_write_check_ts=ON`, whose current default is OFF. It is therefore a
+validated high-consequence blast-radius surface, not another root or a default-config critical bug.
+The OFF setting and release-before-BEGIN schedule are both GREEN controls.
+
 ## Pause gate
 
-Do not enumerate all foreign-key types, actions, or insert syntaxes. Reopen only for a distinct
-snapshot-owner split, an upstream fix validation, or a sibling that proves a different severe
-consequence.
-
+Do not enumerate foreign-key types, unique-index shapes, or IGNORE syntaxes. Reopen only when the
+resource-closure table finds a different snapshot owner or retry policy, an upstream fix needs blast-
+radius validation, or a sibling reaches a distinct irreversible consequence.

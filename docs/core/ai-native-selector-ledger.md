@@ -1930,10 +1930,47 @@ oracle gate:
   - prove the irreversible consumer receives the replacement;
   - observe the highest public consequence, not only checker-call counts;
   - revalidate exactly the replacement before the consumer and rerun the identical schedule;
-  - name the production event equivalent to every deterministic pause or injection.
+  - attach a production trigger card with workload, natural producer, ordering/lifetime inequalities,
+    component topology, public terminal result, and fresh durable-state consequence;
+  - treat every deterministic pause or injection only as a compressor for that natural schedule;
+    reject generic producers such as "network error" or "in-flight failure".
 status:     VALIDATED by id2610003. Owner-level RED/GREEN plus local and real-TiKV SQL RED/GREEN,
             MDL ON, natural minCommitTS push/CommitTsExpired, durable cache-to-sink corruption,
             and upstream #69836.
 stop rule:  one root per proof/replacement/consumer triple. Replacement values, retry counts, pause
             causes, transaction sizes, SQL forms, and timing are blast radius.
+```
+
+## S58: fast-path execution resource closure
+
+```text
+selector:   a fast-path classifier proves safety from the outer access plan, while later semantic
+            helpers read additional rows, indexes, constraints, or side resources through a
+            different state owner or conflict policy
+born from:  RC INSERT IGNORE + FK stale snapshot; refined by the RC UPDATE IGNORE unique-index
+            sibling on 2026-07-14
+candidate:  point/single-row/local/no-new-TS fast paths
+            intersect hidden unique-index/FK/cascade/trigger/default/sequence reads
+            intersect helper-owned snapshot or suppressed-error continuation
+            minus explicit statement-snapshot propagation and retry-producing conflicts
+prediction:
+  - the outer row/key remains unchanged, so its normal conflict proof is green;
+  - one hidden semantic resource changes after the reused snapshot timestamp;
+  - the helper makes a stale accept/reject decision through txn/helper-owned state;
+  - IGNORE, warning conversion, or an empty mutation set removes the later conflict that could retry.
+oracle gate:
+  - materialize a resource-closure table: resource, reason, owner, freshness proof, error policy;
+  - mutate exactly one hidden resource with an ordinary concurrent transaction;
+  - keep the outer point key unchanged and prove the concurrent commit is visible to a fresh reader;
+  - assert affected rows plus fresh durable row/index/FK state, not SQL success alone;
+  - include before-BEGIN and fast-path-disabled controls;
+  - disable only the unsafe classifier cell or correctly propagate its proof, then rerun on real TiKV;
+  - attach the five-field production trigger card and disclose every non-default variable.
+status:     VALIDATED as one root with two consumers. FK INSERT IGNORE reproduces with RC write-check
+            ON/OFF; unique-index UPDATE IGNORE reproduces only with non-default
+            tidb_rc_write_check_ts=ON. The latter has local and real-TiKV RED/GREEN and does not add
+            a root or bug count.
+stop rule:  one root per state-owner/freshness/error-policy triple. FK/index shapes, SQL syntax, key
+            values, and concurrent business objects are blast radius unless the owner or terminal
+            policy changes.
 ```

@@ -3413,6 +3413,57 @@ irreversible consumers. Build the smallest matrix where the original value passe
 fails. A natural replacement producer is stronger than a fabricated error; deterministic injection
 may compress only the timing needed to reach it and must name its production-equivalent event.
 
+Before promoting a RED, write a **production trigger card**. Generic phrases such as "a network
+error", "an in-flight operation fails", or "the process pauses" are not sufficient. The card must
+close all five fields:
+
+```text
+workload:   the supported SQL/API operation and data shape that enters the path
+producer:   the ordinary concurrent request, resource event, component failure, or lifecycle event
+schedule:   the required ordering and lifetime inequalities, including the negative control
+topology:   which TiDB/TiKV/PD nodes remain healthy and which boundary is delayed or lost
+outcome:    the exact client-visible result followed by the fresh durable-state violation
+```
+
+A failpoint is only a schedule compressor. It may make the producer deterministic, but it cannot be
+the producer in the card. At least one product-level run must retain the real proof owner,
+replacement/fallback path, irreversible consumer, and durable-state oracle. If the natural producer
+cannot be named concretely, or a downstream guard rejects the manufactured state, keep the result as
+a negative asset and do not call it a production bug.
+
+### Close fast-path proofs over the full execution resource set
+
+An outer plan shape is not the execution footprint. Before accepting a PointGet, single-row, local,
+cached, or no-new-TS fast path, expand the proof into a resource-closure table:
+
+| Resource | Why it is read | State owner | Freshness/conflict proof | Error policy |
+| --- | --- | --- | --- | --- |
+| target row/key | locate the row | statement snapshot | latest TS or RCCheckTS | retry/error |
+| unique index key | duplicate validation | transaction/helper snapshot | must be named | ignore/error/retry |
+| FK parent/child | referential validation | helper snapshot | must be named | ignore/error/cascade |
+| generated side resource | trigger/cascade/sequence/default | executor/session/external owner | must be named | continue/retry/publish |
+
+The selector question is not merely "did code check P?" It is:
+
+```text
+P(outer access resource is safe)
+does not imply
+Q(every semantic resource consumed by the write is current or conflict-detecting)
+```
+
+Generate the smallest schedule that changes exactly one hidden resource while leaving the outer
+point key unchanged. Then follow the hidden read's terminal policy. `IGNORE`, warning conversion,
+partial continuation, or an empty mutation set is especially important because it can remove the
+later prewrite/lock conflict that would otherwise repair the stale decision.
+
+The RC `UPDATE IGNORE` unique-key sibling calibrates this refinement. A concurrent transaction
+deleted the old unique owner after the writer's prior statement but before its point update. The
+target row did not change, while the duplicate checker consumed a stale transaction snapshot and
+`IGNORE` silently skipped a now-valid update. Excluding `Update.IgnoreError` from old-TS reuse made
+the identical real-TiKV schedule GREEN. The surface requires non-default
+`tidb_rc_write_check_ts=ON`, so it expands a known root's blast radius without becoming a new root or
+default-config critical finding.
+
 `id2610003` calibrates this selector. TiDB's cached-table commit installs
 `commitTSCheck(commitTS < writeLease)`, and client-go checks the initial commitTS. A healthy reader can
 naturally push a still-live primary lock's `minCommitTS`; TiKV then returns `CommitTsExpired` for the

@@ -668,3 +668,21 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   `CommitTsExpired`; injection only compresses the writer-local pause.
 - Counting rule: row sizes, pause causes, cache values, SQL copy shapes, and timing schedules are
   blast radius. Reopen only for another proof owner, replacement site, or irreversible consumer.
+
+## 2026-07-14 update: RC `UPDATE IGNORE` unique-key sibling (no new count)
+
+- Current-source local and real-TiKV RED: with pessimistic READ COMMITTED, MDL ON, and non-default
+  `tidb_rc_write_check_ts=ON`, session B deletes and commits the row owning unique value 20 after
+  session A's prior statement. Session A's point `UPDATE IGNORE` still reports `ROW_COUNT()=0` and
+  durably leaves `(1,10)` instead of claiming the now-free value as `(1,20)`.
+- Owner: the old-TS classifier proves the outer PointGet row only. `DupKeyCheckInPlace` later reads
+  the unique index through the transaction-owned snapshot, returns stale `ErrKeyExists`, and
+  `IGNORE` removes the mutation that could otherwise produce a retrying conflict.
+- Exact selector counterfactual: exclude `physicalop.Update{IgnoreError:true}` from old-TS reuse.
+  The identical real-TiKV schedule becomes GREEN. Applying RCCheckTS to the whole transaction
+  snapshot also fixes the cell but changes unrelated conflict-observation behavior and is too broad.
+- Root accounting: this is a second consumer of the existing RC write-fast-path snapshot-owner split
+  first validated by `INSERT IGNORE` + FK. It expands blast radius and births S58 resource closure,
+  but does not change surface/root/bug counts or warrant a separate issue.
+- Reachability calibration: `tidb_rc_write_check_ts` defaults to OFF, and the OFF control is GREEN.
+  The reached consequence is silent lost write, but it is not a default-config critical finding.
