@@ -627,3 +627,21 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   interrupted, while lazy uniqueness, cross-Region tables, and ordinary prewrite ordering are natural.
 - Counting rule: candidate schemas, values, business effects, Region layouts, and cleanup failures are
   blast radius. Reopen only for another proof class or certificate owner.
+
+## 2026-07-14 update: id2580003
+
+- Remote `found_bug`: 125 surfaces, 102 distinct root causes, 48 high-severity rows, 110 confirmed
+  rows.
+- New root: `commit-does-not-check-gc-safe-point-before-prewrite`.
+- Upstream: [TiDB #69833](https://github.com/pingcap/tidb/issues/69833), labeled
+  `severity/critical`, `component/tikv-client`, `sig/transaction`, and `found-by-ai`.
+- Consequence: C3 silent durable row resurrection. An optimistic transaction whose start TS has
+  stopped protecting the GC safe point can return COMMIT success and recreate a row that another
+  transaction deleted before GC.
+- Production trigger: assertion compatibility value `OFF`, `tidb_gc_max_wait_time` shorter than
+  client-go's 24-hour admission horizon, a stalled optimistic UPDATE, a concurrent DELETE, and a
+  normal GC/compaction cycle. No crash, network fault, DDL, async commit, or 1PC is required.
+- Distinctness: this is not a late commit error or recovery-certificate defect. GC has legitimately
+  reclaimed the conflict evidence, but the retired start TS remains admitted to an effectful consumer.
+- Counting rule: transaction durations, SQL verbs, row values, GC timing, assertion settings, and
+  compaction schedules are blast radius. Reopen only for another retirement event or effectful consumer.

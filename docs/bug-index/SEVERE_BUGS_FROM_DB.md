@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 11:29:03 +0800
+Generated at: 2026-07-14 12:24:25 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -51,3 +51,4 @@ Generated at: 2026-07-14 11:29:03 +0800
 | 2490003 | issue-filed | high | data_integrity | UPDATE | pessimistic transaction foreign key ON UPDATE CASCADE | `fk-cascade-stmtcommit-drops-final-parent-lock` | Pessimistic ON UPDATE CASCADE can commit a concurrent child orphan | [https://github.com/pingcap/tidb/issues/69828](https://github.com/pingcap/tidb/issues/69828) |
 | 2520003 | issue-filed | high | atomicity/data-integrity | EXPLAIN ANALYZE UPDATE | autocommit EXPLAIN ANALYZE DML / lazy result / SQLKiller | `explain-analyze-dml-commit-before-kill-check` | Killed EXPLAIN ANALYZE DML can return an error after committing its mutation | [https://github.com/pingcap/tidb/issues/69829](https://github.com/pingcap/tidb/issues/69829) |
 | 2550003 | issue-filed | high | atomicity/data-integrity | COMMIT | optimistic transaction / lazy uniqueness / async commit recovery | `async-recovery-omits-failed-checknotexists-proof` | Async commit can commit business writes after a duplicate-key proof fails | [https://github.com/pingcap/tidb/issues/69832](https://github.com/pingcap/tidb/issues/69832) |
+| 2580003 | issue-filed | high | atomicity/data-integrity | COMMIT | optimistic transaction / GC safe point / long transaction | `commit-does-not-check-gc-safe-point-before-prewrite` | Expired optimistic transaction can resurrect a row deleted before GC | [https://github.com/pingcap/tidb/issues/69833](https://github.com/pingcap/tidb/issues/69833) |

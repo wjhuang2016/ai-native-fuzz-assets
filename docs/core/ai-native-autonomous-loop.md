@@ -1997,3 +1997,27 @@ proof-only predicates, force an effect prefix to succeed while a proof fails nat
 compensation, then invoke an independent recovery owner. The new selector is
 `RECOVERY_CERTIFICATE_PROOF_CLOSURE`; the C3 oracle is definite constraint failure versus fresh durable
 business state. Async commit is opt-in, but lazy uniqueness and MDL remained at their defaults.
+
+## Safe-point retirement consumer-closure tick: deleted row resurrection, EXECUTED (2026-07-14)
+
+This tick started from current-source GC protection and consumer closure. Issues and history remained
+closed until raw and SQL-level real-TiKV RED.
+
+```text
+P:           an old active startTS is omitted from min-start-TS, so GC may reclaim its evidence.
+Q:           every surviving consumer of that startTS is fail-closed before creating effects.
+F:           reads CheckVisibility; nonempty KVTxn.Commit reaches prewrite without that guard.
+RAW RED:     real TiKV GC/compaction; stale commit nil; fresh KV value "resurrected".
+SQL RED:     MDL ON; ordinary 2PC; assertion OFF; COMMIT nil; fresh row [[1 11]].
+MASK:        fresh-install FAST assertion rejects the UPDATE shape with Assertion=Exist.
+EXACT GREEN: pre-prewrite CheckVisibility returns 9006; fresh row remains absent.
+INTEGRATE:   id2580003 high / critical consequence; #69833; 125 surfaces, 102 roots.
+```
+
+Method improvement: after a first GREEN, classify the guard's provenance before retiring the
+candidate. Mandatory owner guards close a proof obligation; new-install overrides, upgrade fallbacks,
+session settings, and best-effort checks define a production matrix and may only mask one surface.
+For retirement bugs, separately prove the natural wall-clock chain and the deterministic compressed
+test: the latter may advance time or request compaction, but must keep real GC, storage conflict
+reclamation, commit, and fresh-state observation intact. The new selector is
+`SAFE_POINT_RETIREMENT_CONSUMER_CLOSURE`.

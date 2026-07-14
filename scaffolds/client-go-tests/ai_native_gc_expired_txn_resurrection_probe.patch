@@ -1,0 +1,101 @@
+diff --git a/integration_tests/safepoint_test.go b/integration_tests/safepoint_test.go
+index b187e9f..7d15d6c 100644
+--- a/integration_tests/safepoint_test.go
++++ b/integration_tests/safepoint_test.go
+@@ -41,11 +41,17 @@ import (
+ 	"testing"
+ 	"time"
+ 
++	"github.com/pingcap/kvproto/pkg/debugpb"
++	"github.com/pingcap/kvproto/pkg/kvrpcpb"
+ 	"github.com/pkg/errors"
+ 	"github.com/stretchr/testify/suite"
+ 	"github.com/tikv/client-go/v2/error"
++	"github.com/tikv/client-go/v2/kv"
+ 	"github.com/tikv/client-go/v2/tikv"
++	"github.com/tikv/client-go/v2/tikvrpc"
+ 	"github.com/tikv/client-go/v2/txnkv/transaction"
++	"google.golang.org/grpc"
++	"google.golang.org/grpc/credentials/insecure"
+ )
+ 
+ func TestSafepoint(t *testing.T) {
+@@ -96,6 +102,78 @@ func (s *testSafePointSuite) waitUntilErrorPlugIn(t uint64) {
+ 	}
+ }
+ 
++func (s *testSafePointSuite) gcRegion(key []byte, safePoint uint64) {
++	if *withTiKV {
++		newSafePoint, err := s.store.GC(context.Background(), safePoint)
++		s.Require().NoError(err)
++		s.Require().GreaterOrEqual(newSafePoint, safePoint)
++		time.Sleep(12 * time.Second)
++
++		bo := tikv.NewBackofferWithVars(context.Background(), 500, nil)
++		loc, err := s.store.GetRegionCache().LocateKey(bo, key)
++		s.Require().NoError(err)
++		rpcCtx, err := s.store.GetRegionCache().GetTiKVRPCContext(bo, loc.Region, kv.ReplicaReadLeader, 0)
++		s.Require().NoError(err)
++		s.Require().NotNil(rpcCtx)
++
++		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
++		defer cancel()
++		conn, err := grpc.DialContext(ctx, rpcCtx.Addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
++		s.Require().NoError(err)
++		defer conn.Close()
++		debugClient := debugpb.NewDebugClient(conn)
++		for _, cf := range []string{"write", "default"} {
++			_, err = debugClient.Compact(ctx, &debugpb.CompactRequest{
++				Db:                        debugpb.DB_KV,
++				Cf:                        cf,
++				Threads:                   1,
++				BottommostLevelCompaction: debugpb.BottommostLevelCompaction_Force,
++			})
++			s.Require().NoError(err)
++		}
++		return
++	}
++
++	bo := tikv.NewBackofferWithVars(context.Background(), 500, nil)
++	loc, err := s.store.GetRegionCache().LocateKey(bo, key)
++	s.Require().NoError(err)
++	req := tikvrpc.NewRequest(tikvrpc.CmdGC, &kvrpcpb.GCRequest{SafePoint: safePoint})
++	resp, err := s.store.SendReq(bo, req, loc.Region, 10*time.Second)
++	s.Require().NoError(err)
++	s.Require().NotNil(resp.Resp)
++	s.Require().Nil(resp.Resp.(*kvrpcpb.GCResponse).GetError())
++}
++
++func (s *testSafePointSuite) TestExpiredTxnCannotResurrectDeletedKey() {
++	key := encodeKey(s.prefix, "expired-resurrection")
++
++	seed := s.beginTxn()
++	s.Require().NoError(seed.Set(key, []byte("original")))
++	s.Require().NoError(seed.Commit(context.Background()))
++
++	stale := s.beginTxn()
++	value, err := stale.Get(context.Background(), key)
++	s.Require().NoError(err)
++	s.Require().Equal([]byte("original"), value.Value)
++
++	deleter := s.beginTxn()
++	s.Require().NoError(deleter.Delete(key))
++	s.Require().NoError(deleter.Commit(context.Background()))
++	safePoint := deleter.CommitTS()
++
++	s.gcRegion(key, safePoint)
++	s.store.UpdateTxnSafePointCache(safePoint, time.Now())
++
++	s.Require().NoError(stale.Set(key, []byte("resurrected")))
++	commitErr := stale.Commit(context.Background())
++	s.Error(commitErr, "a transaction older than the txn safe point must not commit")
++
++	fresh := s.beginTxn()
++	value, err = fresh.Get(context.Background(), key)
++	s.Equal(error.ErrNotExist, errors.Cause(err))
++	s.Nil(value.Value)
++}
++
+ func (s *testSafePointSuite) TestSafePoint() {
+ 	txn := s.beginTxn()
+ 	for i := 0; i < 10; i++ {

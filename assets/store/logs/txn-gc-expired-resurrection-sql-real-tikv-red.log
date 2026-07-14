@@ -1,0 +1,18 @@
+TiDB: b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+client-go: 01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b
+TiKV: nightly 7ecce12e, one-store playground
+MDL: ON
+1PC: OFF
+async commit: OFF
+tidb_txn_assertion_level: OFF
+Probe: TestExpiredOptimisticTxnCannotResurrectDeletedRow
+
+Current-source RED:
+  expired transaction commit result: <nil>
+  fresh row state after commit: [[1 11]]
+  Error: An error is expected but got nil.
+  FAIL
+
+T1 updated (1,10) to (1,11), T2 deleted the row, real TiKV GC removed the
+delete tombstone and older row image, then T1 returned COMMIT success and
+permanently recreated the deleted row.

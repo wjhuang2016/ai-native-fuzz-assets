@@ -1883,3 +1883,29 @@ status:     VALIDATED by id2550003. Raw real-TiKV RED, SQL RED 3/3 without Regio
 stop rule:  one root per omitted proof class and certificate. SQL forms, values, Region layouts,
             delays, and process-failure forms are blast radius.
 ```
+
+## S56: safe-point retirement consumer closure
+
+```text
+selector:   once a timestamp, generation, snapshot, lease, or owner stops protecting its evidence,
+            enumerate every later consumer that can still read or create durable effects as it
+born from:  id2580003 (GC retires an old startTS, but KVTxn.Commit can still prewrite as that owner)
+candidate:  retirement events intersect surviving effectful consumers
+            minus fail-closed admission/version checks owned by the retirement contract
+prediction:
+  - reads often contain the existing visibility or generation guard, while commits/finalizers do not;
+  - a configurable retirement horizon can be shorter than an independent consumer age limit;
+  - after reclamation removes conflict evidence, a stale consumer succeeds instead of conflicting;
+  - a secondary assertion, cache, or best-effort check may mask one surface without closing the owner.
+oracle gate:
+  - prove the retired owner is no longer represented in the protection frontier;
+  - erase the exact evidence that retirement permits the system to reclaim;
+  - invoke the highest durable consumer and compare its terminal result with fresh state;
+  - classify every intervening guard as mandatory, new-install default, upgrade fallback,
+    session-configurable, or best-effort;
+  - change only the missing owner admission as a counterfactual, then audit its TOCTOU boundary.
+status:     VALIDATED by id2580003. Raw client-go and SQL-level real-TiKV REDs, MDL ON,
+            ordinary 2PC, FAST-mask control, exact pre-prewrite GREEN, and #69833 are complete.
+stop rule:  one root per retirement event and effectful consumer. Transaction duration, SQL shape,
+            GC phase, compaction timing, assertion level, and table layout are blast radius.
+```

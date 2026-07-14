@@ -1,0 +1,14 @@
+Target: client-go 01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b
+TiKV: nightly 7ecce12e, one-store playground
+Probe: TestExpiredTxnCannotResurrectDeletedKey
+
+Current-source result:
+  stale transaction startTS < advanced GC safe point
+  stale.Commit() error: <nil>
+  fresh.Get(key) error: <nil>
+  fresh.Get(key) value: "resurrected"
+  FAIL: a transaction older than the txn safe point committed after real TiKV GC
+
+The probe used PD GC-safe-point advancement, waited for TiKV's 10-second poll,
+and forced production compaction filters on write/default CF. The legacy CmdGC
+RPC was not used for this decisive run.

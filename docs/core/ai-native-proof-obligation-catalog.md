@@ -3569,3 +3569,25 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   TiDB, client-go, and TiKV issue search found no exact root.
 - Pause gate: emails, tables, balances, Region counts, delays, and cleanup-failure forms are blast
   radius. Reopen only for another proof type or recovery certificate.
+
+## id2580003 - Expired optimistic transaction resurrects a GC-deleted row
+
+- Target: `target.txn.gc-retired-start-ts-effectful-commit.v1`.
+- Selector: `SAFE_POINT_RETIREMENT_CONSUMER_CLOSURE`.
+- **P**: an active transaction older than `tidb_gc_max_wait_time` is omitted from min-start-TS
+  reporting, so the GC safe point may pass its start TS and reclaim newer conflict evidence.
+- **Q**: every consumer of that retired start TS is fail-closed before it can create a durable effect.
+- **F**: snapshot reads call `CheckVisibility`, but effectful `KVTxn.Commit` reaches prewrite without
+  it; client-go's fixed 24-hour age check does not align with the supported 600-second exclusion horizon.
+- C3 oracle: T2 DELETE commits and TiKV GC/compaction removes the tombstone; T1 COMMIT must fail and a
+  fresh session must see no row. Current source returns success and fresh SQL sees `(1,11)`.
+- Mask control: newly bootstrapped Classic clusters use FAST DML assertions and reject this UPDATE
+  shape. Upgraded clusters can retain or fall back to compatibility `OFF`; direct client-go users have
+  no TiDB assertion layer.
+- Counterfactual: call `CheckVisibility(startTS)` for nonempty commits before prewrite. The exact real
+  TiKV test returns error 9006 and preserves deletion. A production fix must additionally close the
+  check/prewrite TOCTOU window.
+- Status: **ISSUE-FILED**, remote `found_bug id2580003`, high severity / critical consequence,
+  upstream [#69833](https://github.com/pingcap/tidb/issues/69833).
+- Pause gate: do not enumerate UPDATE forms, durations, GC phases, assertion settings, or compaction
+  triggers. Reopen only for another retired owner or effectful consumer.

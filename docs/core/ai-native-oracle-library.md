@@ -1617,3 +1617,22 @@ sensitivity: EXECUTION-CONFIRMED by id2550003 on real TiKV, including 3/3 SQL RE
 specificity: GOOD; exact terminal class, two-table durable state, normal resolver, and one-owner GREEN.
 status:      USED + EXECUTION-CONFIRMED.
 ```
+
+## O61 expired_commit_vs_fresh_deleted_state
+
+```text
+obligation:  once GC is allowed to reclaim the MVCC evidence protected by startTS S, no transaction
+             using S may create a durable effect unless admission re-proves that S is still visible.
+form:        T1 reads or updates key K at S; T2 deletes K and commits; advance the GC safe point past
+             S and run real storage compaction; commit T1; inspect terminal result and K from a fresh
+             transaction. Run assertion-mask and exact admission-counterfactual controls separately.
+red:         T1 COMMIT returns success and the fresh transaction sees K recreated from T1's stale value.
+green:       T1 COMMIT fails visibility admission and the fresh transaction continues to see K absent.
+catches:     effectful consumers omitted from safe-point, epoch, generation, or owner retirement closure.
+blind to:    runs where compaction has not reclaimed the newer conflict record, tests that only inspect
+             the commit error, and secondary assertions that reject before the suspected owner executes.
+sensitivity: EXECUTION-CONFIRMED by id2580003 on raw client-go and SQL-level real TiKV with MDL ON.
+specificity: GOOD; real conflict-evidence reclamation, terminal result, fresh state, mask provenance,
+             and exact owner GREEN isolate commit admission from GC and DML assertion behavior.
+status:      USED + EXECUTION-CONFIRMED by id2580003 / #69833.
+```

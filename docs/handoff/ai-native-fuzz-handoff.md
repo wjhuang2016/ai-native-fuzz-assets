@@ -4,6 +4,32 @@
 
 ---
 
+**2026-07-14 safe-point retirement pass 命中新的 critical data-integrity root `id2580003`:
+过期 optimistic transaction 可以在 GC 后成功提交并复活已删除行。** 候选完全来自 current source
+consumer closure:TiDB 会把超过可配置 `tidb_gc_max_wait_time` 的 active startTS 排除出 min-start-TS,
+snapshot Get/BatchGet/Scan 都调用 `CheckVisibility`,但 effectful `KVTxn.Commit` 在 prewrite 前没有同类
+admission。支持下限 600s 与 client-go 固定 24h age guard 形成真实窗口;TiKV compaction 一旦回收 newer
+DELETE tombstone,stale prewrite 就失去 write-conflict 证据。
+
+raw client-go 与 SQL-level real-TiKV RED 均得到 stale COMMIT success + fresh value/row resurrected;
+SQL 格为 MDL default ON、1PC OFF、async OFF。第一轮在新装 Classic 的 FAST assertion 下被
+`Assertion=Exist` 挡住,但这只是 mask:当前注册兼容默认仍是 OFF,FAST 只在 initial bootstrap 写入,
+升级集群可能 retain/fallback OFF。真实生产触发为运维将 `tidb_gc_max_wait_time=600` 以避免卡住事务
+阻塞 GC,业务 optimistic UPDATE 因外部调用/暂停挂住约 20-30 分钟,清理任务 DELETE 同行,normal GC 与
+write-active compaction 回收历史,旧事务再于 24h 内恢复 COMMIT。确定性探针只压缩 GC phase 等待,
+GC/compaction/prewrite/fresh read 都是真实路径。
+
+精确反事实是在 nonempty commit 的 prewrite 前调用 `CheckVisibility(startTS)`:同格返回 9006 且行保持
+deleted;这证明 admission owner,但完整修复还需关闭 check/prewrite TOCTOU。新 selector
+`SAFE_POINT_RETIREMENT_CONSUMER_CLOSURE` 要求退休任何 timestamp/generation/owner 后枚举所有 effectful
+consumer,并把 guard 分为 mandatory/new-install/upgrade-fallback/session-config/best-effort,避免把 mask
+误判为 proof closure。远端 `found_bug id2580003` 已 issue-filed;当前 125 surfaces、102 roots、48 high、
+110 confirmed。上游 [#69833](https://github.com/pingcap/tidb/issues/69833) 带
+`severity/critical`、`component/tikv-client`、`sig/transaction`、`found-by-ai`。该 root 已 terminal;
+禁止枚举 transaction duration、SQL shape、GC phase、assertion level 或 compaction timing 变体。
+
+---
+
 **2026-07-14 specialized-finalizer pass 命中新的 critical terminal-integrity root `id2520003`:
 autocommit `EXPLAIN ANALYZE` DML 可以在 mutation 已提交后返回 1317 `Query execution was
 interrupted`。** 这条由 current source 的 eager-effect/lazy-result split 独立产生,不是 PR review 或历史

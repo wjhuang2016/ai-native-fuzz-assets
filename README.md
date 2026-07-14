@@ -15,7 +15,7 @@ It treats three things as first-class reusable assets:
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
 - `docs/github-issues/`: filed GitHub issue bodies for important bugs, including #69790.
 - `docs/bug-drafts/`: 115 draft bug writeups and filed-issue source bodies.
-- `docs/method-cases/`: 101 compact case summaries tied to bug-db entries.
+- `docs/method-cases/`: 102 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
 - `scaffolds/top-level/`: 63 top-level Python/shell/data scaffolds from the working directory.

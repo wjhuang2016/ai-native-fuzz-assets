@@ -1,0 +1,26 @@
+diff --git a/txnkv/transaction/2pc.go b/txnkv/transaction/2pc.go
+index f92051a..d8502f5 100644
+--- a/txnkv/transaction/2pc.go
++++ b/txnkv/transaction/2pc.go
+@@ -112,6 +112,7 @@ type kvstore interface {
+ 	// GetTiKVClient gets the client instance.
+ 	GetTiKVClient() (client client.Client)
+ 	GetLockResolver() *txnlock.LockResolver
++	CheckVisibility(startTS uint64) error
+ 	Ctx() context.Context
+ 	WaitGroup() *sync.WaitGroup
+ 	// TxnLatches returns txnLatches.
+diff --git a/txnkv/transaction/txn.go b/txnkv/transaction/txn.go
+index 52bb657..a28ac03 100644
+--- a/txnkv/transaction/txn.go
++++ b/txnkv/transaction/txn.go
+@@ -873,6 +873,9 @@ func (txn *KVTxn) Commit(ctx context.Context) error {
+ 	if !txn.isPipelined && committer.mutations.Len() == 0 {
+ 		return nil
+ 	}
++	if err = txn.store.CheckVisibility(txn.startTS); err != nil {
++		return err
++	}
+ 
+ 	defer func() {
+ 		detail := committer.getDetail()

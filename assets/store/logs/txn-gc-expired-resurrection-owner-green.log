@@ -1,0 +1,17 @@
+TiDB: b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
+client-go: 01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b plus exact counterfactual
+TiKV: nightly 7ecce12e, one-store playground
+Probe: TestExpiredOptimisticTxnCannotResurrectDeletedRow
+
+Exact owner counterfactual:
+  add CheckVisibility(startTS) to the transaction kvstore contract
+  call it for a nonempty effectful KVTxn.Commit before prewrite
+
+Result:
+  COMMIT error: [tikv:9006] GC life time is shorter than transaction duration
+  fresh row state after commit: []
+  PASS
+
+This is a minimal ownership counterfactual, not a complete proposed fix. A
+production fix must also close the safe-point-advance versus prewrite TOCTOU
+window, or align the GC exclusion horizon with the maximum admitted txn age.
