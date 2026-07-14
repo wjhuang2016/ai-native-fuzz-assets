@@ -6,13 +6,18 @@
 
 #### Concrete production scenario
 
-This can occur in an optimistic unit-of-work or ORM transaction that:
+One concrete production shape is an order or resource-allocation service using an ORM unit of work:
 
-1. creates a tentative row carrying a unique business identity, such as an email, request ID, reservation ID, or idempotency key;
-2. removes that tentative row later in the same transaction after another business rule rejects it; and
-3. still updates durable business state in that transaction, such as an account balance, tenant quota, inventory counter, or ledger row.
+1. The service inserts a provisional reservation carrying a unique request token. The token already
+   belongs to an earlier request, but with lazy uniqueness checking the `INSERT` returns success.
+2. A later validation or routing decision in the same unit of work cancels that provisional reservation.
+   An ORM can produce the same insert-then-delete sequence across an autoflush/manual-flush boundary.
+3. Because no statement has reported the duplicate yet, the service continues its fallback path and
+   updates a durable order, inventory, quota, or account row.
+4. `COMMIT` is the first operation that reports `Duplicate entry`. The application therefore treats the
+   entire unit of work as aborted and commonly retries it.
 
-For example, an application may flush a tentative `candidates` entity, revoke it later in the same unit of work, and charge an account for the attempted operation:
+The compact SQL below uses `candidates` and `accounts` to represent that production flow:
 
 ```sql
 SET tidb_enable_async_commit = ON;
@@ -29,13 +34,28 @@ The unique value already exists in another committed row. With the current defau
 `tidb_constraint_check_in_place=OFF`, the insert is checked lazily. The insert-then-delete keys become
 proof-only `CheckNotExists` mutations, while the account update is a real mutation.
 
-The full production trigger is:
+The exact production trigger is:
 
-1. `tidb_enable_async_commit=ON`, `tidb_enable_1pc=OFF`, optimistic transaction, and lazy uniqueness checking.
-2. The proof keys and business key are in different Region batches. Separate tables normally satisfy this after ordinary Region splitting.
-3. The business primary prewrite succeeds before the proof Region returns `AlreadyExist`. Prewrite batches run concurrently; the test below reproduced this ordering 3/3 without adding a Region delay.
-4. TiDB returns a definite duplicate-key error, but its asynchronous cleanup is interrupted. Real examples include a TiDB pod restart/OOM or rolling upgrade immediately after the error, a temporary loss of the TiKV path, or cleanup RPCs exhausting their retry budget.
-5. After lock expiry, another request reads or writes the business key. Lock resolution sees an async primary whose recovery set omits the failed proof, and commits the business write.
+1. Async commit has been explicitly enabled at cluster or session scope. It is not enabled by default in
+   current TiDB. `tidb_enable_1pc` may be OFF, or it may be ON and fall back because the transaction needs
+   more than one prewrite batch.
+2. The transaction is optimistic and lazy uniqueness checking is active
+   (`tidb_constraint_check_in_place=OFF`, the current default).
+3. The transaction inserts and then deletes a new row carrying a unique value that is already committed
+   elsewhere. Both SQL statements can return success; TiDB retains row/index `CheckNotExists` operations
+   as commit-time proofs.
+4. The transaction also changes at least one real business key, and key ordering selects such a key as the
+   transaction primary. In the reproducer, `accounts` is created before `candidates`, so its lower table
+   prefix makes the account mutation the primary.
+5. The business primary and the failed uniqueness proof are in different Region/batch requests. This is
+   an ordinary layout once the tables have separate Regions; it does not require a DDL or MDL race.
+6. The primary prewrite succeeds before the other batch returns `AlreadyExist`. Prewrite batches run
+   concurrently; the real-TiKV SQL test reproduced this ordering 3/3 without Region-delay injection.
+7. TiDB returns the definite duplicate error and starts cleanup in the background, but cleanup does not
+   reach the primary. Concrete production causes include the TiDB pod being killed by OOM or deployment,
+   or the primary Region becoming unreachable/server-busy long enough for cleanup retries to be exhausted.
+8. After the lock expires, a later request touches the business key. Lock resolution reads the async
+   primary, whose recovery set omits the failed proof, and incorrectly commits the business mutation.
 
 Thus the application is told that the transaction failed, but the business write becomes durable later. A normal application retry can apply the write a second time.
 
@@ -140,8 +160,10 @@ tiup playground nightly --db=0 --kv=1 --tiflash=0
 go test -v -count=3 -run '^TestAsyncCheckNotExistsSQLRecovery$' --tags=intest ./tests/realtikvtest/txntest/...
 ```
 
-The failpoint models the real cleanup-interruption conditions listed above. It does not control Region
-ordering: no Region-delay injection is used.
+The cleanup failpoint models only step 7: loss of the best-effort cleanup after TiDB has returned the
+duplicate error. It does not create the duplicate, choose the primary, alter Region grouping, control
+prewrite ordering, or force recovery to commit. The oracle wrapper only avoids waiting for the real lock
+TTL before invoking normal lock resolution. No Region-delay injection is used.
 
 ### 2. What did you expect to see? (Required)
 
