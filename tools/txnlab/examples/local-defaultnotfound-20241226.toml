@@ -1,0 +1,42 @@
+schema_version = 1
+run_key = "campaign.txn.defaultnotfound.20241226"
+obligation_key = "obligation.mvcc-write-default-ownership.v1"
+selector = "HISTORICAL_LONG_VALUE_DEFAULT_OWNER_CLOSURE"
+module = "txn/cross-layer"
+environment = "local"
+evidence_root = "../../../runs"
+workspace_root = "../../../.txnlab"
+allow_mutation = false
+auto_cleanup = true
+restore_images_on_cleanup = true
+collect_logs = true
+
+[sources.tidb]
+repo = "../../../../tidb"
+commit = "0dc34e5203c6a183c72984937dfe28147969d9df"
+git_url = "https://github.com/pingcap/tidb.git"
+git_ref = "master"
+
+[sources.client-go]
+repo = "../../../../client-go"
+commit = "fd950fcf9fcc4b67df874290c63211724d92daa6"
+git_url = "https://github.com/tikv/client-go.git"
+git_ref = "master"
+
+[sources.tikv]
+repo = "../../../../tikv"
+commit = "6ff4b9d4bf63dab5ffefb5be76524e6d23b26f71"
+git_url = "https://github.com/tikv/tikv.git"
+git_ref = "master"
+
+[assets]
+store_py = "../../../assets/store/store.py"
+sqlite_db = "../../../assets/store/assets.sqlite3"
+auto_import = false
+
+[metadata]
+used_assets = []
+
+[oracle]
+name = "terminal_mvcc_truth"
+input_file = "oracle-input.json"

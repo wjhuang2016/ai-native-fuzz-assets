@@ -14,14 +14,16 @@ It treats three things as first-class reusable assets:
 - `docs/handoff/`: latest handoff snapshot for session-to-session continuation.
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
 - `docs/github-issues/`: filed GitHub issue bodies for important bugs, including #69845.
-- `docs/bug-drafts/`: 128 draft bug writeups and filed-issue source bodies.
-- `docs/method-cases/`: 117 compact case summaries tied to bug-db entries.
+- `docs/bug-drafts/`: 129 draft bug writeups and filed-issue source bodies.
+- `docs/method-cases/`: 120 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
-- `scaffolds/top-level/`: 63 top-level Python/shell/data scaffolds from the working directory.
+- `scaffolds/top-level/`: 66 top-level Python/shell/data scaffolds from the working directory.
 - `scaffolds/go-probes/`: 29 Go probe/source-scanner files plus `go.mod` and `go.sum`.
 - `scaffolds/client-go-tests/`: reusable client-go integration probes and counterfactual patches.
-- `scaffolds/tidb-tests/`: 72 TiDB-side AI-native test/probe and counterfactual fixtures.
+- `scaffolds/tidb-tests/`: 75 TiDB-side AI-native test/probe and counterfactual fixtures.
+- `scaffolds/pd-tools/`: isolated-testbed GC and GCV2 safe-point utilities used by collection
+  frontier oracles.
 - `scripts/`: asset refresh and bug-index generation helpers.
 - `tools/txnlab/`: pinned cross-layer transaction experiment runner, strong oracles, fault control,
   evidence capture, automatic cleanup, and asset-store writeback.

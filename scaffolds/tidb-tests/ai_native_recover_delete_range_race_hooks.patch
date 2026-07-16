@@ -1,0 +1,20 @@
+diff --git a/pkg/store/gcworker/gc_worker.go b/pkg/store/gcworker/gc_worker.go
+--- a/pkg/store/gcworker/gc_worker.go
++++ b/pkg/store/gcworker/gc_worker.go
+@@
+ 	ranges, err := util.LoadDeleteRanges(ctx, s, safePoint, batchSize)
+ 	if err != nil {
+ 		return errors.Trace(err)
+ 	}
++	failpoint.InjectCall("afterLoadDeleteRanges", ranges)
+@@
+ func (w *MockGCWorker) DeleteRanges(ctx context.Context, safePoint uint64) error {
+ 	ctx = kv.WithInternalSourceType(ctx, kv.InternalTxnGC)
+ 	return w.worker.deleteRanges(ctx, safePoint, gcConcurrency{1, false})
+ }
++
++// RunKeyspaceDeleteRange calls the unified-GC delete-range path, just for test.
++func (w *MockGCWorker) RunKeyspaceDeleteRange(ctx context.Context) error {
++	ctx = kv.WithInternalSourceType(ctx, kv.InternalTxnGC)
++	return w.worker.runKeyspaceDeleteRange(ctx, gcConcurrency{1, false})
++}

@@ -10,7 +10,7 @@ This can happen without a TiDB/TiKV crash, network fault, DDL race, async commit
 production scenario is an order-reconciliation worker holding an optimistic SQL transaction open
 while it waits for an external service:
 
-1. The affected Classic cluster returns `OFF` for:
+1. For the original existing-row `UPDATE` reproducer, the affected Classic cluster returns `OFF` for:
 
    ```sql
    SELECT @@global.tidb_txn_assertion_level;
@@ -19,6 +19,8 @@ while it waits for an external service:
    `OFF` is the registered compatibility default. Initial bootstrap of a new Classic cluster
    special-cases this hidden variable to `FAST`, but an older upgraded cluster where the variable was
    not materialized can fall back to `OFF`. An explicit operator setting of `OFF` has the same effect.
+   The absent-row INSERT and foreign-key variants described below also reproduce with `FAST` and
+   `STRICT`, so `OFF` is not a general prerequisite for this bug.
 2. The operator has set `tidb_gc_max_wait_time=600`, the supported minimum, to stop abandoned or
    unusually long transactions from indefinitely blocking GC and retaining MVCC history. The default
    `tikv_gc_life_time` and `tikv_gc_run_interval` remain 10 minutes.
@@ -40,15 +42,29 @@ Current code returns COMMIT success and permanently recreates order 42 as `state
 compaction activity.
 
 Newly bootstrapped Classic clusters normally use `FAST`, which rejects this particular SQL UPDATE via
-an `Assertion=Exist` check. Therefore the SQL-level affected condition must be stated as
-`tidb_txn_assertion_level=OFF`; it should not be generalized to every fresh default cluster. Direct
-client-go consumers do not have TiDB's DML assertion layer and are exposed whenever an active
-transaction can stop protecting the GC safe point before the age accepted by commit.
+an `Assertion=Exist` check. Current-master follow-up testing shows that this mask is operation-shaped,
+not an ownership guard:
+
+- An old optimistic INSERT starts while the primary key is absent. Another transaction inserts and
+  deletes the same key. Without GC, the old COMMIT returns write conflict; after GC and compaction,
+  the old COMMIT returns success and leaves `(1,11)` under both `FAST` and `STRICT`.
+- With MDL, foreign keys, and `foreign_key_checks` enabled, an old optimistic transaction validates a
+  parent and buffers a child INSERT. Another transaction deletes the parent. Without GC, COMMIT
+  returns write conflict and no orphan; after GC, COMMIT returns success under `STRICT` and a fresh
+  anti-join returns orphan child `(1,1)`.
+
+The INSERT path uses lazy duplicate checking and `AssertUnknown`; the foreign-key parent is carried
+as a lock-only proof. Once GC removes the post-startTS write history, neither FAST nor STRICT can
+recover those logical preconditions. Direct client-go consumers remain exposed for the same reason.
 
 The following deterministic real-TiKV test reproduces the same state transition. It advances the GC
 safe point directly and requests TiKV's production compaction filter, compressing only the
 nondeterministic 20-30 minute wait. It does not mock MVCC, fabricate a write conflict, or inject a
 commit error.
+
+The expanded current-master matrix, including no-GC controls, FAST/STRICT insert-delete ABA, and the
+STRICT foreign-key orphan oracle, is preserved in
+`scaffolds/tidb-tests/ai_native_gc_expired_txn_assertion_fk_probe_test.go`.
 
 Add this file as
 `tests/realtikvtest/txntest/ai_native_gc_expired_txn_resurrection_test.go`:
@@ -201,6 +217,14 @@ Reproduced with:
 TiDB:          b8d04e17a2ca61eee1220c5ce2d641a376f75e9b
 tikv/client-go: 01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b
 TiKV nightly:  7ecce12e
+```
+
+Expanded impact matrix revalidated on:
+
+```text
+TiDB:           94b834d94b604b1940ecc2c3064168337863269d
+tikv/client-go: 01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b
+TiKV nightly:   c27c66202dcd2ec0113619c613e0dac3d17780b6
 ```
 
 MDL was enabled (`@@tidb_enable_metadata_lock=1`). 1PC and async commit were disabled, so the

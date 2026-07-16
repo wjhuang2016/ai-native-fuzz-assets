@@ -2014,9 +2014,19 @@ EXACT GREEN: pre-prewrite CheckVisibility returns 9006; fresh row remains absent
 INTEGRATE:   id2580003 high / critical consequence; #69833; 125 surfaces, 102 roots.
 ```
 
+Current-master expansion on TiDB `94b834d9`, client-go `01bd8f99`, and real TiKV `c27c6620`
+showed why a one-dimensional mask matrix is insufficient. With MDL/FK checks ON and ordinary 2PC,
+insert-delete ABA returned write conflict without GC but committed `(1,11)` after GC under both FAST
+and STRICT. A strict FK cell likewise returned write conflict/no orphan without GC, but after GC the
+old child COMMIT returned nil and a fresh anti-join found orphan `(1,1)`. This remains the same
+safe-point-retirement root and does not increment the bug count.
+
 Method improvement: after a first GREEN, classify the guard's provenance before retiring the
 candidate. Mandatory owner guards close a proof obligation; new-install overrides, upgrade fallbacks,
 session settings, and best-effort checks define a production matrix and may only mask one surface.
+The matrix must also vary the semantic proof representation: existing/absent, assertion-bearing,
+lock-only, FK, and proof-only mutations. A GREEN `AssertExist` cell cannot retire an `AssertUnknown`
+or cross-key proof cell.
 For retirement bugs, separately prove the natural wall-clock chain and the deterministic compressed
 test: the latter may advance time or request compaction, but must keep real GC, storage conflict
 reclamation, commit, and fresh-state observation intact. The new selector is

@@ -2463,3 +2463,48 @@ session 随后保持 live 并覆盖 DDL+COMMIT。MDL、事务和 90 秒 TTL 都�
 `docs/method-cases/ai-native-id2700003-failed-publication-live-owner.md`、
 `scaffolds/tidb-tests/ai_native_mdl_server_info_restart_test.go` 及两份 failpoint/GREEN patch。暂停本 root 的
 DDL/事务/error/TTL 变体；下一轮迁移 S37 extension 到另一个 membership/routing/recovery consumer。
+
+**2026-07-17 DefaultNotFound 历史复现之后的相邻 master 命中：`id2760003/moderate`。** 历史栈已用
+单 TiDB、三 TiKV、MDL ON 复现精确 `KV:Storage:DefaultNotFound`；testbed build
+`d573e284da773c820c1c313105b73d587378381b` 在 active statement owner 上已由 #61325/#61329 修复，
+因此历史问题本身不是新 bug。增量方法没有重扫 GC，而是把同一个 live-snapshot 证明义务沿 owner
+生命周期展开：`active statement -> detached lazy cursor`。当前 `TryDetach` 只把 `TxnCtx.StartTS` 写入
+cursor，而 autocommit stale read 的真实身份在 `TxnCtx.StaleReadTs`，所以 owner UT 直接得到
+`read_ts!=0/cursor_start_ts=0`，后续 `ReportMinStartTS` 越过 live TS。
+
+真实协议 lift 在 testbed 8196300 上用 one TiDB/three TiKV、64 Regions、默认 DistSQL scan concurrency、
+无额外 SQL、无 compaction：cursor 打开后 processlist 自然为 Sleep/TxnStart 空；TiDB 上报
+`467725284651040769`，高于 live snapshot `467725273248038917`；PD GCV2 只推进到这个 TiDB 自己允许的
+上界，第一次正常 `COM_STMT_FETCH` 返回精确 9006。只在 cursor handoff 回退到 `StaleReadTs/SnapshotTS`
+后，新 UT 与已有 ordinary cursor UT 同时 GREEN。post-RED GitHub/远端库无 exact root，远端 bug 库
+记录为 id2760003。质量边界必须保留：lazy cursor 默认 OFF，后果是明确 query failure，不是 silent
+corruption，所以不算 severe 命中。新 selector 是 `LIVE_RESOURCE_IDENTITY_ACROSS_OWNER_HANDOFF`：每个
+registry bug 都要保存 `semantic identity -> owner A -> handoff -> owner B -> collector`，历史修复只让一个
+owner GREEN 时，优先对 owner phase 做增量变异；PD blocker/合法上界本身是强 oracle，绕过 blocker 的
+forced GC 不能算产品 RED。入口：`docs/bug-drafts/ai-native-lazy-cursor-stale-read-gc-draft.md`、
+`docs/method-cases/ai-native-lazy-cursor-stale-read-gc-method-case.md`、
+`assets/store/txn-lazy-cursor-stale-read-gc-results.jsonl`、
+`scaffolds/top-level/ai_native_stale_cursor_gc_probe.go`。2026-07-17 再通过 GitHub API 核对当前 master
+`94b834d94b604b1940ecc2c3064168337863269d`：`TryDetach` 与 `ReportMinStartTS` 的同一 source root 仍在，
+所以这是 current-master bug；runtime RED 的 commit 与当前源码确认的 commit 必须分开记录。
+
+**2026-07-17 current-master GC/txn 严重影响面扩展：没有新增 root，但 `id2580003` 已从
+OFF-only UPDATE resurrection 扩到 FAST/STRICT INSERT 与 STRICT FK orphan。** 当前源码 pin 为 TiDB
+`94b834d94b604b1940ecc2c3064168337863269d`、client-go `01bd8f99f4da`，真实 TiKV nightly
+`c27c66202dcd2ec0113619c613e0dac3d17780b6`。MDL、FK 和 `foreign_key_checks` 运行时均为 ON，目标逐
+session 关闭 1PC/async，使用普通 optimistic 2PC。小矩阵先证明已有行 UPDATE/UPDATE IGNORE/ON DUP/
+REPLACE 在 FAST 下都被 `Assertion=Exist` 拦住；随后把证明表示改为 absent-row lazy INSERT：另一事务在
+旧 startTS 后 INSERT->DELETE，同构无 GC 控制报 9007 且空表，GC+write/default CF compaction 后 FAST 与
+STRICT 两格都 `COMMIT nil + fresh [[1 11]]`。更强 FK 格中，旧事务先验证 parent 并缓冲 child，另一事务
+删除 parent；无 GC 控制报 9007/no orphan，GC 后 STRICT 仍 `COMMIT nil`，fresh anti-join 为 `[[1 1]]`。
+
+根因/修复所有权仍与 #69833 相同：`KVTxn.Commit` 在 startTS 退休后进入 prewrite，没有 fail-closed
+visibility admission；`AssertExist` 只是 UPDATE 形状的偶然 mask，lazy INSERT 的 `AssertUnknown` 和 FK
+parent lock-only proof 仍依赖已被 GC 删除的 write history。因此不新增 bug 编号和 root 计数，但后果已
+升级为默认 FK 开关下可持久化 orphan child，且 NextGen 默认 STRICT 也不是 closure。方法改进：mask
+矩阵必须新增“证明表示”维度，按 existing/absent、row/index、lock-only/FK/proof-only mutation 变异，不能
+在第一格 GREEN 后按 DML 语法扩散或关闭 selector。生产频率仍须诚实：需要 startTS 真正越过 GC 保护；
+`tidb_gc_max_wait_time=600` 时是可压缩的 20-30 分钟链，24h 源码默认则接近 client-go 最大事务年龄。
+资产入口：`assets/store/txn-gc-retired-start-ts-commit-results.jsonl`、
+`docs/method-cases/ai-native-id2580003-safe-point-retirement-consumer-closure.md`、
+`scaffolds/tidb-tests/ai_native_gc_expired_txn_assertion_fk_probe_test.go`。

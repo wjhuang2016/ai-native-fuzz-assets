@@ -638,13 +638,17 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Consequence: C3 silent durable row resurrection. An optimistic transaction whose start TS has
   stopped protecting the GC safe point can return COMMIT success and recreate a row that another
   transaction deleted before GC.
-- Production trigger: assertion compatibility value `OFF`, `tidb_gc_max_wait_time` shorter than
-  client-go's 24-hour admission horizon, a stalled optimistic UPDATE, a concurrent DELETE, and a
-  normal GC/compaction cycle. No crash, network fault, DDL, async commit, or 1PC is required.
+- Production trigger: `tidb_gc_max_wait_time` shorter than client-go's admission horizon, a stalled
+  optimistic mutation, a conflicting transaction, and a normal GC/compaction cycle. `OFF` is needed
+  only for the original existing-row UPDATE. Current-master real-TiKV expansion shows absent-row
+  INSERT succeeds after insert-delete ABA under FAST and STRICT, and a STRICT child INSERT can commit
+  after its validated parent is deleted, leaving a permanent orphan. No crash, DDL, async commit, or
+  1PC is required.
 - Distinctness: this is not a late commit error or recovery-certificate defect. GC has legitimately
   reclaimed the conflict evidence, but the retired start TS remains admitted to an effectful consumer.
-- Counting rule: transaction durations, SQL verbs, row values, GC timing, assertion settings, and
-  compaction schedules are blast radius. Reopen only for another retirement event or effectful consumer.
+- Counting rule: transaction durations, SQL verbs, row/FK proof representations, GC timing,
+  assertion settings, and compaction schedules are blast radius. Reopen only for another retirement
+  event or effectful consumer.
 
 ## 2026-07-14 update: id2610003
 

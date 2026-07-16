@@ -1,7 +1,9 @@
 # AI-Native Cross-Layer Transaction Campaign
-> Prepared: 2026-07-13; updated: 2026-07-14. Status: the first severe cross-layer root
+> Prepared: 2026-07-13; updated: 2026-07-17. Status: the first severe cross-layer root
 > (`id2250003`) is execution-verified; the adjacent 1PC ambiguity candidate is retired after its
-> provisional local RED became GREEN under the real TiKV idempotency owner.
+> provisional local RED became GREEN under the real TiKV idempotency owner. A historical
+> `DefaultNotFound` replay now also validates the live-resource registration selector and is GREEN
+> on current master.
 
 ## Mission
 
@@ -560,6 +562,52 @@ This produced `id2310003` and upstream #69820. It extends retry closure from val
 capabilities and shows why a competitor oracle is stronger than internal map inspection. Stop this
 root family. The next pass may reuse the capability-owner selector only on a different lock, lease,
 registration, or handle owner; it must not enumerate advisory-lock syntax or timing variants.
+
+### Historical DefaultNotFound replay: the missing owner was registration
+
+An exact 2024-12-26 stack reproduced `KV:Storage:DefaultNotFound` with one TiDB, three TiKV nodes,
+MDL enabled, and no partition features. The product path was an autocommit external stale read.
+Old TiDB exposed an empty processlist `TxnStart`, so `ReportMinStartTS` omitted the active stale TS
+and GC could advance past it. With 20,000 long-value rows and point readers active during Write CF
+compaction, the run observed 117,855 successful reads followed by 13 exact `DefaultNotFound`
+errors.
+
+The testbed build `d573e284da773c820c1c313105b73d587378381b` was GREEN at the active-statement owner boundary:
+processlist and etcd both reported the exact external TS, and a 61-second query completed. The
+source counterfactual falls back from `TxnCtx.StartTS` to `TxnCtx.StaleReadTs` in both process-info
+publication paths. Post-RED history maps the root to #61325/#61329, so this is a historical replay,
+not a new cold-source finding.
+
+The reusable campaign rule is `LIVE_RESOURCE_REGISTRATION_COMPLETENESS`: before testing GC,
+cleanup, timeout, or failover, enumerate every mode that creates a live resource and compare its
+identity with the registry consumed by the collector. The oracle ladder is registration, aggregate
+minimum, collection frontier, intermediate owner state, and highest consumer. Do not spend ten
+minutes reaching GC until the seconds-level registration cell is RED.
+
+The full matrix, exact stack, production trigger, negative screens, and scaffold are recorded in
+`docs/method-cases/ai-native-default-not-found-stale-read-gc-method-case.md`.
+
+### Adjacent master hit: stale snapshot identity is lost at lazy-cursor handoff
+
+The next pass reused the historical obligation but changed owner phase instead of enumerating stale
+read syntax. Current master fixed `active statement -> processlist`; it did not fix `active statement
+-> detached cursor`. `TryDetach` registers `TxnCtx.StartTS`, which is zero for an autocommit stale
+read, while `ReportMinStartTS` later consumes only the cursor state's `StartTS`.
+
+The seconds-level owner probe reported a nonzero stale TS, cursor TS zero, and an aggregate frontier
+from a later transaction. The real protocol lift used one TiDB, three TiKV nodes, MDL ON, a 64-Region
+table, default DistSQL scan concurrency, and no extra SQL after cursor open. Process info naturally
+became Sleep; TiDB-reported minStartTS crossed the live snapshot; PD accepted exactly that legal
+GCV2 upper bound; the first normal fetch returned error 9006. No compaction or data rewrite was
+needed. Falling back to `TxnCtx.StaleReadTs` during cursor registration made the new owner test and
+the existing ordinary cursor test GREEN.
+
+This is `id2760003/moderate`, not a severe campaign hit: lazy cursor fetch is OFF by default and the
+observed consequence is a clear query failure. It validates the new selector
+`LIVE_RESOURCE_IDENTITY_ACROSS_OWNER_HANDOFF`: for each registry proof, enumerate semantic identity
+across every owner transition, then gate expensive collection on a RED handoff cell. Assets are in
+`docs/method-cases/ai-native-lazy-cursor-stale-read-gc-method-case.md` and
+`assets/store/txn-lazy-cursor-stale-read-gc-results.jsonl`.
 
 ## Stop Rules
 

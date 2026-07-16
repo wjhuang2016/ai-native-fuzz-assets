@@ -18,17 +18,23 @@ store contract at all.
 
 ## Small matrix
 
-| Consumer/config | Assertion FAST | Assertion OFF |
-| --- | --- | --- |
-| Read after GC | rejected by CheckVisibility | rejected by CheckVisibility |
-| UPDATE commit before GC | ordinary write conflict | ordinary write conflict |
-| UPDATE commit after GC | masked by `Assertion=Exist` | **COMMIT success; row resurrected** |
-| Same cell plus prewrite-side visibility check | rejected | rejected |
+| Consumer / proof shape | FAST | STRICT | OFF |
+| --- | --- | --- | --- |
+| Read after GC | rejected by `CheckVisibility` | rejected by `CheckVisibility` | rejected by `CheckVisibility` |
+| Existing-row UPDATE before GC | ordinary write conflict | ordinary write conflict | ordinary write conflict |
+| Existing-row UPDATE after GC | masked by `Assertion=Exist` | masked by `Assertion=Exist` | **COMMIT success; row resurrected** |
+| Absent-row INSERT after insert-delete ABA + GC | **COMMIT success; row appears** | **COMMIT success; row appears** | **COMMIT success; row appears** |
+| Child INSERT after parent DELETE + GC | not needed | **COMMIT success; orphan child remains** | not needed |
+| Same cells plus prewrite-side visibility check | rejected | rejected | rejected |
 
-The first SQL run was GREEN because TiDB's FAST assertion observed that the row no longer existed.
-That is a useful mask control, not proof that commit owns GC retirement. Classic upgrades can retain
-or fall back to the assertion compatibility value `OFF`; current source explicitly keeps `OFF` as
-the registered default and writes `FAST` only during initial bootstrap.
+The first SQL run was GREEN because TiDB's FAST assertion observed that an UPDATE target no longer
+existed. That was only a mask for the `AssertExist` representation. The incremental matrix changed
+the proof shape rather than the SQL spelling: lazy INSERT uses `AssertUnknown`, while an optimistic
+foreign-key check contributes a lock-only parent key. After GC removes the write history, neither
+FAST nor STRICT can reconstruct the retired conflict/FK proof. Classic upgrades can still expose the
+original UPDATE shape through `OFF`; current source keeps `OFF` as the registered Classic fallback,
+while NextGen uses STRICT. The INSERT and FK cells show that neither stronger value closes the owner
+gap.
 
 ## Concrete production trigger
 
@@ -57,10 +63,18 @@ on phase and write load. The deterministic real-TiKV test advances the safe poin
 same production compaction filter directly. It compresses only this nondeterministic wall-clock wait.
 
 Fresh Classic installations initialize the hidden assertion variable to `FAST`, which rejects this
-specific SQL `UPDATE` shape before resurrection. That is a mask, not the owner of safe-point
-retirement. The exact SQL exposure is therefore `tidb_txn_assertion_level=OFF`; direct client-go
-consumers have no TiDB assertion layer and are exposed whenever their GC protection horizon is
-shorter than the transaction age admitted at commit.
+specific SQL `UPDATE` shape before resurrection. It does not reject an absent-row INSERT whose lazy
+duplicate-check assertion is `Unknown`, and STRICT does not reject that shape either. A still stronger
+production consequence uses the defaults `tidb_enable_foreign_key=ON`, `foreign_key_checks=ON`, MDL
+ON, and ordinary 2PC: a stalled optimistic transaction validates a parent and buffers a child row;
+another transaction deletes the parent; after the old startTS and parent write history are retired,
+the child COMMIT succeeds and leaves a permanent orphan. The deterministic current-master matrix
+proved both no-GC controls fail with write conflict and both post-GC effects persist in fresh reads.
+
+The practical wall-clock trigger still requires the old transaction to outlive its GC protection.
+With the supported `tidb_gc_max_wait_time=600` tuning, the original 20-30 minute schedule applies.
+With the 24-hour source default, the window is much narrower because it approaches client-go's own
+maximum transaction age; this distinction must remain explicit in severity and frequency claims.
 
 ## Strong oracle
 
@@ -70,7 +84,10 @@ T2 DELETE success + GC safe point > T1.startTS
 ```
 
 Current source instead returned `COMMIT => nil`, and a fresh SQL session read `(1,11)`. This is
-durable row resurrection, not an error-message or stale-read problem.
+durable row resurrection, not an error-message or stale-read problem. In the foreign-key cell,
+`COMMIT => nil` and a fresh anti-join returned child `(1,1)` with no parent. The same schedule without
+GC returned error 9007 and no orphan, making reclaimed conflict evidence the isolated causal
+dimension.
 
 ## Why the method worked
 
@@ -79,10 +96,12 @@ all consumers of the retired timestamp. Searching for GC code alone would emphas
 that is where `CheckVisibility` already appears. Comparing the full consumer set exposed the absent
 effectful path immediately.
 
-Production reachability required a second matrix over masks and configuration provenance. A new
-install's FAST assertion hides this SQL shape; an upgraded Classic cluster's OFF value exposes it.
-This distinction prevented both a false negative (accepting the first GREEN) and an exaggerated
-claim (calling every default install affected).
+Production reachability required a second matrix over masks, logical proof representations, and
+configuration provenance. The key improvement was to mutate `existing value -> AssertExist` into
+`absent value -> AssertUnknown` and `referenced parent -> lock-only proof`, not to enumerate UPDATE
+syntax. This prevented a false negative after the first FAST GREEN and also prevented an exaggerated
+frequency claim: the assertion defaults are broadly affected, but GC must still retire the startTS
+before commit.
 
 ## Selector improvement
 
@@ -93,9 +112,11 @@ Add `SAFE_POINT_RETIREMENT_CONSUMER_CLOSURE`:
 3. Subtract guards by ownership, not by accidental masks.
 4. Build a small matrix over guard provenance: mandatory, default-new-install, upgrade-compatible,
    session-configurable, and best-effort.
-5. Erase the conflict evidence that retirement promises may be reclaimed.
-6. Invoke the highest durable consumer and compare terminal result with fresh state.
-7. Use an exact owner counterfactual, then separately audit atomicity/TOCTOU of the proposed fix.
+5. Vary the semantic representation of the proof: existing/absent, row/index, lock-only, FK, or
+   proof-only mutation. Do not stop after one DML happens to synthesize a secondary assertion.
+6. Erase the conflict evidence that retirement promises may be reclaimed.
+7. Invoke the highest durable consumer and compare terminal result with fresh state.
+8. Use an exact owner counterfactual, then separately audit atomicity/TOCTOU of the proposed fix.
 
 The reusable rule is: once a system stops preserving evidence for an owner, every effectful path
 that can still act as that owner needs a fail-closed admission proof.

@@ -1,0 +1,50 @@
+schema_version = 1
+run_key = "campaign.txn.corruption.20260717"
+obligation_key = "obligation.dml-terminal-error-owner-closure.v1"
+selector = "DEFERRED_TERMINAL_ERROR_RETURN_SLOT_OWNERSHIP"
+module = "txn/cross-layer"
+environment = "local"
+evidence_root = "../../../runs"
+workspace_root = "../../../.txnlab-current"
+allow_mutation = false
+auto_cleanup = true
+restore_images_on_cleanup = true
+collect_logs = true
+
+[sources.tidb]
+repo = "../../../../tidb-ai-master"
+commit = "94b834d94b604b1940ecc2c3064168337863269d"
+git_url = "https://github.com/pingcap/tidb.git"
+git_ref = "master"
+
+[sources.client-go]
+repo = "../../../../client-go"
+commit = "01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b"
+git_url = "https://github.com/tikv/client-go.git"
+git_ref = "master"
+
+[sources.tikv]
+repo = "../../../.txnlab/worktrees/campaign.txn.defaultnotfound.20260716/tikv"
+commit = "67fccdb16f5517e96a53c968879f8e5d99bcf1b3"
+git_url = "https://github.com/tikv/tikv.git"
+git_ref = "master"
+
+[cluster]
+kubeconfig = "../../../../kubeconfig.yml"
+namespace = "testbed-unused-local"
+tc_name = "tc"
+mysql_service = "tc-tidb"
+enable_tidb_test_api = false
+rollout_timeout_seconds = 900
+
+[assets]
+store_py = "../../../assets/store/store.py"
+sqlite_db = "../../../assets/store/assets.sqlite3"
+auto_import = false
+
+[metadata]
+used_assets = []
+
+[oracle]
+name = "terminal_mvcc_truth"
+input_file = "oracle-input.json"

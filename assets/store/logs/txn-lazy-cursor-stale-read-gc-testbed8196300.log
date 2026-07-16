@@ -1,0 +1,47 @@
+2026-07-17 testbed 8196300
+TiDB commit d573e284da773c820c1c313105b73d587378381b
+TiKV commit 67fccdb16f5517e96a53c968879f8e5d99bcf1b3
+Topology one TiDB, three TiKV, one PD
+MDL ON
+tidb_enable_lazy_cursor_fetch default OFF; enabled only for the probe session
+GitHub master 94b834d94b604b1940ecc2c3064168337863269d still has the same source root.
+
+[owner RED on unmodified source]
+read_ts=467724462924234754 cursor_start_ts=0 second_txn_start_ts=467724462924496896 reported_min_start_ts=467724462924496896
+
+[natural runtime owner]
+Protocol cursor opened without prefetch and without an extra SQL statement.
+SHOW PROCESSLIST: cursor and setup connections were Sleep, Info NULL, TxnStart empty.
+snapshot_ts=467725125726240772
+reported minStartTS later crossed to 467725131297062913.
+
+[compressed multi-Region RED]
+CURSOR_OPEN snapshot_ts=467725227949555714 snapshot_time=2026-07-17 03:29:08.123000 current_after_b=467725228067258370 table_id=2506 rows=20000 regions=16 scan_concurrency=1 prefetch=0 overwrite_process_info=false hold=2m0s
+reported minStartTS=467725237465120769
+txn_old=467725131297062913 requested=467725237465120769 txn_updated=467725237465120769 gc_old=467725131297062913 gc_updated=467725237465120769
+CURSOR_ERROR fetched=0 wrong=0 error="Error 9006 (HY000): GC life time is shorter than transaction duration, transaction start ts is 467725227949555714 (2026-07-16 19:29:08.123 +0000 UTC), txn safe point is 467725237465120769 (2026-07-16 19:29:44.422 +0000 UTC)"
+
+[default DistSQL concurrency RED]
+CURSOR_OPEN snapshot_ts=467725273248038917 snapshot_time=2026-07-17 03:32:00.923000 current_after_b=467725273457491969 table_id=2511 rows=64000 regions=64 scan_concurrency=0 prefetch=0 overwrite_process_info=false hold=2m0s
+poll=1 min=467725272854560770 crossed=no
+poll=7 min=467725284651040769 crossed=yes
+txn_old=467725237465120769 requested=467725284651040769 txn_updated=467725284651040769 gc_old=467725237465120769 gc_updated=467725284651040769
+CURSOR_ERROR fetched=0 wrong=0 error="Error 9006 (HY000): GC life time is shorter than transaction duration, transaction start ts is 467725273248038917 (2026-07-16 19:32:00.923 +0000 UTC), txn safe point is 467725284651040769 (2026-07-16 19:32:44.422 +0000 UTC)"
+
+[owner counterfactual GREEN]
+read_ts=467725198085324805 cursor_start_ts=467725198085324805 second_txn_start_ts=467725198085586944 reported_min_start_ts=467725198085324805
+TestCursorWillBlockMinStartTS PASS
+TestProbeStaleReadCursorProtectsItsReadTS PASS
+
+[negative controls]
+Numeric TSO is required; formatting TSO as a wall-clock string drops logical bits.
+A 1000-row single-Region cursor completed after the frontier crossed because its storage reader was already established.
+No extra SQL statement, compaction, DDL, partition, or multiple TiDB nodes were used in the strongest RED.
+
+[cleanup]
+Probe database removed; PD temporary binaries removed; local port-forward stopped.
+TiKV StatefulSet current/update revision tc-tikv-5477dbdf, ready 3/3.
+All three TiKV configs use the original default write-buffer-size.
+MDL remains ON and global lazy cursor remains OFF.
+GCV2 safe point 467725284651040769 is monotonic and cannot be rolled back.
+External TS 467724099891232769 came from the historical replay and is also monotonic; it is inert unless a session explicitly enables external-TS reads.

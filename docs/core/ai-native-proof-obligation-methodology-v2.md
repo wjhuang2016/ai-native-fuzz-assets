@@ -1,5 +1,5 @@
 # AI-Native Bug Hunting Methodology v2
-> Last updated: 2026-07-13. This document records the improved proof-obligation methodology for using AI to find bugs efficiently. It is intentionally separate from per-bug method-case notes.
+> Last updated: 2026-07-17. This document records the improved proof-obligation methodology for using AI to find bugs efficiently. It is intentionally separate from per-bug method-case notes.
 
 ## One-Sentence Version
 
@@ -3607,3 +3607,71 @@ current read. That negative asset revealed the useful dimension: RC gives both r
 statement TS, so its legal set is only old/old or new/new. Store the selector as
 `ATTEMPT_LOCAL_PREPROCESSED_CONSTANT_REUSE`; stop after one derived owner, omitted generation, retry
 boundary, and highest consumer.
+
+## Treat collector registries as completeness proofs
+
+GC, cleanup, lease expiry, timeout, and failover often make the same compressed claim:
+
+```text
+P_check: collector reads a registry or aggregate frontier
+Q_claim: every live resource that must survive is represented there
+D_dims: resource mode, identity, timestamp/generation, owner, publication path, expiry
+F_effect: reclaim state, advance a frontier, delete an owner, or skip protection
+R_redflag: an alternate creation mode stores identity outside the field the registry consumes
+```
+
+Compile a mode-to-registry matrix before executing the collector. For a read snapshot, compare
+ordinary transaction, explicit stale transaction, autocommit stale read, external timestamp,
+session snapshot, and cursor paths. For locks or leases, compare every owner generation and
+heartbeat/publication path. A missing registration is a high-value candidate because the collector
+can be locally correct while its input set is incomplete.
+
+Use a staged oracle so AI spends time only after the owner is disproved:
+
+```text
+O1 live resource identity
+O2 registry entry for that exact identity
+O3 aggregate consumed by the collector
+O4 collector frontier crossing the resource
+O5 intermediate owner state during collection
+O6 highest user-visible consequence
+O7 one-owner counterfactual
+```
+
+The `DefaultNotFound` historical replay calibrates this selector. Old autocommit external stale
+reads had `TxnCtx.StartTS=0`, processlist published no `TxnCtx.StaleReadTs`, etcd minStartTS omitted
+the query, and GC could cross it. Current master changes only process-info registration and reports
+the stale TS through etcd. The expensive compaction run was necessary to prove the exact error, but
+the seconds-level processlist cell identified the owner first.
+
+Do not stop after one owner becomes GREEN. Extend the matrix across lifecycle handoffs:
+
+```text
+semantic identity -> active owner field -> handoff payload -> detached owner field -> collector
+```
+
+The adjacent lazy-cursor hit proves the value of that extension. Master preserves
+`TxnCtx.StaleReadTs` in active process info, but `TryDetach` copies only `TxnCtx.StartTS` into cursor
+state. A stale cursor is therefore registered as zero after the statement owner becomes Sleep.
+The owner test was RED in seconds; one TiDB plus three TiKV nodes then showed TiDB's own minStartTS
+crossing the live snapshot and a normal later Region fetch returning error 9006. A one-field
+counterfactual preserved the exact stale TS and kept the ordinary cursor control GREEN.
+
+Store this selector as `LIVE_RESOURCE_IDENTITY_ACROSS_OWNER_HANDOFF`. For every known registry bug,
+mutate both resource mode and owner phase before looking for unrelated collectors. Use the
+collector's legal upper bound as an oracle: if PD blocks at the live resource, the cell is GREEN;
+forcing past that blocker is invalid. Severity is still independent of discovery quality. The lazy
+cursor hit validates the selector but remains moderate because the feature is opt-in and the public
+result is a clear read error.
+
+This case also adds a process-oracle gate. A final GREEN state does not prove safety when the target
+is a transient cross-owner window. Before classifying a cell, prove all of the following:
+
+1. the snapshot selects a version that the collector is allowed to remove, not the retained fence;
+2. the relevant state is in the durable structure the collector scans, not still in a memtable;
+3. the collector/filter actually ran, using a metric, log, or state delta;
+4. readers overlap the intermediate state, rather than starting only after final convergence.
+
+Store failures of these gates as `INVALID(schedule)`, `INVALID(not-flushed)`, or
+`INVALID(no-collector)`, not GREEN. This turns apparent misses into reusable experiment knowledge
+and prevents the next AI round from repeating the same timing mistakes.
