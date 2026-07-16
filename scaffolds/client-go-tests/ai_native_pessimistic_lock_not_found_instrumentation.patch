@@ -1,0 +1,48 @@
+diff --git a/txnkv/transaction/pessimistic.go b/txnkv/transaction/pessimistic.go
+index d73345c..ddb9da9 100644
+--- a/txnkv/transaction/pessimistic.go
++++ b/txnkv/transaction/pessimistic.go
+@@ -576,6 +576,9 @@ func (c *twoPhaseCommitter) pessimisticLockMutations(
+ 	bo *retry.Backoffer, lockCtx *kv.LockCtx, lockWaitMode kvrpcpb.PessimisticLockWakeUpMode,
+ 	mutations CommitterMutations,
+ ) error {
++	if MockBeforePessimisticLock != nil {
++		MockBeforePessimisticLock(c.startTS, lockCtx.ForUpdateTS)
++	}
+ 	if c.sessionID > 0 {
+ 		if val, err := util.EvalFailpoint("beforePessimisticLock"); err == nil {
+ 			// Pass multiple instructions in one string, delimited by commas, to trigger multiple behaviors, like
+@@ -607,6 +610,9 @@ func (c *twoPhaseCommitter) pessimisticLockMutations(
+ 	)
+ }
+ 
++// MockBeforePessimisticLock is only used by integration tests.
++var MockBeforePessimisticLock func(startTS, forUpdateTS uint64)
++
+ func (c *twoPhaseCommitter) pessimisticRollbackMutations(bo *retry.Backoffer, mutations CommitterMutations) error {
+ 	isInternal := false
+ 	if c.txn != nil {
+diff --git a/txnkv/transaction/prewrite.go b/txnkv/transaction/prewrite.go
+index a6eeafb..ff8a8db 100644
+--- a/txnkv/transaction/prewrite.go
++++ b/txnkv/transaction/prewrite.go
+@@ -65,6 +65,9 @@ type actionPrewrite struct {
+ 	hasRpcRetries bool // RPC tried more than once => we need to set is_retry_request
+ }
+ 
++// MockForcePrewriteRetryRequest is only used by integration tests.
++var MockForcePrewriteRetryRequest func(startTS, forUpdateTS uint64) bool
++
+ var _ twoPhaseCommitAction = actionPrewrite{}
+ 
+ func (action actionPrewrite) String() string {
+@@ -268,6 +271,9 @@ func (action actionPrewrite) handleSingleBatch(
+ 	attempts := 0
+ 
+ 	req := c.buildPrewriteRequest(batch, txnSize)
++	if MockForcePrewriteRetryRequest != nil && MockForcePrewriteRetryRequest(c.startTS, c.forUpdateTS) {
++		req.IsRetryRequest = true
++	}
+ 	sender := locate.NewRegionRequestSender(c.store.GetRegionCache(), c.store.GetTiKVClient(), c.store.GetOracle())
+ 	var resolvingRecordToken *int
+ 	defer func() {

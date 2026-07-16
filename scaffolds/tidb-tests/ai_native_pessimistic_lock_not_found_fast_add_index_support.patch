@@ -1,0 +1,43 @@
+diff --git a/pkg/ddl/index_merge_tmp.go b/pkg/ddl/index_merge_tmp.go
+index 72f7dcf2d7..5863f51273 100644
+--- a/pkg/ddl/index_merge_tmp.go
++++ b/pkg/ddl/index_merge_tmp.go
+@@ -143,6 +143,9 @@ type mergeIndexWorker struct {
+ 	currentIndex           *model.IndexInfo
+ }
+ 
++// MockSkipMergeRowLock is only used by integration tests.
++var MockSkipMergeRowLock func() bool
++
+ func newMergeTempIndexWorker(bfCtx *backfillCtx, t table.PhysicalTable, elements []*meta.Element) *mergeIndexWorker {
+ 	allIndexes := make([]table.Index, 0, len(elements))
+ 	for _, elem := range elements {
+@@ -229,9 +232,11 @@ func (w *mergeIndexWorker) BackfillData(taskRange reorgBackfillTask) (taskCtx ba
+ 			// Lock the corresponding row keys so that it doesn't modify the index KVs
+ 			// that are changing by a pessimistic transaction.
+ 			rowKey := tablecodec.EncodeRecordKey(w.table.RecordPrefix(), idxRecord.handle)
+-			err := txn.LockKeys(context.Background(), new(kv.LockCtx), rowKey)
+-			if err != nil {
+-				return errors.Trace(err)
++			if MockSkipMergeRowLock == nil || !MockSkipMergeRowLock() {
++				err := txn.LockKeys(context.Background(), new(kv.LockCtx), rowKey)
++				if err != nil {
++					return errors.Trace(err)
++				}
+ 			}
+ 
+ 			if idxRecord.delete {
+diff --git a/pkg/ddl/ingest/disk_root.go b/pkg/ddl/ingest/disk_root.go
+index 90e3fa4f62..f6a1f5261f 100644
+--- a/pkg/ddl/ingest/disk_root.go
++++ b/pkg/ddl/ingest/disk_root.go
+@@ -116,6 +116,9 @@ func (d *diskRootImpl) usageInfo() string {
+ 
+ // PreCheckUsage implements DiskRoot interface.
+ func (d *diskRootImpl) PreCheckUsage() error {
++	failpoint.Inject("skipDiskFullCheckForTest", func() {
++		failpoint.Return(nil)
++	})
+ 	failpoint.Inject("mockIngestCheckEnvFailed", func(_ failpoint.Value) {
+ 		failpoint.Return(dbterror.ErrIngestCheckEnvFailed.FastGenByArgs("mock error"))
+ 	})
