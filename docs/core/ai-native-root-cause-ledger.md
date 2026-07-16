@@ -2,11 +2,11 @@
 > Started 2026-07-03. The headline metric for this method is **distinct root causes**, not
 > `COUNT(found_bug)`. This ledger is the corrected scoreboard and the counting convention.
 
-## Current remote snapshot (2026-07-14)
+## Current remote snapshot (2026-07-16)
 
-`found_bug`: 128 surfaces, 105 distinct root causes, 51 high-severity rows, and 113 confirmed rows.
-The newest entry is `id2670003`, an issue-filed high root from retry-cache provenance and
-row-identity binding in the transaction campaign.
+`found_bug`: 130 surfaces, 107 distinct root causes, 53 high-severity rows, and 115 confirmed rows.
+The newest entry is `id2730003`, a confirmed high root from attempt-local preprocessed constants in
+the transaction campaign.
 
 ## Counting convention
 
@@ -757,3 +757,26 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   the retry while the shared payload is absent.
 - Counting rule: DDL verbs, table/index shapes, transaction modes, Put error strings, retry delays,
   and lease IDs are blast radius. Reopen only for another publication owner or highest consumer.
+
+## 2026-07-16 update: id2730003
+
+- Remote `found_bug`: 130 surfaces, 107 distinct root causes, 53 high-severity rows, 115 confirmed
+  rows.
+- New root: `pessimistic-retry-reuses-preprocessed-scalar-constant`.
+- Consequence: C3 silent logical corruption. A pessimistic RC UPDATE and COMMIT both return success;
+  fresh rows carry route `300` from the retry generation but aggregate `30` from the failed attempt.
+  The coherent current-generation aggregate is `1029`; `ADMIN CHECK TABLE` remains green.
+- Production trigger: a route/allocation batch stores a scalar ledger, inventory, or balance
+  aggregate while joining a configuration table. A concurrent allocator claims the first route,
+  inserts a value included by the aggregate, and advances configuration. Normal scan or storage
+  latency lets the commit precede final pessimistic locking, naturally triggering transparent retry.
+- Settings: MDL ON, default pessimistic mode, and default max retry count 256. READ COMMITTED is a
+  common but non-default isolation setting. No failpoint, node failure, DDL, or TiKV tuning is needed.
+- Verification: local `Exec_retry_count=1` RED, exact plan-rebuild GREEN, real-TiKV RED on TiDB
+  `d573e28` plus three TiKV `67fccdb`, and a real-TiKV zero-retry allowed-outcome control.
+- Distinctness: #69826 retains completed materialized CTE storage through `CTEStorageMap` and
+  `sync.Once`. This root embeds a normal scalar result directly in `ExecStmt.Plan` as an
+  `expression.Constant`; resetting CTE storage cannot close it.
+- Counting rule: scalar functions, aggregate forms, DML verbs, values, delays, and conflict keys are
+  blast radius. Reopen only for another preprocessed data owner, generation boundary, or irreversible
+  consumer.

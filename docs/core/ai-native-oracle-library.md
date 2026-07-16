@@ -1723,3 +1723,29 @@ specificity: HIGH for the root when paired with the exact fault stack and owner-
              frequency depends on independent server-info lease loss while schema sync remains live.
 status:      USED + EXECUTION-CONFIRMED by id2700003.
 ```
+
+## O66 rc_retry_vs_allowed_attempt_generation
+
+```text
+obligation:  a transparent RC retry must not combine a plan-derived value from one statement-TS
+             generation with ordinary DML input from another generation.
+form:        route one output column through a non-correlated scalar subquery evaluated during
+             planning and another through an ordinary joined source; let a concurrent transaction
+             change both and claim the first-attempt unique key; compare retry output with no-retry
+             executions on both sides of the publisher commit.
+allowed:     publisher after RC statement TS gives old scalar/old source; publisher before statement
+             TS gives new scalar/new source.
+red:         retry count 1, UPDATE success, COMMIT success, and fresh rows contain old scalar/new
+             source, which is outside the complete allowed set.
+green:       rebuild or invalidate only the plan-derived data owner for the new attempt; the same
+             conflict and retry produce new/new.
+catches:     preprocessed subqueries, metadata, policy, defaults, or resolved values that lose their
+             attempt-generation certificate when embedded in a retained plan.
+blind to:    RR shapes where consistent and current reads legally use different generations, values
+             that are invariant across the publisher, and fail-closed controls without owner repair.
+sensitivity: EXECUTION-CONFIRMED by id2730003 on local TiDB and real TiKV with MDL ON. The testbed
+             RED persisted route 300 with aggregate 30; the zero-retry RC control persisted old/old.
+specificity: HIGH when the legal one-attempt set and retry count are both proved. A same-final-state
+             control alone is insufficient.
+status:      USED + EXECUTION-CONFIRMED by id2730003.
+```

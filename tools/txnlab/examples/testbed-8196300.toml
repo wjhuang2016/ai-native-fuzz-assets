@@ -1,0 +1,69 @@
+schema_version = 1
+run_key = "campaign.txn.defaultnotfound.20260716"
+obligation_key = "obligation.mvcc-write-default-ownership.v1"
+selector = "LONG_VALUE_DEFAULT_OWNER_CLOSURE"
+module = "txn/cross-layer"
+environment = "testbed"
+evidence_root = "../../../runs"
+workspace_root = "../../../.txnlab"
+allow_mutation = false
+auto_cleanup = true
+restore_images_on_cleanup = true
+collect_logs = true
+
+[sources.tidb]
+repo = "../../../../tidb"
+commit = "d573e284da773c820c1c313105b73d587378381b"
+git_url = "https://github.com/pingcap/tidb.git"
+git_ref = "master"
+
+[sources.client-go]
+repo = "../../../../client-go"
+commit = "01bd8f99f4da23c6fc9d671eecc0166c7b6ceb9b"
+git_url = "https://github.com/tikv/client-go.git"
+git_ref = "master"
+
+[sources.tikv]
+repo = "../../../../tikv"
+commit = "67fccdb16f5517e96a53c968879f8e5d99bcf1b3"
+git_url = "https://github.com/tikv/tikv.git"
+git_ref = "master"
+
+[images.tidb]
+base = "hub-zot.pingcap.net/mirrors/hub/pingcap/tidb/images/tidb-server"
+tag = "master"
+expected_commit = "d573e284da773c820c1c313105b73d587378381b"
+
+[images.tikv]
+base = "hub-zot.pingcap.net/mirrors/hub/tikv/tikv/image"
+tag = "master"
+expected_commit = "67fccdb16f5517e96a53c968879f8e5d99bcf1b3"
+
+[cluster]
+kubeconfig = "../../../../kubeconfig.yml"
+namespace = "testbed-tps-8196300-1-723"
+tc_name = "tc"
+mysql_service = "tc-tidb"
+enable_tidb_test_api = true
+rollout_timeout_seconds = 900
+
+[assets]
+store_py = "../../../assets/store/store.py"
+sqlite_db = "../../../assets/store/assets.sqlite3"
+auto_import = false
+
+[build]
+artifacts_repo = "../../../.txnlab/deps/artifacts"
+artifacts_commit = "5958dc44f5f39ad4cb90b711d98571aff1bf06b6"
+release_version = "v9.0.0-beta.2"
+registry = "us-docker.pkg.dev/pingcap-testing-account/hub"
+os = "linux"
+arch = "amd64"
+profile = "failpoint"
+
+[metadata]
+used_assets = []
+
+[oracle]
+name = "terminal_mvcc_truth"
+input_file = "oracle-input.json"

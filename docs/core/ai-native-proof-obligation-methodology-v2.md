@@ -3579,3 +3579,31 @@ Historical dedup must compare obligations, not keywords. #20629 already showed t
 can grow and made the generated-ID array refillable. The new obligation is semantic validity of a
 full cache element after row identity changes. Store the selector as
 `RETRY_CACHE_PROVENANCE_AND_IDENTITY` and stop after one cache/provenance/owner/consumer tuple.
+
+## Treat preprocessed data as an attempt-scoped certificate
+
+Planning artifacts are not always structural. A planner, expression rewriter, or preprocessor may
+execute a subquery or resolve metadata, policy, defaults, routing, or session state and then store the
+answer as an ordinary constant or plan field. Rewrite that value as:
+
+```text
+derived(value, input_generation, logical_owner, validity_predicate)
+```
+
+For each transparent retry path, list the input generations it refreshes: statement TS, transaction
+snapshot, schema version, metadata lease, policy epoch, resource membership, or session state. Then
+intersect that list with data-bearing plan fields retained across re-entry. Calling `buildExecutor`
+again is not a proof of freshness when the executor is built from a plan containing old data.
+
+`id2730003` calibrates the method. The expression rewriter evaluates a non-correlated scalar
+subquery and emits `expression.Constant{SubqueryRefID: ...}`. Pessimistic RC retry refreshes the
+statement TS but reuses `ExecStmt.Plan`. A concurrent allocator claims the first route and advances
+all source state; retry commits route 300 from the new generation with aggregate 30 from the old one.
+Rebuilding the plan after failed-attempt rollback keeps the retry but changes the result to new/new.
+
+The admission oracle must still be isolation-aware. The same old/new shape was previously rejected
+under RR because one non-retried statement can legally combine an old consistent snapshot with a new
+current read. That negative asset revealed the useful dimension: RC gives both reads one attempt
+statement TS, so its legal set is only old/old or new/new. Store the selector as
+`ATTEMPT_LOCAL_PREPROCESSED_CONSTANT_REUSE`; stop after one derived owner, omitted generation, retry
+boundary, and highest consumer.

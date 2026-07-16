@@ -1,0 +1,4 @@
+2026/07/16 19:51:25 WITNESS scalar_scan_in_flight connection_id=4057990398
+2026/07/16 19:51:25 WITNESS publisher_committed src.next_u=300 without installing a conflicting target key
+2026/07/16 19:51:30 TERMINAL update_err=<nil> commit_err=<nil> rows=(1,100,31),(2,200,32) src=300 read_err=<nil> source_err=<nil> admin=<nil>
+2026/07/16 19:51:30 VERDICT GREEN_ALLOWED_ONE_ATTEMPT old_scalar_and_old_stmt_source

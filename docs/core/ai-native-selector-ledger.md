@@ -2065,3 +2065,37 @@ status:     VALIDATED by id2670003. Real-TiKV RED/GREEN, default MDL ON, natural
 stop rule:  one root per cache/provenance/logical-owner/highest-consumer tuple. Values, SQL forms,
             source tables, delays, and conflict keys are blast radius.
 ```
+
+## S61: attempt-local preprocessed constant reuse
+
+```text
+selector:   planning or rewrite executes a data-dependent read, embeds the result in an ordinary
+            constant or plan field, and transparent retry refreshes that input generation while
+            reusing the plan-derived value
+born from:  id2730003 (RC retry reuses a scalar-subquery Constant from the failed attempt)
+candidate:  planning-time data reads and metadata/policy/default resolution
+            intersect plan constants or retained scalar fields
+            intersect retry paths that refresh statement TS, schema, snapshot, policy, or metadata
+            intersect buildExecutor/re-entry without RebuildPlan or generation validation
+            intersect fresh sibling reads and irreversible row/key/error consumers
+            minus replan, attempt-generation binding, recomputation, or fail-closed behavior
+prediction:
+  - source contains EvalSubqueryFirstRow or an equivalent read during preprocess/optimize/rewrite;
+  - the derived value loses its statement TS, schema version, policy version, or owner generation;
+  - a retry owner refreshes that argument but treats the retained plan as purely structural;
+  - another path in the rebuilt executor observes the new generation;
+  - the durable result combines fields that no legal one-attempt execution can observe together.
+oracle gate:
+  - prove the retry owner ran and name the generation it refreshed;
+  - enumerate the complete legal one-attempt output set for the same isolation and ownership rules;
+  - run no-retry controls with the publisher before and after generation allocation;
+  - route one output through the retained preprocessed value and one through a fresh executor read;
+  - refresh only the plan-derived owner for the counterfactual;
+  - observe public success/error, fresh durable state, and structural checks.
+status:     VALIDATED by id2730003. Local RED/replan GREEN, real-TiKV RED, RC zero-retry control,
+            MDL ON, and post-RED issue/PR dedup are complete. The earlier RR false positive is stored
+            as a reusable negative calibration.
+stop rule:  one root per preprocessed data owner/input generation/retry boundary/highest consumer.
+            SQL syntax, scalar functions, aggregate shapes, values, delays, and conflict keys are
+            blast radius.
+```

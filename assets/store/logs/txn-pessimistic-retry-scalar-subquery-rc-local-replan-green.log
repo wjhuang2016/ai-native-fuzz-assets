@@ -1,0 +1,11 @@
+TiDB commit: 531e40cd25989404f9fd1f51cddf278326983af1
+Test: TestPessimisticRetryReevaluatesScalarSubquery
+Counterfactual: after the failed attempt is rolled back, rebuild the plan before rebuilding the executor when the statement contains a preprocessed scalar subquery.
+Exec_retry_count: 1
+Preproc_subqueries: 1
+plan_cnt: 2
+Durable rows:
+[1 100 1030]
+[2 300 1031]
+[3 200 999]
+Verdict: GREEN

@@ -3662,3 +3662,30 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   TiKV RED/GREEN and post-RED issue dedup are complete; no exact upstream issue was found.
 - Pause gate: do not enumerate ADD INDEX variants, transaction modes, errors, TTL values, or table
   shapes. Reopen only for another publication owner or highest consumer.
+
+## id2730003 - Pessimistic RC retry reuses a preprocessed scalar constant
+
+- Target: `target.txn.pessimistic-rc-scalar-subquery-constant-retry.v1`.
+- Selector: `ATTEMPT_LOCAL_PREPROCESSED_CONSTANT_REUSE`.
+- **P**: a non-correlated scalar subquery was evaluated successfully during expression rewriting.
+- **Q**: embedding the result as an `expression.Constant` in `ExecStmt.Plan` makes it valid for the
+  whole public SQL statement.
+- **F**: pessimistic RC retry refreshes the statement TS but calls `buildExecutor` on the retained
+  plan without re-running expression rewrite or scalar evaluation.
+- C3 oracle: RC one-attempt closure is `{old scalar/old source, new scalar/new source}`. Real TiKV
+  returns success and persists old scalar/new source after a natural unique-key conflict and retry.
+- Production trigger: a routing/allocation batch joins configuration while storing a scalar ledger,
+  inventory, or balance aggregate. A concurrent allocator claims the old route, inserts a value
+  included by the aggregate, advances configuration, and commits before the batch reaches final
+  pessimistic locking.
+- Settings: MDL ON, default pessimistic mode and max retry count, common READ COMMITTED isolation,
+  one TiDB, three TiKV, and two sessions. `SLEEP` only compresses a window naturally supplied by
+  large scans, hot/cold Regions, backoff, expression work, or storage pressure.
+- Counterfactual: roll back the failed attempt and rebuild the plan before rebuilding the executor.
+  Retry count remains one, `plan_cnt` becomes two, and the row becomes new/new.
+- Historical boundary: #69826 owns `CTEStorageMap` completed materialization. This root owns an
+  ordinary constant embedded in the reusable plan; CTE reset is irrelevant.
+- Status: **CONFIRMED**, remote `found_bug id2730003`, high severity. Local and real-TiKV RED, exact
+  replan GREEN, allowed-outcome controls, and post-RED dedup are complete.
+- Pause gate: scalar functions, aggregate forms, DML verbs, values, delays, and conflict keys are
+  blast radius. Reopen only for another preprocessed data owner or generation boundary.

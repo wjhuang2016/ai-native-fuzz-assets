@@ -1,0 +1,6 @@
+2026/07/16 19:51:26 WITNESS first_attempt_in_user_sleep connection_id=4057990404
+2026/07/16 19:51:26 WITNESS competitor_committed src.next_u=300 target_row=(3,200,999)
+2026/07/16 19:51:31 TERMINAL update_err=<nil> affected=2 commit_err=<nil>
+2026/07/16 19:51:31 ORACLE target_err=<nil> target=(1,100,31),(2,300,32),(3,200,999) control_exec=<nil> control_read=<nil> control=(1,100,1030),(2,300,1031),(3,200,999) admin=<nil>
+2026/07/16 19:51:31 VERDICT RED retry=(1,100,31),(2,300,32),(3,200,999) one_shot=(1,100,1030),(2,300,1031),(3,200,999)
+exit status 1

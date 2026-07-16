@@ -1,6 +1,45 @@
 # AI-Native Bug Discovery Framework — Session 交接文档
-> 最后更新:2026-07-14。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
+> 最后更新:2026-07-16。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
 > 更详细的逐 session 流水账见项目记忆 `~/.claude/projects/-Users-bba-pc-tidb/memory/ai-native-test-framework.md`。
+
+---
+
+**2026-07-16 txn campaign 命中 `id2730003/high`：悲观 RC 透明重试会复用失败轮次规划期
+scalar-subquery constant，并把旧 aggregate 与新 join source 静默提交。** 候选来自 current source 的
+attempt-generation owner 分析，不是 PR review finding。普通非相关 scalar subquery 在
+`expression_rewriter.go:1602-1629` 被 `EvalSubqueryFirstRow` 执行后直接写成带 `SubqueryRefID` 的
+`expression.Constant`；`handlePessimisticLockError` 接受 retry 后刷新 RC statement TS，却只对原
+`ExecStmt.Plan` 调 `buildExecutor`，不重新规划。
+
+真实生产形态是 route/resource allocator 批量 UPDATE：一列通过 config join 选择 unique route，另一列
+存 ledger/inventory/balance scalar aggregate。并发 allocator 占用旧 route 200、插入 aggregate 应包含的
+999，并把 config 推进到 300；大扫描、hot/cold Region、storage backoff 或表达式工作让它在 A 的 scalar
+预处理后、final LockKeys 前提交。旧 route 冲突自然触发 TiDB 支持的 retry。确定性 probe 里的 `SLEEP`
+只压缩这个窗口，不是生产触发条件。
+
+testbed 8196300 当前 TiDB `d573e284`、三 TiKV `67fccdb`，MDL=ON、默认 pessimistic、默认 retry 上限；
+唯一常见非默认维度是 READ COMMITTED。真实 RED：UPDATE affected=2、COMMIT success、target 为
+`(1,100,31),(2,300,32),(3,200,999)`，同成功轮次状态 one-shot control 为
+`(1,100,1030),(2,300,1031),(3,200,999)`，ADMIN CHECK green。去掉 unique conflict 的真实 TiKV
+零重试控制，在 publisher 已把 src 改成 300 后仍只得到 old scalar/old source `(2,200,32)`；publisher
+在 statement TS 前则是 new/new。所以 mixed old/new 不属于 RC 的合法单轮集合。
+
+local current-source 测试记录 `Exec_retry_count=1, plan_cnt=1` 并 RED；只在失败轮次 rollback 后
+`RebuildPlan`，相同冲突保留 retry=1、`plan_cnt=2`，结果变成 new/new。相关文件在本地 `531e40c` 与
+testbed `d573e28` 间无 diff。post-RED GitHub issue/PR 搜索无 exact root；#69826 是
+`CTEStorageMap+sync.Once` 物化状态，修复 owner 不同。远端 `found_bug id2730003/high/confirmed` 已入库，
+当前 `130 surfaces / 107 roots / 53 high / 115 confirmed`。
+
+方法增量是 S61 `ATTEMPT_LOCAL_PREPROCESSED_CONSTANT_REUSE` + O66。之前 RR 下同类 old/new 候选被
+正确判 INVALID，因为 RR snapshot + DML current read 单轮即可达到；这份 negative asset 本轮反而指出
+该变化 isolation owner。RC 把 read/forUpdate 都绑定到 attempt-local statement TS，使合法集合收紧为
+`{old/old,new/new}`。后续扫描 planning/rewrite 中执行数据读取并产出普通 constant/plan field 的位置，
+再与刷新 TS/schema/policy/metadata generation 但复用 plan 的 retry owner 求交，不再枚举 scalar SQL
+语法。资产入口：`assets/store/txn-pessimistic-retry-scalar-subquery-rc-results.jsonl`、
+`docs/bug-drafts/ai-native-pessimistic-retry-scalar-subquery-constant-draft.md`、
+`docs/method-cases/ai-native-id2730003-attempt-local-preprocessed-constant.md`、两份 Go probe 和 TiDB test
+fixture。暂停本 root 的 aggregate/DML/value/delay/conflict-key 变体；下一轮迁移 S61 到另一个规划期
+data owner 或 retry generation。
 
 ---
 

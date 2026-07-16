@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-14 21:55:01 +0800
+Generated at: 2026-07-16 20:04:03 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -56,3 +56,4 @@ Generated at: 2026-07-14 21:55:01 +0800
 | 2640003 | issue-filed | high | atomicity/data-integrity | UPDATE | pessimistic transaction / ON UPDATE CASCADE / final LockKeys | `fk-cascade-savepoint-released-before-final-lock-result` | Failed pessimistic FK cascade update can be committed after lock wait timeout | [https://github.com/pingcap/tidb/issues/69838](https://github.com/pingcap/tidb/issues/69838) |
 | 2670003 | issue-filed | high | atomicity/data-integrity | INSERT SELECT | autocommit retry / explicit auto-ID / dynamic source | `retry-autoid-positional-cache-overwrites-current-explicit-id` | Autocommit retry mixes an old explicit ID with a new row payload | [https://github.com/pingcap/tidb/issues/69845](https://github.com/pingcap/tidb/issues/69845) |
 | 2700003 | confirmed | high | atomicity/data-integrity | ALTER TABLE ADD INDEX | metadata lock / server-info lease restart / explicit transaction | `server-info-restart-publishes-live-session-before-registration` | Failed server-info restart can let MDL DDL corrupt a secondary index |  |
+| 2730003 | confirmed | high | atomicity/data-integrity | UPDATE | pessimistic READ COMMITTED retry / scalar subquery preprocessing | `pessimistic-retry-reuses-preprocessed-scalar-constant` | Pessimistic RC retry reuses a stale scalar-subquery constant and commits mixed-attempt data |  |

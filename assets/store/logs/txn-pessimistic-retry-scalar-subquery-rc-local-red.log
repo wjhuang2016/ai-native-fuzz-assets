@@ -1,0 +1,16 @@
+TiDB commit: 531e40cd25989404f9fd1f51cddf278326983af1
+Test: TestPessimisticRetryReevaluatesScalarSubquery
+Isolation: READ-COMMITTED
+Transaction mode: pessimistic
+Exec_retry_count: 1
+Preproc_subqueries: 1
+plan_cnt: 1
+Expected durable rows:
+[1 100 1030]
+[2 300 1031]
+[3 200 999]
+Actual durable rows:
+[1 100 31]
+[2 300 32]
+[3 200 999]
+Verdict: RED

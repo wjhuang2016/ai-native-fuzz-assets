@@ -2166,3 +2166,32 @@ Enabling a named failpoint is not evidence; require an exact stack/log, call cou
 state transition. Extend S37 with `FAILED_PUBLICATION_LIVE_OWNER_RETRY_SUPPRESSION`: audit
 `create owner -> assign current -> publish` sequences where publication errors return to a loop that
 waits only on the new owner's completion. Local liveness can be the reason shared state never heals.
+
+## Attempt-generation tick: preprocessed scalar constant crosses RC retry, EXECUTED (2026-07-16)
+
+This tick resumed from current source and the stored RR allowed-outcome negative. Issue/PR search
+remained closed until independent local and real-TiKV RED.
+
+```text
+P:             scalar subquery evaluated during expression rewrite.
+Q:             resulting Constant in ExecStmt.Plan remains valid across transparent retry.
+F:             RC retry refreshes statement TS and rebuilds executor without rebuilding the plan.
+RC CONTROL:    no retry; publisher after statement TS => old scalar/old source.
+LIVE RED:      retry; UPDATE+COMMIT success; route 300/new, aggregate 30/old; ADMIN green.
+OWNER GREEN:   rebuild plan after failed-attempt rollback; retry stays 1; new/new result.
+RR NEGATIVE:   old scalar/new current read is legal without retry and remains INVALID as a bug.
+DEDUP:         no exact issue/PR; #69826 owns CTEStorageMap rather than plan Constant.
+INTEGRATE:     id2730003 high; 130 surfaces, 107 roots, 53 high, 115 confirmed.
+```
+
+The production shape is a route or resource allocation batch that stores a scalar balance, ledger,
+or inventory aggregate. A concurrent allocator claims the old unique route, inserts a value included
+by the aggregate, and advances configuration while the batch is in normal scan/storage latency. The
+conflict is a supported natural retry producer; `SLEEP` only compresses that interval.
+
+Method improvement: negative assets now participate in candidate generation. The earlier RR result
+did not merely reject one test; it identified the ownership dimension to vary. RC binds consistent
+and for-update reads to one attempt-local statement TS, shrinking the legal set and turning the same
+symptom into a strong RED. Add `ATTEMPT_LOCAL_PREPROCESSED_CONSTANT_REUSE` and O66; future ticks scan
+planning-time data reads that emit ordinary constants or fields, then intersect them with retry paths
+that refresh an omitted generation argument.

@@ -4,10 +4,10 @@ This index tracks the high-severity bug assets that should guide future mining.
 
 Source of truth for status and severity is the remote `found_bug` table. This file is curated so each row also points to the most useful local asset in this repository.
 
-Last verified: 2026-07-14
+Last verified: 2026-07-16
 
-- Remote `found_bug`: `MAX(id)=2670003`, `COUNT(*)=128`, `COUNT(DISTINCT root_cause_id)=105`
-- High-severity entries: 51 total
+- Remote `found_bug`: `MAX(id)=2730003`, `COUNT(*)=130`, `COUNT(DISTINCT root_cause_id)=107`
+- High-severity entries: 53 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -62,6 +62,8 @@ Last verified: 2026-07-14
 | 2610003 | issue-filed | atomicity / data integrity | `commit-ts-expired-retry-bypasses-upper-bound-check` | CommitTsExpired retry can commit beyond a cached-table write lease and persist stale cache output. | [issue](https://github.com/pingcap/tidb/issues/69836), [draft](../bug-drafts/ai-native-cached-table-commit-ts-retry-draft.md) | [case](../method-cases/ai-native-id2610003-value-replacement-proof-revalidation.md) |
 | 2640003 | issue-filed | atomicity / data integrity | `fk-cascade-savepoint-released-before-final-lock-result` | A failed FK cascade UPDATE can later be committed after default lock wait timeout. | [issue](https://github.com/pingcap/tidb/issues/69838), [draft](../bug-drafts/ai-native-fk-cascade-final-lock-timeout-partial-commit-draft.md) | [case](../method-cases/ai-native-id2640003-rollback-checkpoint-fallibility-horizon.md) |
 | 2670003 | issue-filed | atomicity / data integrity | `retry-autoid-positional-cache-overwrites-current-explicit-id` | Autocommit retry can combine an old explicit entity ID with the successful attempt's new payload. | [issue](https://github.com/pingcap/tidb/issues/69845), [draft](../bug-drafts/ai-native-autoid-retry-mixed-row-draft.md) | [case](../method-cases/ai-native-id2670003-retry-cache-row-identity.md) |
+| 2700003 | confirmed | atomicity / data integrity | `server-info-restart-publishes-live-session-before-registration` | Failed server-info republication can let MDL ADD INDEX and an old transaction both succeed with a missing index row. | [draft](../bug-drafts/ai-native-mdl-server-info-restart-publication-draft.md) | [case](../method-cases/ai-native-id2700003-failed-publication-live-owner.md) |
+| 2730003 | confirmed | atomicity / data integrity | `pessimistic-retry-reuses-preprocessed-scalar-constant` | Pessimistic RC retry can commit a fresh route with a scalar aggregate from the failed attempt. | [draft](../bug-drafts/ai-native-pessimistic-retry-scalar-subquery-constant-draft.md) | [case](../method-cases/ai-native-id2730003-attempt-local-preprocessed-constant.md) |
 
 ## High-Severity Candidates / Legacy Queue
 
