@@ -17,6 +17,6 @@ VALUES
  'SUBSET_READ_CROSS_CF_SIDE_EFFECT_CLOSURE',
  'snapshot-cleanup-tombstones-excluded-from-cross-cf-gc',
  'TiKV current master 67fccdb16; default use-delete-range=false and enable-compaction-filter=true; long values in Default CF',
- 1,
- 'confirmed',
- 'Discovered from current-source proof obligations without PR/review findings. RED uses real RocksDB and the production DeleteByWriter cleanup API; GREEN changes only compaction input closure. Related #13448 covers flashback/reset visibility, while #18081/#18096 cover concurrent latch ownership; neither covers a lower-level compaction after snapshot completion. No exact issue found post-RED.');
+ 0,
+ 'candidate',
+ 'Discovered from current-source proof obligations without PR/review findings. RED uses real RocksDB and the production DeleteByWriter cleanup API; GREEN changes only compaction input closure. The physical mechanism is confirmed, but ordinary peer remove/re-add does not prove the required rollback-shaped same-Write history is production reachable. Retain as a high-impact candidate pending a legal cluster-level timeline.');

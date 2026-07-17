@@ -44,4 +44,8 @@ This is more precise than generic race fuzzing. The schedule has only one meanin
 
 ## Reuse boundary
 
-The historical reset-to-version issue calibrates the selector but is not counted as a new root. The new countable surface is default snapshot cleanup: a common recovery lifecycle reaches the same missing proof after the prior fixes for flashback and per-ingest latching.
+The historical reset-to-version issue calibrates the selector but is not counted as a new root. The snapshot-cleanup probe confirms the same missing-proof mechanism in another owner, but it is not yet a countable product bug: a common state-forward recovery lifecycle has not been shown to create the required same-Write rollback history.
+
+## Reachability correction
+
+The first analysis proved the compaction input and cross-CF side effect were production-shaped, then overgeneralized that result into a peer remove/re-add trigger. That skipped a separate lineage obligation: can the exact restored Write identity legally become live after higher local versions? For ordinary Raft snapshots the answer is not established. The improved LOOP therefore requires three independent gates: semantic state lineage, scheduler/input reachability, and terminal oracle. RED/GREEN closes only the latter two here.

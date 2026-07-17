@@ -4,10 +4,14 @@
 
 ---
 
-**2026-07-17 持久化损坏 campaign 命中 `id2790003/high`：默认 snapshot cleanup 完成并恢复可读后，
-后续 lower-level compaction-filter GC 仍可能永久删除恢复行的 Default CF value。** 候选不是来自 PR
-review finding，而是从 maintenance consumer 的证明范围出发：Write compaction input 只看到某组 lower
-SST 中 `Delete@101 -> Put@21`，只能证明 Put 在该输入内 stale；代码却把它提升成“全局无 Write 再引用
+**2026-07-17 纠正：`id2790003` 降为 `high/candidate/confirmed=0`。** 真实 RocksDB RED/GREEN 已证明
+cross-CF 删除机制，但普通 peer remove/re-add 并不能证明测试所需的状态历史可达：RED 让已被本地更高版本
+覆盖的同一个 `Write@21(start_ts=20)` 通过 snapshot 再次成为 live；普通 Raft snapshot 是 state-forward，
+通常只会重放相同或更新的逻辑状态。除非找到合法的 rollback/recovery 时间线，否则不能把它算作默认生产
+路径上的已确认严重 bug，也不能提交上游 issue。
+
+机制本身仍是有效研究资产：Write compaction input 只看到 lower SST 中
+`Delete@101 -> Put@21`，只能证明 Put 在该输入内 stale；代码却把它提升成“全局无 Write 再引用
 Default@20”，直接向另一 CF 写 point delete。snapshot cleanup tombstone 和完整恢复的 `Write@21` 位于
 未被选择的新层，Q 不成立。
 
@@ -18,16 +22,16 @@ GC，结果 `Write@21=true, Default@20=false`，fresh read 返回 exact `Default
 safe point=120、target level=6 和 filter 不变，只让 compaction input 包含 cleanup/reapply L0，结果
 `Write=true, Default=true` 且 fresh read 成功。
 
-生产可达性是默认配置：`raftstore.use-delete-range=false`，所以 peer remove/re-add、replica replacement、
-长时间落后后 apply snapshot 默认会用 deletion-SST 清理重叠范围；
-`gc.enable-compaction-filter=true` 也是默认。long value 进入 Default CF，GC safe point 越过被 cleanup 隐藏
-的旧历史后，RocksDB 可按 level score 选择不含 idle L0 的 L1+ compaction。MDL 与本 bug 无关。历史
+涉及的 storage 开关均为默认：`raftstore.use-delete-range=false`、
+`gc.enable-compaction-filter=true`。long value 进入 Default CF，RocksDB 也确实可以选择不含 idle L0 的
+L1+ compaction；测试把 ratio threshold 设为 0 只是为了确定性，bottommost compaction 在默认 ratio 下也
+会运行 GC。真正未闭合的是同一 MVCC Write 身份为何能合法复活，而不是配置或 LSM scheduler。历史
 #13448 明确提过 reset-to-version 同族问题，所以 reset 候选只作为 selector 校准，不新增计数；#18081/
 #18096 只验证单次 ingest 与 filter 的 latch 互斥，没有 durable data oracle，也未覆盖 snapshot 完成后的
 lower-level compaction。post-RED 未找到 exact issue。
 
-远端 `found_bug id2790003/high/confirmed` 已入库，当前
-`132 surfaces / 109 roots / 54 high / 117 confirmed`。方法增量是 S62
+远端 `found_bug id2790003/high/candidate` 已纠正为 `confirmed=0`，当前
+`132 surfaces / 109 recorded root IDs / 54 high / 116 confirmed`。方法增量 S62
 `SUBSET_READ_CROSS_CF_SIDE_EFFECT_CLOSURE`：凡代码读取 files/levels/shards/generations 的子集，却向
 别的 CF/registry/artifact 做 delete/publish/reclaim/repair，必须把 P(子集内成立) 与 Q(全局成立) 分开，
 第一矩阵只改变 input closure。资产入口：
@@ -35,7 +39,8 @@ lower-level compaction。post-RED 未找到 exact issue。
 `docs/bug-drafts/ai-native-snapshot-cleanup-lower-level-compaction-draft.md`、
 `docs/method-cases/ai-native-id2790003-subset-read-cross-cf-side-effect-closure.md`、
 `scaffolds/tikv-tests/ai_native_snapshot_cleanup_compaction_filter_test.rs`。暂停本 root 的 key/value/level/
-safe-point/peer-event 变体；下一轮把 S62 迁移到另一个 cross-owner maintenance side effect。
+safe-point/peer-event 变体。promotion gate 是合法 cluster-level 时间线；否则将 S62 迁移到另一个
+cross-owner maintenance side effect。
 
 ---
 

@@ -4,9 +4,9 @@
 
 ## Current remote snapshot (2026-07-17)
 
-`found_bug`: 132 surfaces, 109 distinct root causes, 54 high-severity rows, and 117 confirmed rows.
-The newest entry is `id2790003`, a confirmed high root from snapshot-cleanup visibility missing in
-cross-CF compaction side effects.
+`found_bug`: 132 surfaces, 109 distinct recorded root IDs, 54 high-severity rows, and 116 confirmed rows.
+The newest entry is `id2790003`, a high-impact candidate: its cross-CF corruption mechanism is
+execution-verified, but its production state history is not yet proven reachable.
 
 ## Counting convention
 
@@ -785,25 +785,25 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   blast radius. Reopen only for another preprocessed data owner, generation boundary, or irreversible
   consumer.
 
-## 2026-07-17 update: id2790003
+## 2026-07-17 candidate update: id2790003
 
-- Remote `found_bug`: 132 surfaces, 109 distinct root causes, 54 high-severity rows, 117 confirmed
+- Remote `found_bug`: 132 surfaces, 109 distinct recorded root IDs, 54 high-severity rows, 116 confirmed
   rows.
-- New root: `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc`.
+- Candidate root: `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc`; do not count it as a
+  confirmed severe discovery yet.
 - Consequence: persistent physical MVCC corruption. Snapshot apply first restores a readable long
   value; later lower-level GC leaves its Write record but permanently deletes the Default value, so
   a fresh read returns `DefaultNotFound`.
-- Production trigger: a peer with old MVCC history in lower RocksDB levels is removed/re-added or
-  otherwise applies a snapshot for the same range. Default `DeleteByWriter` cleanup and complete
-  snapshot reapply remain outside a later scored lower-level compaction input after the GC safe point
-  crosses the removed local history.
+- Reachability gap: the probe makes exact `Write@21(start_ts=20)` live again while higher local
+  versions remain below newer cleanup entries. Ordinary state-forward Raft snapshot application does
+  not establish that rollback-shaped history; peer remove/re-add alone is not a sufficient trigger.
 - Settings: default `raftstore.use-delete-range=false`, default
   `gc.enable-compaction-filter=true`, and a long value stored in Default CF. MDL is unrelated.
-- Verification: current TiKV master `67fccdb16`, production cleanup API, complete-reapply pre-read,
+- Mechanism verification: current TiKV master `67fccdb16`, production cleanup API, complete-reapply pre-read,
   real RocksDB lower-level RED, physical `Write=true/Default=false`, exact `DefaultNotFound`, and
   full-input GREEN.
 - Distinctness: #13448 covers flashback/reset visibility; #18081/#18096 covers concurrent ingestion
   latch ownership. Neither closes a post-snapshot lower-level compaction whose cross-CF effect uses
   only subset-local proof.
-- Counting rule: peer IDs, snapshot causes, keys, levels, safe points, and long-value shapes are blast
-  radius. Reopen only for another subset authority, cross-owner side effect, or recovery generation.
+- Promotion gate: reproduce the same identity collision through a legal cluster recovery/rollback
+  lifecycle. Keys, levels, safe points, and value sizes are not substitutes for this proof.

@@ -64,7 +64,6 @@ Last verified: 2026-07-17
 | 2670003 | issue-filed | atomicity / data integrity | `retry-autoid-positional-cache-overwrites-current-explicit-id` | Autocommit retry can combine an old explicit entity ID with the successful attempt's new payload. | [issue](https://github.com/pingcap/tidb/issues/69845), [draft](../bug-drafts/ai-native-autoid-retry-mixed-row-draft.md) | [case](../method-cases/ai-native-id2670003-retry-cache-row-identity.md) |
 | 2700003 | confirmed | atomicity / data integrity | `server-info-restart-publishes-live-session-before-registration` | Failed server-info republication can let MDL ADD INDEX and an old transaction both succeed with a missing index row. | [draft](../bug-drafts/ai-native-mdl-server-info-restart-publication-draft.md) | [case](../method-cases/ai-native-id2700003-failed-publication-live-owner.md) |
 | 2730003 | confirmed | atomicity / data integrity | `pessimistic-retry-reuses-preprocessed-scalar-constant` | Pessimistic RC retry can commit a fresh route with a scalar aggregate from the failed attempt. | [draft](../bug-drafts/ai-native-pessimistic-retry-scalar-subquery-constant-draft.md) | [case](../method-cases/ai-native-id2730003-attempt-local-preprocessed-constant.md) |
-| 2790003 | confirmed | storage / data integrity | `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc` | Snapshot apply can initially restore a row, then lower-level GC permanently removes its Default CF value and leaves `DefaultNotFound`. | [draft](../bug-drafts/ai-native-snapshot-cleanup-lower-level-compaction-draft.md) | [case](../method-cases/ai-native-id2790003-subset-read-cross-cf-side-effect-closure.md) |
 
 ## High-Severity Candidates / Legacy Queue
 
@@ -73,6 +72,7 @@ These rows are `severity=high` in `found_bug`, but still need stronger confirmat
 | ID | Status | Root cause ID | Why not mainline yet | Primary asset |
 | --- | --- | --- | --- | --- |
 | 30007 | candidate | `reorg-global-index-miss` | Candidate row; needs fresh reproduction and end-state oracle refresh before being treated as confirmed severe. | [draft](../bug-drafts/ai-native-reorg-global-index-reference-draft.md) |
+| 2790003 | candidate | `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc` | Real RocksDB RED/GREEN confirms the mechanism, but ordinary peer re-add does not establish the rollback-shaped same-Write history; needs a legal cluster-level timeline. | [draft](../bug-drafts/ai-native-snapshot-cleanup-lower-level-compaction-draft.md) |
 
 ## Known-Root Rediscoveries / Reusable Calibration
 

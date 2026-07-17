@@ -2124,10 +2124,11 @@ oracle gate:
   - invoke a fresh highest durable consumer after the side effect;
   - change only input closure for GREEN;
   - reject schedules where the storage engine cannot naturally select that subset.
-status:     VALIDATED by id2790003 on TiKV master 67fccdb16. Production DeleteByWriter cleanup,
-            complete snapshot reapply, lower-level-only real RocksDB GC, physical Write/Default
-            oracle, and full-input GREEN are complete. Default use-delete-range is OFF and
-            compaction-filter GC is ON.
+status:     MECHANISM-VALIDATED / PRODUCTION-CANDIDATE by id2790003 on TiKV master 67fccdb16.
+            DeleteByWriter cleanup, complete snapshot reapply, lower-level-only real RocksDB GC,
+            physical Write/Default oracle, and full-input GREEN are complete. The missing gate is
+            a legal cluster timeline that resurrects the same MVCC Write identity over higher local
+            history; ordinary peer re-add does not prove that state is reachable.
 stop rule:  one root per subset authority/cross-owner effect/recovery generation/highest consumer.
             Keys, levels, safe points, snapshot causes, peer IDs, and value sizes are blast radius.
 ```

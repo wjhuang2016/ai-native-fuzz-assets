@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-17 10:02:14 +0800
+Generated at: 2026-07-17 10:23:31 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -57,4 +57,4 @@ Generated at: 2026-07-17 10:02:14 +0800
 | 2670003 | issue-filed | high | atomicity/data-integrity | INSERT SELECT | autocommit retry / explicit auto-ID / dynamic source | `retry-autoid-positional-cache-overwrites-current-explicit-id` | Autocommit retry mixes an old explicit ID with a new row payload | [https://github.com/pingcap/tidb/issues/69845](https://github.com/pingcap/tidb/issues/69845) |
 | 2700003 | confirmed | high | atomicity/data-integrity | ALTER TABLE ADD INDEX | metadata lock / server-info lease restart / explicit transaction | `server-info-restart-publishes-live-session-before-registration` | Failed server-info restart can let MDL DDL corrupt a secondary index |  |
 | 2730003 | confirmed | high | atomicity/data-integrity | UPDATE | pessimistic READ COMMITTED retry / scalar subquery preprocessing | `pessimistic-retry-reuses-preprocessed-scalar-constant` | Pessimistic RC retry reuses a stale scalar-subquery constant and commits mixed-attempt data |  |
-| 2790003 | confirmed | high | storage/data-integrity | Raft snapshot apply / GC compaction | snapshot cleanup / compaction-filter GC / RocksDB levels | `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc` | Snapshot apply can lose restored Default CF data after lower-level GC compaction |  |
+| 2790003 | candidate | high | storage/data-integrity | Raft snapshot apply / GC compaction | snapshot cleanup / compaction-filter GC / RocksDB levels | `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc` | Snapshot apply can lose restored Default CF data after lower-level GC compaction |  |

@@ -1,19 +1,19 @@
 # Snapshot apply can lose restored Default CF data after lower-level GC compaction
 
-Status: confirmed on current TiKV master `67fccdb16f5517e96a53c968879f8e5d99bcf1b3` with a real RocksDB RED/GREEN probe. Proposed bug DB ID: `id2790003`.
+Status: storage mechanism confirmed on current TiKV master `67fccdb16f5517e96a53c968879f8e5d99bcf1b3`, but production reachability is not confirmed. Bug DB ID `id2790003` is a `high/candidate` with `confirmed=0`.
 
 ## User-visible failure
 
-A TiKV peer can finish applying a snapshot and initially read the restored row correctly. A later ordinary background compaction can permanently delete the row's long value from Default CF while its Write CF record remains. Reads routed to that peer then return `KV:Storage:DefaultNotFound`.
+For the injected physical history, a TiKV peer can finish applying a snapshot and initially read the restored row correctly. A later background compaction permanently deletes the row's long value from Default CF while its Write CF record remains. Reads then return `KV:Storage:DefaultNotFound`.
 
 The damage is persistent RocksDB state, not a transient read race: the RED physical oracle is `Write@21=true, Default@20=false`.
 
-## Concrete production trigger
+## Required trigger shape
 
-One realistic trigger is a peer being removed and later re-added during balancing, replica replacement, or recovery:
+The RED requires all of the following:
 
 1. The peer's local RocksDB contains a key with a long `Put@21`, a later `Put@81`, and `Delete@101` in a lower level such as L5.
-2. The peer must apply a snapshot whose state retains `Put@21` but not the later local versions.
+2. The peer must apply a snapshot that makes the exact old `Write@21(start_ts=20)` live again while omitting the later local versions.
 3. With the default `raftstore.use-delete-range=false`, `clean_overlap_ranges` clears the local range through `DeleteStrategy::DeleteByWriter`. The deletion entries are newer than the old L5 data and hide it, but do not necessarily compact it away.
 4. Snapshot apply restores Default CF and Write CF. A fresh read succeeds at this point.
 5. The GC safe point later advances beyond the removed local history.
@@ -21,7 +21,7 @@ One realistic trigger is a peer being removed and later re-added during balancin
 7. `WriteCompactionFilter` sees `Delete@101` and the older long `Put@21`, concludes that the Put is stale, and writes a point deletion for `Default@20`.
 8. The restored `Write@21`, outside the compaction input, remains live. Subsequent reads return `DefaultNotFound`.
 
-This uses default storage settings:
+The storage behavior uses default settings:
 
 - `raftstore.use-delete-range=false`
 - `gc.enable-compaction-filter=true`
@@ -29,11 +29,19 @@ This uses default storage settings:
 
 The value must be large enough to live in Default CF instead of being embedded as a short value in Write CF.
 
-## Expected behavior
+## Production reachability gap
+
+Ordinary peer removal and re-addition is not yet a valid witness for step 2. Raft snapshot application is state-forward: a snapshot for the current region normally contains the same or newer logical state, rather than resurrecting an exact MVCC Write that local committed history had already superseded. Recreating the same user value with a later transaction does not reuse the same Default key because its start TS changes.
+
+Therefore the current probe proves a storage-engine failure mechanism, not that routine balancing reaches it. A legitimate production trigger would need a state rollback or recovery timeline, or another legal lifecycle that places a resurrected identical Write over higher stale local history. That timeline has not yet been demonstrated end to end.
+
+The test also controls the LSM layout and sets the ratio threshold to zero for determinism. The threshold is not the main reachability gap because bottommost compaction runs GC under the default ratio, and the selected lower-level layout is RocksDB-valid. The unresolved condition is the logical origin of the same-Write history.
+
+## Expected behavior if the state is reachable
 
 Once snapshot apply completes, later GC and compaction must preserve every MVCC value present in that snapshot. A compaction input that excludes newer cleanup/reapply state must not perform a global cross-CF delete based only on the older selected files.
 
-## Actual behavior
+## Actual storage behavior
 
 The probe first proves that the completed snapshot state is readable. After selecting only the old L5 Write SST for GC:
 
@@ -77,7 +85,7 @@ The ingest range latch only serializes the direct delete with an individual inge
 
 ## Fix direction
 
-The fix must make the global side effect depend on globally authoritative state. Possible designs include establishing a recovery generation/barrier that compaction-filter GC observes, compacting cleanup state through all overlapping old files before the snapshot is declared complete, or revalidating the Default deletion against newer Write state outside the compaction input. Merely extending the current per-ingest latch does not close compactions that run after snapshot completion.
+If a legal production timeline is found, the fix must make the global side effect depend on globally authoritative state. Possible designs include establishing a recovery generation/barrier that compaction-filter GC observes, compacting cleanup state through all overlapping old files before the snapshot is declared complete, or revalidating the Default deletion against newer Write state outside the compaction input. Until then, this remains a candidate and should not be filed as a confirmed product bug.
 
 ## Deduplication
 

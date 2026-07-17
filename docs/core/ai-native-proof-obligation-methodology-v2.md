@@ -3769,15 +3769,23 @@ GREEN: identical state and frontier + contradiction included + highest consumer 
 INVALID: the production scheduler cannot select the RED subset
 ```
 
-`id2790003` validates this rule. Snapshot cleanup and complete reapply were already finished and a
-fresh MVCC read was green. A legal lower-level Write compaction excluded the newer cleanup/reapply
+`id2790003` validates the storage mechanism but also exposes a required reachability gate. Snapshot
+cleanup and complete reapply were already finished and a fresh MVCC read was green. A legal
+lower-level Write compaction excluded the newer cleanup/reapply
 files, saw an old Delete and Put, then physically deleted the Put's Default value. The restored Write
 remained and a fresh read returned `DefaultNotFound`. Including the recovery layer changed only the
 proof scope and kept both physical keys. Store the selector as
 `SUBSET_READ_CROSS_CF_SIDE_EFFECT_CLOSURE`.
 
+However, a production-valid scheduler input is not enough: the complete pre-consumer state must also
+have a legal origin. Ordinary state-forward Raft snapshot apply does not by itself resurrect an exact
+old MVCC Write that higher local committed versions had superseded. Until a real recovery/rollback
+lifecycle establishes that identity collision, classify the result as a mechanism-validated
+candidate rather than a confirmed product bug.
+
 This also refines injection design. For storage corruption, forcing the target consumer is not enough.
-The probe must prove that the forced input is a production-selectable subset and that recovery has
-completed before the consumer runs. Otherwise a partial-apply race or an impossible file set can look
-like a severe hit. Source-level scheduler proof plus real physical state is an acceptable reachability
-witness when waiting for natural size scores would add time but no semantic coverage.
+The probe must prove that the forced input is a production-selectable subset, that recovery has
+completed before the consumer runs, and that the injected physical history can arise from a legal
+product lifecycle. Otherwise a partial-apply race, impossible file set, or impossible state lineage
+can look like a severe hit. Source-level scheduler proof plus real physical state closes only the
+scheduler dimension; it cannot substitute for lineage reachability.
