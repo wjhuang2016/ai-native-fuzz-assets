@@ -2099,3 +2099,35 @@ stop rule:  one root per preprocessed data owner/input generation/retry boundary
             SQL syntax, scalar functions, aggregate shapes, values, delays, and conflict keys are
             blast radius.
 ```
+
+## S62: subset-read cross-owner side-effect closure
+
+```text
+selector:   a maintenance consumer reads only selected files, levels, shards, generations, or
+            registry rows, proves a fact inside that subset, then writes an irreversible side
+            effect into a different owner as though the proof were globally complete
+born from:  id2790003 (lower-level Write compaction deletes a restored Default value after snapshot)
+candidate:  compaction filters, GC, repair, cleanup, restore, reclaim, checkpoint, and vacuum scans
+            intersect selected physical/logical views
+            intersect delete/publish/reclaim/ack/repair effects outside the selected view
+            intersect newer contradictory state that can legally live in an excluded view
+            minus a generation fence, point revalidation, or storage guarantee of global authority
+prediction:
+  - the checked predicate P is true for every record in the selected input;
+  - the fast path assumes a stronger global Q to authorize an external side effect;
+  - cleanup, restore, retry, or handoff can put a newer contradiction outside that input;
+  - the side effect survives the input and damages the newer owner.
+oracle gate:
+  - name the exact selected view and every excluded view;
+  - prove the restored/current state is complete before activating the consumer;
+  - observe both the source witness and the cross-owner side effect physically;
+  - invoke a fresh highest durable consumer after the side effect;
+  - change only input closure for GREEN;
+  - reject schedules where the storage engine cannot naturally select that subset.
+status:     VALIDATED by id2790003 on TiKV master 67fccdb16. Production DeleteByWriter cleanup,
+            complete snapshot reapply, lower-level-only real RocksDB GC, physical Write/Default
+            oracle, and full-input GREEN are complete. Default use-delete-range is OFF and
+            compaction-filter GC is ON.
+stop rule:  one root per subset authority/cross-owner effect/recovery generation/highest consumer.
+            Keys, levels, safe points, snapshot causes, peer IDs, and value sizes are blast radius.
+```

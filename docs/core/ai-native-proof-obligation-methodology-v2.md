@@ -3675,3 +3675,109 @@ is a transient cross-owner window. Before classifying a cell, prove all of the f
 Store failures of these gates as `INVALID(schedule)`, `INVALID(not-flushed)`, or
 `INVALID(no-collector)`, not GREEN. This turns apparent misses into reusable experiment knowledge
 and prevents the next AI round from repeating the same timing mistakes.
+
+## Make failed statements observationally removable
+
+Statement rollback is stronger than restoring visible MemDB values. A failed statement may have
+visited row keys, unique owners, assertions, generated indexes, and non-value MemDB flags before its
+error. Compile the obligation as a removal differential:
+
+```text
+control = transaction history A, COMMIT
+probe   = transaction history A, failed statement B, COMMIT
+
+required: durable_state(control) = durable_state(probe)
+```
+
+Choose `B` so an earlier row is valid and revisits an owner from `A`, while a later row fails on a
+deterministic statement-local error. Compare exact base rows, `ADMIN CHECK`, and forced scans through
+every affected unique, ordinary, and generated index. A duplicate discovered only at `COMMIT` is
+`INVALID(trigger)`, because statement rollback never ran. A declared CHECK that the runtime does not
+enforce is also `INVALID(trigger)`, not GREEN.
+
+The real-TiKV calibration covered five owner-revisit shapes under optimistic and pessimistic explicit
+transactions. All ten cells were GREEN. Source inspection also found a theoretically dangerous
+`tombstone + NewlyInserted` classification, but current TiDB has no production setter for that
+client-go flag. This tightens admission: a checkpoint smell needs a production-reachable setter and
+a highest consumer that can change the final mutation set before it earns a runtime cell. Store the
+selector as `STATEMENT_ROLLBACK_OBSERVATIONAL_REMOVABILITY`.
+
+## Change retry owner-set membership, not only values
+
+Same-shape retry confirms that replay occurred, but it is weak evidence for attempt-state isolation.
+The stronger matrix changes which semantic owners should exist in the successful attempt:
+
+```text
+attempt 1 owner set = {A, B, C}
+concurrent commit changes membership
+attempt 2 owner set = {A}
+
+required: final effects contain only owners derived by attempt 2
+```
+
+Prefer a shrinking set because a stale delete, cascade, or cleanup becomes an immediate persistent
+loss. The FK calibration made the first parent DELETE discover child and grandchild cascades, then
+moved the child to a surviving parent before forcing a real TiKV commit conflict. Retry count was
+nonzero and final state matched the legal `move child -> delete old parent` serialization: the moved
+child and grandchild survived, FK anti-joins were empty, and row/index scans agreed. This retires FK
+cascade attempt leakage, not the broader selector. Future candidates must name an implicit owner
+cache outside transaction reset/rebuild. Store the selector as `RETRY_ATTEMPT_OWNER_SET_REBUILD`.
+
+The reusable schedule pauses immediately before the session calls `Txn.Commit`, commits a conflicting
+owner change from another session, and requires both a retry witness and a full durable oracle. Tool
+activation is itself a proof gate: direct `go test` does not execute `failpoint.Inject` markers unless
+source rewriting ran. An enabled-but-unhit marker is `INVALID(harness)`. Use a hit counter/log or a
+test-only direct `failpoint.Eval` probe, and disable a process-wide pause before starting the blocker.
+
+Apply the same schedule to validations, but require the expected semantic error rather than accepting
+any fail-closed result. In the FK calibration, attempt one found the parent and marked its record key
+for lock-only prewrite. A concurrent parent DELETE committed before prewrite, the lock-only mutation
+created a real conflict, and retry returned exact error 1452 with no child. A generic write-conflict
+error plus empty state would protect data but would not prove the validation was rebuilt. Store this
+separate selector as `RETRY_ATTEMPT_VALIDATION_RECHECK`; move next to validators whose proof or
+conflict owner survives outside executor/transaction reconstruction.
+
+## Treat selected-input proofs as local until side effects are closed
+
+Maintenance code often receives a deliberately partial view: one RocksDB compaction input, one
+checkpoint generation, one shard, one registry page, or one recovery epoch. The dangerous shape is
+not a bad check inside that view. It is promotion of a view-local fact into a global side effect:
+
+```text
+selected input proves P
+code treats P as global Q
+code deletes, publishes, reclaims, repairs, or acknowledges outside the input
+newer excluded state makes Q false
+```
+
+Compile a side-effect authority table before fuzzing:
+
+| Field | Required question |
+| --- | --- |
+| selected view | Which files, levels, shards, rows, or generations are visible? |
+| excluded view | What newer contradiction can legally exist outside it? |
+| local fact P | What is actually proved by the selected records? |
+| global claim Q | What stronger fact authorizes the side effect? |
+| effect owner | Which different CF, registry, artifact, or public state is changed? |
+| closure | What fence, lookup, or engine guarantee proves Q globally? |
+
+The first matrix should change only input closure:
+
+```text
+RED:   newer contradiction excluded + cross-owner side effect + highest consumer fails
+GREEN: identical state and frontier + contradiction included + highest consumer succeeds
+INVALID: the production scheduler cannot select the RED subset
+```
+
+`id2790003` validates this rule. Snapshot cleanup and complete reapply were already finished and a
+fresh MVCC read was green. A legal lower-level Write compaction excluded the newer cleanup/reapply
+files, saw an old Delete and Put, then physically deleted the Put's Default value. The restored Write
+remained and a fresh read returned `DefaultNotFound`. Including the recovery layer changed only the
+proof scope and kept both physical keys. Store the selector as
+`SUBSET_READ_CROSS_CF_SIDE_EFFECT_CLOSURE`.
+
+This also refines injection design. For storage corruption, forcing the target consumer is not enough.
+The probe must prove that the forced input is a production-selectable subset and that recovery has
+completed before the consumer runs. Otherwise a partial-apply race or an impossible file set can look
+like a severe hit. Source-level scheduler proof plus real physical state is an acceptable reachability
+witness when waiting for natural size scores would add time but no semantic coverage.

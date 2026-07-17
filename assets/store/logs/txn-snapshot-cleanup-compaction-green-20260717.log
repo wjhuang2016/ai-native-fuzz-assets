@@ -1,0 +1,14 @@
+TiKV commit: 67fccdb16f5517e96a53c968879f8e5d99bcf1b3
+Counterfactual:
+Use the same engine, history, cleanup, complete snapshot reapply, safe point 120, ratio threshold 0, and target level 6. Replace lower-level-only gc_on_files with full-input gc so cleanup/reapply L0 files are included.
+
+running 1 test
+oracle: after complete snapshot reapply
+physical oracle: write@21=true, default@20=true
+oracle: after lower-level GC
+test server::reset_to_version::tests::test_snapshot_reapply_then_lower_compaction_keeps_reapplied_value ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 673 filtered out
+
+Interpretation:
+Changing only compaction input closure prevents the cross-CF deletion and preserves the restored MVCC value.

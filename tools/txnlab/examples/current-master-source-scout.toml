@@ -1,0 +1,50 @@
+schema_version = 1
+run_key = "campaign.txn.source-scout.20260717"
+obligation_key = "obligation.txn-persistent-mutation-owner.v1"
+selector = "MUTATION_OWNER_PROOF_COMPLETENESS"
+module = "txn/cross-layer"
+environment = "local"
+evidence_root = "/Users/bba/pc/ai-native-fuzz-assets/runs"
+workspace_root = "/Users/bba/pc/ai-native-fuzz-assets/.txnlab-current"
+allow_mutation = false
+auto_cleanup = true
+restore_images_on_cleanup = true
+collect_logs = true
+
+[sources.tidb]
+repo = "/Users/bba/pc/tidb-ai-master"
+commit = "94b834d94b604b1940ecc2c3064168337863269d"
+git_url = "https://github.com/pingcap/tidb.git"
+git_ref = "master"
+
+[sources.client-go]
+repo = "/Users/bba/pc/client-go-ai-master"
+commit = "3d4b3eae46523d676a070e7728c31e7050a603df"
+git_url = "https://github.com/tikv/client-go.git"
+git_ref = "master"
+
+[sources.tikv]
+repo = "/Users/bba/pc/tikv-ai-master"
+commit = "67fccdb16f5517e96a53c968879f8e5d99bcf1b3"
+git_url = "https://github.com/tikv/tikv.git"
+git_ref = "master"
+
+[cluster]
+kubeconfig = "/Users/bba/pc/kubeconfig.yml"
+namespace = "testbed-unused-local"
+tc_name = "tc"
+mysql_service = "tc-tidb"
+enable_tidb_test_api = false
+rollout_timeout_seconds = 900
+
+[assets]
+store_py = "/Users/bba/pc/ai-native-fuzz-assets/assets/store/store.py"
+sqlite_db = "/Users/bba/pc/ai-native-fuzz-assets/assets/store/assets.sqlite3"
+auto_import = false
+
+[metadata]
+used_assets = []
+
+[oracle]
+name = "terminal_mvcc_truth"
+input_file = "oracle-input.json"

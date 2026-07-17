@@ -1,0 +1,14 @@
+diff --git a/pkg/session/session.go b/pkg/session/session.go
+index b98fbd9071..fa9c29d1de 100644
+--- a/pkg/session/session.go
++++ b/pkg/session/session.go
+@@ -700,6 +700,9 @@ func (s *session) commitTxnWithTemporaryData(ctx context.Context, txn kv.Transac
+ 	sessVars := s.sessionVars
+ 	txnTempTables := sessVars.TxnCtx.TemporaryTables
+ 	if len(txnTempTables) == 0 {
++		if v, err := failpoint.Eval("github.com/pingcap/tidb/pkg/session/aiNativeBeforeTxnCommit"); err == nil {
++			time.Sleep(time.Duration(v.(int)) * time.Millisecond)
++		}
+ 		failpoint.Inject("mockSleepBeforeTxnCommit", func(v failpoint.Value) {
+ 			ms := v.(int)
+ 			time.Sleep(time.Millisecond * time.Duration(ms))

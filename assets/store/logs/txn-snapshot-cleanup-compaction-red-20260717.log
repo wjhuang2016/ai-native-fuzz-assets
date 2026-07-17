@@ -1,0 +1,20 @@
+TiKV commit: 67fccdb16f5517e96a53c968879f8e5d99bcf1b3
+Command:
+cargo test -p tikv --lib test_snapshot_reapply_then_lower_compaction_keeps_reapplied_value --features test-engine-kv-rocksdb -- --nocapture
+
+running 1 test
+oracle: after complete snapshot reapply
+physical oracle: write@21=true, default@20=false
+oracle: after lower-level GC
+
+thread 'server::reset_to_version::tests::test_snapshot_reapply_then_lower_compaction_keeps_reapplied_value' panicked at src/storage/mvcc/mod.rs:552:40:
+called `Result::unwrap()` on an `Err` value: Error(DefaultNotFound { key: [...] })
+test server::reset_to_version::tests::test_snapshot_reapply_then_lower_compaction_keeps_reapplied_value ... FAILED
+
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 673 filtered out
+
+Interpretation:
+- Snapshot cleanup used production DeleteStrategy::DeleteByWriter with allow_write enabled.
+- A fresh MVCC read succeeded after Write@21 and Default@20 were fully reapplied.
+- The only changed dimension was selecting the old L5 Write SST for L5->L6 GC while newer cleanup/reapply files remained outside the input.
+- The compaction filter physically deleted Default@20 but the restored Write@21 remained.

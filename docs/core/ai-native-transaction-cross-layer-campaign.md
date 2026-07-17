@@ -618,3 +618,36 @@ across every owner transition, then gate expensive collection on a RED handoff c
 - Do not use a known PR finding to rescue an unproductive source pass.
 - Do not touch the testbed before local RED and exact owner attribution.
 - On GREEN, name the gate that held and store it as a negative screen.
+
+### Statement rollback and retry owner-set checkpoint (2026-07-17)
+
+Two new C3-directed matrices were GREEN on TiDB master `94b834d94b60` with real TiKV
+`c27c66202dcd`, MDL enabled, and ordinary transaction settings.
+
+The statement-checkpoint pass tested whether a failed statement can leave non-value MemDB state that
+poisons an earlier successful mutation. The final matrix used NOT NULL failure after revisiting row,
+unique, ordinary, and generated-index owners. Five shapes under optimistic and pessimistic explicit
+transactions all matched the control with the failed statement removed; `ADMIN CHECK` and every
+forced index scan remained consistent. Two earlier runs are retained as `INVALID(trigger)`: duplicate
+checking occurred only at COMMIT, and the chosen CHECK predicate was not enforced in that runtime.
+The family is closed until source finds a production-reachable flag setter and a correctness-bearing
+consumer.
+
+The retry pass added a deterministic pause immediately before `Txn.Commit`, then used another session
+to create a real TiKV write conflict. A same-cascade-set baseline proved replay capability. The
+stronger cell changed owner-set membership: attempt one staged parent-child-grandchild deletion, but
+the blocker moved the child to another parent before retry. The successful retry dropped the stale
+cascade set and preserved the moved child and grandchild. This closes FK cascade attempt leakage and
+promotes `RETRY_ATTEMPT_OWNER_SET_REBUILD` for other implicit work producers.
+
+The next cell uses the same replay schedule on FK validation rather than cascade mutation: plain
+autocommit child INSERT first validates an existing parent; the blocker deletes that parent before
+prewrite; retry must revalidate and return an FK error. Success plus an orphan child is a direct
+persistent-corruption RED. This is distinct from RC `INSERT IGNORE`: plain INSERT, optimistic
+autocommit transaction replay, and default MDL are required.
+
+That FK validation cell is now GREEN. The lock-only parent mutation caused a real retry, and the
+successful replay did not reuse the first positive check: it returned error 1452. Fresh parent and
+child rows were empty, the FK anti-join was zero, and physical checks passed. Close ordinary FK
+existence across autocommit retry; the next validation candidate must have a proof or conflict owner
+outside executor/transaction rebuild.

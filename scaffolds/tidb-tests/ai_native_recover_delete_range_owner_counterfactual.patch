@@ -1,0 +1,12 @@
+diff --git a/pkg/store/gcworker/gc_worker.go b/pkg/store/gcworker/gc_worker.go
+--- a/pkg/store/gcworker/gc_worker.go
++++ b/pkg/store/gcworker/gc_worker.go
+@@
+ 	failpoint.InjectCall("afterLoadDeleteRanges", ranges)
++	// Counterfactual probe: revoke stale in-memory ownership before destruction.
++	ranges, err = util.LoadDeleteRanges(ctx, s, safePoint)
++	if err != nil {
++		return errors.Trace(err)
++	}
+ 
+ 	v2, err := util.IsRaftKv2(ctx, s)

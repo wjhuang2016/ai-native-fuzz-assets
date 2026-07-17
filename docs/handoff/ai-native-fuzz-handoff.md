@@ -1,6 +1,41 @@
 # AI-Native Bug Discovery Framework — Session 交接文档
-> 最后更新:2026-07-16。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
+> 最后更新:2026-07-17。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
 > 更详细的逐 session 流水账见项目记忆 `~/.claude/projects/-Users-bba-pc-tidb/memory/ai-native-test-framework.md`。
+
+---
+
+**2026-07-17 持久化损坏 campaign 命中 `id2790003/high`：默认 snapshot cleanup 完成并恢复可读后，
+后续 lower-level compaction-filter GC 仍可能永久删除恢复行的 Default CF value。** 候选不是来自 PR
+review finding，而是从 maintenance consumer 的证明范围出发：Write compaction input 只看到某组 lower
+SST 中 `Delete@101 -> Put@21`，只能证明 Put 在该输入内 stale；代码却把它提升成“全局无 Write 再引用
+Default@20”，直接向另一 CF 写 point delete。snapshot cleanup tombstone 和完整恢复的 `Write@21` 位于
+未被选择的新层，Q 不成立。
+
+当前 TiKV master `67fccdb16` 的真实 RocksDB 探针已把时序压到两格。先写 long Put@21、Put@81、
+Delete@101 并下沉到 L5；再走生产同构的 `DeleteStrategy::DeleteByWriter + allow_write=true` cleanup，
+完整重放 snapshot 的 Write/Default 后 fresh MVCC read 明确成功。RED 只选择旧 L5 Write SST 做 L5->L6
+GC，结果 `Write@21=true, Default@20=false`，fresh read 返回 exact `DefaultNotFound`。GREEN 保持同数据、
+safe point=120、target level=6 和 filter 不变，只让 compaction input 包含 cleanup/reapply L0，结果
+`Write=true, Default=true` 且 fresh read 成功。
+
+生产可达性是默认配置：`raftstore.use-delete-range=false`，所以 peer remove/re-add、replica replacement、
+长时间落后后 apply snapshot 默认会用 deletion-SST 清理重叠范围；
+`gc.enable-compaction-filter=true` 也是默认。long value 进入 Default CF，GC safe point 越过被 cleanup 隐藏
+的旧历史后，RocksDB 可按 level score 选择不含 idle L0 的 L1+ compaction。MDL 与本 bug 无关。历史
+#13448 明确提过 reset-to-version 同族问题，所以 reset 候选只作为 selector 校准，不新增计数；#18081/
+#18096 只验证单次 ingest 与 filter 的 latch 互斥，没有 durable data oracle，也未覆盖 snapshot 完成后的
+lower-level compaction。post-RED 未找到 exact issue。
+
+远端 `found_bug id2790003/high/confirmed` 已入库，当前
+`132 surfaces / 109 roots / 54 high / 117 confirmed`。方法增量是 S62
+`SUBSET_READ_CROSS_CF_SIDE_EFFECT_CLOSURE`：凡代码读取 files/levels/shards/generations 的子集，却向
+别的 CF/registry/artifact 做 delete/publish/reclaim/repair，必须把 P(子集内成立) 与 Q(全局成立) 分开，
+第一矩阵只改变 input closure。资产入口：
+`assets/store/txn-snapshot-cleanup-compaction-closure-results-20260717.jsonl`、
+`docs/bug-drafts/ai-native-snapshot-cleanup-lower-level-compaction-draft.md`、
+`docs/method-cases/ai-native-id2790003-subset-read-cross-cf-side-effect-closure.md`、
+`scaffolds/tikv-tests/ai_native_snapshot_cleanup_compaction_filter_test.rs`。暂停本 root 的 key/value/level/
+safe-point/peer-event 变体；下一轮把 S62 迁移到另一个 cross-owner maintenance side effect。
 
 ---
 

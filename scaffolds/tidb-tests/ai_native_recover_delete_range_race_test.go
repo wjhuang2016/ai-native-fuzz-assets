@@ -13,6 +13,11 @@
 
 package flashbacktest
 
+// This is an owner-level probe, not a production reproduction by itself.
+// DeleteRanges(math.MaxInt64) bypasses the real GC prepare/RECOVER safe-point
+// interlock. A RED result must remain admission-rejected unless a reachable
+// runtime path can load the task while RECOVER still accepts its snapshot.
+
 import (
 	"context"
 	"fmt"
