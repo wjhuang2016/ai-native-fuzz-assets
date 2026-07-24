@@ -1,0 +1,126 @@
+AI-native fuzz evidence: cross-schema RENAME loses auto-ID owner on cold reload
+Date: 2026-07-25
+
+Environment
+-----------
+TiDB RED binary:
+  v9.0.0-beta.2.pre-2017-ged2376acc6
+  commit ed2376acc6e0feeff9f3e2c38db489727933aa80
+TiDB counterfactual source:
+  commit 231dad5225f0d3c9cf38d4ab7ebc03a5326785c7
+PD/TiKV:
+  one PD and one real TiKV from agent-test TiUP nightly playground
+Settings:
+  Classic kernel
+  tidb_enable_metadata_lock=ON
+  AUTO_ID_CACHE=1
+Faults:
+  none
+
+The warm TiDB created three tables, inserted generated IDs 1 and 2, and renamed
+each table from ai_auto_reload_src to ai_auto_reload_dst. Before the cold TiDB
+started, all three tables contained exactly IDs 1 and 2 and reported mode Normal.
+
+Cold TiDB startup evidence
+--------------------------
+The TiDB process was started only after the RENAME statements and connected to
+the same PD/TiKV. Its status endpoint reported:
+
+  version=8.0.11-TiDB-v9.0.0-beta.2.pre-2017-ged2376acc6
+  git_hash=ed2376acc6e0feeff9f3e2c38db489727933aa80
+
+Its server log recorded a full InfoSchema load. Before any generated write:
+
+  TABLE_NAME  AUTO_INCREMENT
+  nonunique   0
+  pk_insert   0
+  pk_replace  0
+
+RED cell A: explicit duplicate-key failure
+------------------------------------------
+SQL:
+  INSERT INTO ai_auto_reload_dst.pk_insert(v) VALUES ('new-insert');
+
+Result:
+  ERROR 1062 (23000): Duplicate entry '2' for key 'pk_insert.PRIMARY'
+
+Fresh rows:
+  id  v
+  1   old-1
+  2   old-2
+
+RED cell B: successful REPLACE silently overwrites an existing row
+------------------------------------------------------------------
+SQL:
+  REPLACE INTO ai_auto_reload_dst.pk_replace(v) VALUES ('replacement');
+  SELECT ROW_COUNT(), LAST_INSERT_ID();
+
+Result:
+  affected_rows  generated_id
+  2              2
+
+Fresh rows:
+  id  v
+  1   order-1
+  2   replacement
+
+The original row "2 order-2" was silently deleted. ADMIN CHECK TABLE returned
+success because the resulting record/index state is structurally valid.
+
+RED cell C: successful INSERT creates duplicate generated identity
+------------------------------------------------------------------
+SQL:
+  INSERT INTO ai_auto_reload_dst.nonunique(v) VALUES ('new-cold-load');
+  SELECT ROW_COUNT(), LAST_INSERT_ID();
+
+Result:
+  affected_rows  generated_id
+  1              2
+
+Fresh rows:
+  id  v
+  1   old-1
+  2   new-cold-load
+  2   old-2
+
+Duplicate identity oracle:
+  id  cnt
+  2   2
+
+ADMIN CHECK TABLE returned success.
+
+GREEN owner counterfactual
+--------------------------
+The following temporary change was built as a full TiDB server from current
+source and started cold against the same real cluster:
+
+  func NewAllocatorsFromTblInfo(r Requirement, dbID int64, tblInfo *model.TableInfo) Allocators {
+      if tblInfo.AutoIDSchemaID != 0 {
+          dbID = tblInfo.AutoIDSchemaID
+      }
+      ...
+  }
+
+With the same RENAME and REPLACE schedule:
+
+  affected_rows  generated_id
+  1              3
+
+Fresh rows:
+  id  v
+  1   order-1
+  2   order-2
+  3   replacement
+
+The source change was removed after the run and the TiDB worktree was clean.
+
+Post-RED deduplication
+----------------------
+Closed historical issue:
+  https://github.com/pingcap/tidb/issues/55846
+Historical merged fix:
+  https://github.com/pingcap/tidb/pull/55847
+
+The current result is recorded as a master regression of that root. The
+successful REPLACE data-loss consumer is stronger than the historical
+duplicate-key report.

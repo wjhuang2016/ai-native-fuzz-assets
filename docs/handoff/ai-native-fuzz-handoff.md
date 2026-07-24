@@ -2629,3 +2629,31 @@ assertion 后，UPDATE 可以提交，但修复事务在同一个旧索引键上
 真实环境矩阵前先检查 DML assertion、冲突键是否覆盖每个 stale owner、retry 是否重读来源。
 资产见 `docs/method-cases/ai-native-admin-recover-index-concurrent-update-negative.md` 与
 `assets/store/admin-recover-index-concurrent-update-negative-20260725.jsonl`。
+
+**2026-07-25 跨模块 current-master 回归命中：`id2910003` 证明跨库 `RENAME TABLE` 后冷 TiDB 会把
+`AUTO_ID_CACHE=1` 的生成 ID 倒退，并可通过 `REPLACE` 静默覆盖旧行。** 选题来自当前源码中的 owner
+凭证不对称：`checkAndRenameTables` 明确把原始 schema ID 写入 `TableInfo.AutoIDSchemaID`，但
+`NewAllocatorsFromTblInfo`、增量 InfoSchema、全量加载和 InfoSchema v2 都按当前 schema ID 重建
+allocator。warm TiDB 的内存状态会遮住问题，cold peer/full reload 会从空的 local state 发布低水位。
+
+官方未修改 nightly `ed2376acc6`、one PD/one real TiKV、MDL ON、无并发/failpoint/节点故障下，跨库
+rename 前生成 ID 1/2，rename 后新启动 TiDB 显示 `AUTO_INCREMENT=0`：普通 INSERT 报 duplicate key 2；
+非唯一索引表 INSERT 成功并留下两个 ID 2；最强格 `REPLACE` 返回
+`affected_rows=2/LAST_INSERT_ID=2`，表从 `(1,order-1),(2,order-2)` 变为
+`(1,order-1),(2,replacement)`，SQL 成功且 `ADMIN CHECK` 仍 GREEN。只让
+`NewAllocatorsFromTblInfo` 读取非零 `AutoIDSchemaID` 的完整 server 反事实，在相同真实集群生成 ID 3、
+affected_rows=1，并保留两条旧行；临时改动已归位。
+
+post-RED 去重找到历史 [#55846](https://github.com/pingcap/tidb/issues/55846) 与修复
+[#55847](https://github.com/pingcap/tidb/pull/55847)，因此记为 current-master regression，不宣称新 root
+family；当前新增价值是 master 仍 RED，且 `REPLACE` 将历史 duplicate-key 后果提升为成功后的持久化数据
+丢失。远端 `found_bug id2910003/high/known-regression/confirmed` 已入库：136 surfaces、113 roots、
+58 high、120 confirmed，尚未新提 issue。新增 S66
+`PERSISTED_OWNER_IDENTITY_CONSUMER_CLOSURE`：看到 old owner/generation/epoch/mapping 字段时，必须列全
+writer/readers，并覆盖 warm writer、healthy cold peer、brand-new full load；命中 identity reuse 后继续
+通过 REPLACE/upsert/ignore/cleanup 提升 consumer，不能停在第一条显式错误。入口：
+`docs/bug-drafts/ai-native-autoid-cross-schema-rename-regression-draft.md`、
+`docs/method-cases/ai-native-autoid-owner-reload-regression.md`、
+`assets/store/autoid-cross-schema-rename-regression-results-20260725.jsonl`、
+`scaffolds/tidb-tests/ai_native_autoid_cross_schema_rename_reload.sql`。暂停本 root 的 schema、ID 数量、
+peer/restart 和 SQL 语法变体；下一轮把 S66 横向迁移到 placement、TTL、统计、恢复、任务和权限 owner。

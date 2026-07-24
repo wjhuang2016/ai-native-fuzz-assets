@@ -2236,3 +2236,41 @@ status:     VALIDATED by id2880003 on official nightly BR and real TiKV. MDL ON,
 stop rule:  one root per target fence/timestamp domain/physical consumer tuple. Keys, indexes,
             data sizes, transfer rates, and DML verbs are blast radius.
 ```
+
+## S66: persisted owner identity consumer closure
+
+```text
+selector:   a migration or DDL persists an old owner, generation, epoch, or mapping because current
+            location is not semantic ownership, but a peer/restart/reload constructor ignores it
+born from:  id2910003 (cross-database RENAME plus cold InfoSchema load reuses AUTO_INCREMENT ID 2;
+            REPLACE succeeds and silently overwrites the existing row)
+candidate:  persisted owner or migration breadcrumbs
+            intersect peer, restart, full reload, recovery, or failover reconstruction
+            intersect owner selection from current location or process-local state
+            intersect lower sequence, epoch, lease, offset, or generation publication
+            intersect irreversible write, delete, routing, cleanup, or success acknowledgement
+            minus complete breadcrumb consumption or monotonic owner transfer
+prediction:
+  - the producer comment names why current location and semantic owner can differ;
+  - warm-process tests pass because an existing allocator hides reconstruction;
+  - a cold peer or full load starts with empty process-local state;
+  - the cold consumer publishes a lower value or resolves the wrong owner;
+  - an identity-sensitive consumer converts reuse into overwrite, aliasing, or wrong cleanup.
+oracle gate:
+  - identify every writer and reader of the persisted breadcrumb;
+  - cover warm writer, healthy cold peer, and brand-new full-load process;
+  - publish nonzero durable state before migration;
+  - compare producer high-water mark, cold visible value, and returned consumer identity;
+  - lift through erroring and successful consumers, including replace/upsert/ignore/cleanup;
+  - read fresh durable state and verify preservation of preexisting owners;
+  - change only breadcrumb resolution or monotonic transfer for GREEN;
+  - search history after RED to classify new root versus regression.
+status:     VALIDATED by id2910003. Official current nightly and real TiKV produced duplicate-key
+            failure, silent duplicate generated IDs, and successful REPLACE data loss with MDL ON
+            and no fault injection. A full current-source TiDB build that resolved AutoIDSchemaID
+            generated ID 3 and preserved all rows. Post-RED history classified it as a regression
+            of closed #55846/#55847 with a stronger current consumer.
+stop rule:  one root per persisted owner field/missed reconstruction family/highest irreversible
+            consumer. Peers versus restarts, schemas, row counts, values, and SQL spellings are
+            blast radius.
+```
