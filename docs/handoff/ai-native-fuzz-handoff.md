@@ -2701,3 +2701,37 @@ ADMIN GREEN。另一次并发虽然两个 job 都被创建，但 DXF 恰好串�
 `import-target-active-owner-check-then-create-race`，不新增 surface/root 计数。新增 Classic evidence log、
 table-mode fault asset、默认 RED/串行 GREEN runs 和命令行 scaffold。standalone Lightning 也可产生同一
 坏形态，但官方物理导入契约明确要求导入期间停写，因此只保留为机制校准，不计新 bug。
+
+**2026-07-25 跨模块 critical 数据丢失命中：`id2970003` 证明 `AUTO_ID_CACHE=1` 的
+`AUTO_INCREMENT -> AUTO_RANDOM` 转换会迁移错误的 allocator owner。** 选题来自同一函数附近的阶段
+不一致：`checkNewAutoRandomBits` 在 `SepAutoInc()` 为真时读取 `IncrementID`，随后
+`applyNewAutoRandomBits` 固定读取、rebase 并删除 `RowID`。前者拥有原来的 auto-increment 高水位，
+后者可以是 0；转换完成后，AUTO_RANDOM 的 incremental part 从低位重新开始。
+
+未修改 current master `231dad5225` 明确成为 DDL owner 后，64 条旧行加 24 次 generated `REPLACE`
+产生 12 次主键复用，最终只剩 52 条旧行；打包 nightly `ed2376acc6` 同样 RED。可复用 64 次脚本再次
+命中 34 次 `affected_rows=2`，旧行从 64 条降到 30 条。所有 SQL 都返回成功，fresh read 证明旧 payload
+消失，`ADMIN CHECK TABLE` 仍为 GREEN。默认 auto-ID cache 对照保留全部旧行；只让 apply 阶段在
+`SepAutoInc()` 时选择 `IncrementID` 的 current-source 反事实也保留全部旧行。MDL ON，无并发、
+failpoint、暂停、节点故障、retry、restart 或特殊隔离；触发需要 `AUTO_ID_CACHE=1` 和显式开启受保护的
+conversion session variable。
+
+远端 `found_bug id2970003/high/confirmed` 已入库：138 surfaces、115 roots、60 high、122 confirmed。
+新增 S68 `ALLOCATOR_TYPE_MIGRATION_OWNER_TRANSFER` 与 O67
+`GENERATED_ID_DISJOINTNESS_PLUS_PREIMAGE_ROW_PRESERVATION`。后续扫描不限制事务模块：优先查资源的
+type/representation/namespace/owner 迁移，逐阶段比较 validation、apply、cleanup、recovery、rollback
+使用的 accessor；命中 identity alias 后提升到成功的 overwrite/delete/cleanup consumer，并 fresh-read
+旧 preimage。多 TiDB 的 DDL RED/GREEN 必须记录实际 owner 地址和 binary revision；本轮第一次
+counterfactual 因未修改的 4000 仍是 DDL owner 而被判无效，这条检查已加入 oracle。
+
+本地资产图已导入 7 个新增资产、8 条关系、4 次运行和 1 个 validated target；按
+`ddl/autoid + S68` 生成的复用包包含 7 个 execution-verified 资产、4 次历史运行，
+`open_gaps=[]`。
+
+入口：
+`docs/bug-drafts/ai-native-autoid-cache1-autorandom-migration-draft.md`、
+`docs/method-cases/ai-native-id2970003-allocator-owner-transfer.md`、
+`assets/store/autoid-cache1-autorandom-migration-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_autoid_cache1_autorandom_migration.sh`。暂停 cache 值、shard bits、行数与
+SQL 写法变体；下一轮把 S68 横向迁移到 BR/restore、import/checkpoint、sequence、statistics、
+placement、cache generation 和后台任务 owner。

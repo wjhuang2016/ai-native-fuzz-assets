@@ -893,3 +893,27 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   singleton-owner claim that admits two healthy import jobs to one live target.
 - Counting rule: request counts, files, values, index shapes, object stores, and timing widths are
   blast radius. Reopen only for another atomic claim, generated namespace, or durable consumer.
+
+## 2026-07-25 update: id2970003
+
+- Remote `found_bug`: 138 surfaces, 115 distinct root causes, 60 high-severity rows, and 122
+  confirmed rows.
+- New root: `autoid-to-autorandom-migration-reads-wrong-allocator-owner`.
+- Consequence: C3 successful persistent data loss. After conversion, generated `REPLACE` statements
+  can reuse existing primary keys, return `affected_rows=2`, and permanently remove the old rows
+  while `ADMIN CHECK TABLE` remains green.
+- Production trigger: a populated clustered `AUTO_INCREMENT` table uses `AUTO_ID_CACHE=1`; an
+  operator enables the guarded supported conversion and changes the column to `AUTO_RANDOM`; the
+  application resumes generated writes.
+- Settings: Classic real TiKV, MDL ON, no concurrency, failpoint, process pause, node failure,
+  retry, restart, or nondefault isolation. `AUTO_ID_CACHE=1` and
+  `tidb_allow_remove_auto_inc=1` for the conversion are required.
+- Verification: unmodified current master with its DDL ownership explicitly verified was RED;
+  packaged nightly was RED; default-cache control was GREEN; selecting the separated
+  `IncrementID` owner in `applyNewAutoRandomBits` was GREEN.
+- Distinctness: id2910003 loses the persisted schema owner during cold reconstruction after rename.
+  This root transfers state between allocator types in one column migration and selects the wrong
+  old accessor.
+- Counting rule: cache values, shard bits, row counts, and generated-write spellings are blast
+  radius. Reopen only for another semantic owner, transfer primitive, or higher irreversible
+  consumer.

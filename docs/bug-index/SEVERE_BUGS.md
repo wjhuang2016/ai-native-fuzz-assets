@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=2880003`, `COUNT(*)=135`, `COUNT(DISTINCT root_cause_id)=112`
-- High-severity entries: 57 total
+- Remote `found_bug`: `MAX(id)=2970003`, `COUNT(*)=138`, `COUNT(DISTINCT root_cause_id)=115`
+- High-severity entries: 60 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -67,6 +67,9 @@ Last verified: 2026-07-25
 | 2820003 | confirmed | data integrity | `rename-tables-fk-frozen-reference-graph` | One multi-table name rotation can silently bind an existing foreign key to a different physical table. | [draft](../bug-drafts/ai-native-rename-tables-fk-name-reuse-draft.md) | [case](../method-cases/ai-native-id2820003-batch-frozen-reference-graph.md) |
 | 2850003 | confirmed | data loss | `importinto-nextgen-stale-target-generation` | NextGen `IMPORT INTO` can report the full row count after writing every row into a table generation retired by `TRUNCATE`. | [draft](../bug-drafts/ai-native-import-into-truncated-target-generation-draft.md) | [case](../method-cases/ai-native-id2850003-live-generation-handoff.md) |
 | 2880003 | confirmed | data corruption | `br-snapshot-restore-missing-target-write-fence` | BR snapshot restore can report success after concurrent application DML leaves a stale unique key that returns a row violating its predicate. | [draft](../bug-drafts/ai-native-br-snapshot-concurrent-dml-index-corruption-draft.md) | [case](../method-cases/ai-native-id2880003-backdated-ingest-write-fence.md) |
+| 2910003 | confirmed | data loss | `cross-schema-rename-autoid-owner-not-reloaded` | A cold TiDB can reuse a generated ID after cross-database rename; successful `REPLACE` silently overwrites the old row. | [draft](../bug-drafts/ai-native-autoid-cross-schema-rename-regression-draft.md) | [case](../method-cases/ai-native-autoid-owner-reload-regression.md) |
+| 2940003 | confirmed | data corruption | `import-target-active-owner-check-then-create-race` | Concurrent same-table `IMPORT INTO` jobs can leave one record generation and both unique-index generations. | [draft](../bug-drafts/ai-native-nextgen-concurrent-import-index-corruption-draft.md) | [case](../method-cases/ai-native-id2940003-atomic-admission-owner-claim.md) |
+| 2970003 | confirmed | data loss | `autoid-to-autorandom-migration-reads-wrong-allocator-owner` | Converting a populated `AUTO_ID_CACHE=1` table to `AUTO_RANDOM` can make successful generated `REPLACE` statements permanently remove old rows. | [draft](../bug-drafts/ai-native-autoid-cache1-autorandom-migration-draft.md) | [case](../method-cases/ai-native-id2970003-allocator-owner-transfer.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

@@ -1749,3 +1749,27 @@ specificity: HIGH when the legal one-attempt set and retry count are both proved
              control alone is insufficient.
 status:      USED + EXECUTION-CONFIRMED by id2730003.
 ```
+
+## O67 generated_id_disjointness_plus_preimage_row_preservation
+
+```text
+obligation:  a generated-identity owner migration must preserve the complete identity namespace and
+             every pre-migration row preimage.
+form:        fingerprint all old IDs and payloads; perform the supported migration; record generated
+             IDs and ROW_COUNT for destructive consumers; fresh-read old payload preservation; run
+             a matched old-representation control and an exact owner-only counterfactual.
+red:         a generated ID overlaps an old primary key, REPLACE returns affected_rows=2, and the
+             corresponding pre-migration payload is absent from a fresh read.
+green:       generated IDs are disjoint, every REPLACE returns affected_rows=1, and all old payloads
+             remain.
+catches:     allocator resets, owner/accessor mismatches, namespace aliasing, and migrations that
+             transfer metadata shape without transferring durable high-water state.
+blind to:    explicit user-provided identity collisions, non-destructive duplicate errors without
+             an irreversible consumer, and tests whose DDL is owned by a different binary than the
+             claimed counterfactual.
+sensitivity: EXECUTION-CONFIRMED by id2970003 on current master and packaged nightly with real TiKV.
+             A 64-attempt run replaced 34 old rows; the default-cache control preserved all 64.
+specificity: HIGH when paired with a default-representation control, owner-only GREEN, fresh
+             preimage validation, and actual DDL-owner revision.
+status:      USED + EXECUTION-CONFIRMED by id2970003.
+```

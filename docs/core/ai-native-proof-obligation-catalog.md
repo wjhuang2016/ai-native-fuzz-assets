@@ -3689,3 +3689,25 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   replan GREEN, allowed-outcome controls, and post-RED dedup are complete.
 - Pause gate: scalar functions, aggregate forms, DML verbs, values, delays, and conflict keys are
   blast radius. Reopen only for another preprocessed data owner or generation boundary.
+
+## id2970003 - AUTO_RANDOM migration consumes the wrong old allocator owner
+
+- Target: `target.id2970003.autoid-cache1-autorandom-migration.v1`.
+- Selector: `ALLOCATOR_TYPE_MIGRATION_OWNER_TRANSFER`.
+- **P**: validation confirms that the populated `AUTO_INCREMENT` owner can be converted to
+  `AUTO_RANDOM`.
+- **Q**: conversion application rebases the new allocator from the same semantic old owner.
+- **F**: with `AUTO_ID_CACHE=1`, validation selects separated `IncrementID`, while application
+  unconditionally reads and deletes unrelated `RowID`.
+- C3 oracle: generated `REPLACE` returns success with `affected_rows=2`; fresh reads prove loss of
+  pre-migration payloads; `ADMIN CHECK TABLE` remains green.
+- Production trigger: a populated low-cache auto-increment table is intentionally migrated to
+  `AUTO_RANDOM`, followed by ordinary generated application writes.
+- Settings: Classic real TiKV, MDL ON, explicit conversion guard, and no concurrency, failure,
+  retry, restart, or product injection.
+- Counterfactual: select `IncrementID` in application when `SepAutoInc()` is true. With the patched
+  TiDB explicitly verified as DDL owner, the same matrix preserves every old row.
+- Status: **CONFIRMED**, remote `found_bug id2970003`, high severity / critical persistent-data-loss
+  consequence. Post-RED issue and bug-asset searches found no exact root.
+- Pause gate: cache values, shard bits, row counts, and DML spellings are blast radius. Reopen only
+  for another owner-transfer primitive or higher irreversible consumer.

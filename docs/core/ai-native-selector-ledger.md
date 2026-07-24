@@ -2310,3 +2310,38 @@ status:     VALIDATED by id2940003. Natural concurrent SQL reproduced 3/3 on Nex
 stop rule:  one root per missing atomic claim/generated namespace/irreversible consumer tuple.
             Request counts, inputs, indexes, providers, values, and timing widths are blast radius.
 ```
+
+## S68: allocator type migration owner transfer
+
+```text
+selector:   a resource changes representation, type, namespace, or owner, while validation,
+            application, cleanup, recovery, or rollback selects the old state independently
+born from:  id2970003 (AUTO_ID_CACHE=1 AUTO_INCREMENT uses IncrementID, but conversion application
+            rebases AUTO_RANDOM from RowID; generated REPLACE silently removes old rows)
+candidate:  supported resource representation or ownership change
+            intersect phase-specific accessor, owner, namespace, or generation selection
+            intersect at least two phases disagree about the semantic old owner
+            intersect the new owner can publish a lower or aliased identity
+            intersect successful irreversible write, delete, cleanup, routing, or publication
+            minus one canonical transfer primitive with post-transfer monotonicity validation
+prediction:
+  - a default representation can stay green while a separated representation is red;
+  - validation may prove the correct old owner even when application consumes another;
+  - seeding recognizable nonzero state exposes a reset hidden by empty-table tests;
+  - an identity-sensitive consumer converts aliasing into overwrite or wrong cleanup;
+  - structural checks can remain green after semantically valid replacement of the wrong owner.
+oracle gate:
+  - name the semantic resource and durable pre-migration owner;
+  - list accessors used by validation, application, cleanup, recovery, and rollback;
+  - seed nonzero state and preserve payload fingerprints;
+  - compare generated identities with every pre-migration identity;
+  - lift through a successful destructive consumer;
+  - fresh-read preimage preservation and keep structural checks secondary;
+  - verify the process and revision that owns the tested control path;
+  - change only owner or accessor selection for GREEN.
+status:     VALIDATED by id2970003. Unmodified current master and nightly were RED on real TiKV;
+            default-cache and exact IncrementID-owner controls were GREEN. MDL was ON and the RED
+            needed no concurrency, failure, retry, restart, or product injection.
+stop rule:  one root per semantic resource/mismatched transfer primitive/highest irreversible
+            consumer. Cache values, shard bits, row counts, and SQL spellings are blast radius.
+```
