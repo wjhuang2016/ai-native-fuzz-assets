@@ -2619,3 +2619,13 @@ rename/replacement/retirement，还要测试同 generation 的 live mutation；�
 `assets/store/br-snapshot-concurrent-dml-results-20260725.jsonl`、
 `scaffolds/top-level/ai_native_br_concurrent_dml_repro.sh`。下一轮暂停 BR 的 key/index/DML/rate-limit
 变体，把 S65 迁移到 Lightning、repair、index rebuild、log restore 或其他历史物理写入 owner。
+
+**2026-07-25 S65 repair 负例已闭环:** `ADMIN RECOVER INDEX` 的旧快照候选没有命中数据损坏。
+确定性探针在修复完成 table scan 与 missing-key check 后插入普通 UPDATE。默认
+`tidb_txn_assertion_level` 下，UPDATE 因旧索引键已缺失而报 8141 `assertion: Exist`；显式关闭
+assertion 后，UPDATE 可以提交，但修复事务在同一个旧索引键上报 9007 write conflict，
+`RunInNewTxn` 整批重扫，最终 primary 为 `(1,20)`、强制 `idx_u WHERE u=10` 为空且
+`ADMIN CHECK TABLE` 通过。临时 hook/test 已移除，TiDB worktree clean。方法改进：S65 在进入
+真实环境矩阵前先检查 DML assertion、冲突键是否覆盖每个 stale owner、retry 是否重读来源。
+资产见 `docs/method-cases/ai-native-admin-recover-index-concurrent-update-negative.md` 与
+`assets/store/admin-recover-index-concurrent-update-negative-20260725.jsonl`。

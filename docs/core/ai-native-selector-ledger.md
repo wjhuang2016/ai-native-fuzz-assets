@@ -2219,6 +2219,9 @@ prediction:
   - a forced index lookup can return a row that fails its own predicate;
   - normal success/checksum settings may not observe the split.
 oracle gate:
+  - check whether normal DML assertions reject the already-inconsistent source state;
+  - prove whether every stale physical owner is also a transaction conflict key;
+  - verify that a conflict retries the source scan instead of replaying cached rows;
   - record terminal state and physical input count;
   - compare forced primary and every affected index count plus aggregates;
   - project the access predicate onto every returned row;
@@ -2227,7 +2230,9 @@ oracle gate:
   - prove the mutation happened before the irreversible physical ingest.
 status:     VALIDATED by id2880003 on official nightly BR and real TiKV. MDL ON, target mode
             Normal, one ordinary INSERT, no source patch/failpoint/process pause/DDL. Matched
-            no-DML control is GREEN.
+            no-DML control is GREEN. `ADMIN RECOVER INDEX` concurrent UPDATE is a retained GREEN
+            boundary: default assertion rejects the mutation; with assertions OFF, the old index
+            key causes a write conflict and the repair re-scans on retry.
 stop rule:  one root per target fence/timestamp domain/physical consumer tuple. Keys, indexes,
             data sizes, transfer rates, and DML verbs are blast radius.
 ```

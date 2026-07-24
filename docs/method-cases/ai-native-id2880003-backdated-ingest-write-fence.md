@@ -82,13 +82,21 @@ After finding a stale resource or generation gap:
 
 1. test replacement/retirement to localize identity ownership;
 2. test same-generation live mutation before the delayed physical consumer;
-3. ask whether the consumer writes current state or historical state;
-4. split the oracle by physical owners such as record and every index;
-5. force each access path and project the predicate back onto returned rows;
-6. require a matched no-mutation control before severity admission.
+3. check whether normal DML assertions reject the candidate source state;
+4. compare the delayed writer's conflict keys with every stale physical owner;
+5. verify that conflict retry re-reads source state instead of replaying cached values;
+6. ask whether the consumer writes current state or historical state;
+7. split the oracle by physical owners such as record and every index;
+8. force each access path and project the predicate back onto returned rows;
+9. require a matched no-mutation control before severity admission.
 
 This branch is useful for BR, Lightning, IMPORT INTO, snapshot apply, repair, index rebuild, log
 restore, and bulk backfill.
+
+The `ADMIN RECOVER INDEX` negative closes one repair branch: default assertions reject an UPDATE
+from a row whose old index key is already missing; with assertions disabled, the old index key is a
+write-conflict witness and `RunInNewTxn` re-scans before retry. This makes assertion coverage,
+conflict-key coverage, and fresh retry semantics mandatory S65 screens.
 
 ## Stop rule
 
