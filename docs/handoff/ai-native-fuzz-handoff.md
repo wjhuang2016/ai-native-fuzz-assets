@@ -2596,3 +2596,26 @@ retirement 加 live/retired 双归属 oracle 证明。入口：
 `assets/store/import-into-stale-target-generation-results-20260725.jsonl`、
 `scaffolds/tidb-tests/ai_native_import_into_truncated_generation_test.go`。暂停本 root 的 DDL verb、格式和
 延迟枚举；下一轮把 S64 横向迁移到 TTL、BR/restore、distributed DDL 和其他异步 owner。
+
+**2026-07-25 跨模块 critical-consequence 命中：`id2880003` 证明普通 BR snapshot restore 会与正常
+应用 DML 形成持久化唯一索引损坏。** S64 横向迁移到 BR 后，最初用 `TRUNCATE` 证明 BR 冻结 rewrite
+rule：官方 nightly BR 在旧 table ID 246 下恢复 128000 条记录并报告成功，当前 ID 258 只有 marker。
+继续提升 consumer 后发现更强调度不需要 DDL：BR 创建目标后其 `TIDB_TABLE_MODE=Normal`，应用先写
+`(id=1,u=900000000)`，随后 BR 按备份旧时间戳灌入原 row/index。
+
+最强 RED 使用官方未修改 BR `a942e4684f`、TiDB nightly `ed2376acc6`、one TiDB/PD/real TiKV、MDL ON、
+默认 checksum OFF 和普通 `--ratelimit 1`；没有 source patch、failpoint、进程暂停、节点故障或并发
+DDL。BR 报 `Table Restore success/256000 KV`，但 primary 为 `128000/8192064000`，unique index 为
+`128001/8192064001`；按旧键 `u=100001` 查询返回 `u=900000000` 且自谓词为 false，`ADMIN CHECK`
+返回 8223，raw key 为 `128000 record/256001 table`。同备份同参数无 DML 控制为 GREEN。
+
+远端 `found_bug id2880003/high/confirmed` 已入库：135 surfaces、112 roots、57 high、119 confirmed；
+post-RED GitHub issue/PR 和远端库搜索无 exact root，尚未提 issue。新增 S65
+`BACKDATED_PHYSICAL_INGEST_WITHOUT_WRITE_FENCE`：异步 identity 扫描命中后，不只测试
+rename/replacement/retirement，还要测试同 generation 的 live mutation；若 physical consumer 写历史
+时间戳，oracle 必须拆成 record/每个 index、强制访问路径和 predicate self-check。入口：
+`docs/bug-drafts/ai-native-br-snapshot-concurrent-dml-index-corruption-draft.md`、
+`docs/method-cases/ai-native-id2880003-backdated-ingest-write-fence.md`、
+`assets/store/br-snapshot-concurrent-dml-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_br_concurrent_dml_repro.sh`。下一轮暂停 BR 的 key/index/DML/rate-limit
+变体，把 S65 迁移到 Lightning、repair、index rebuild、log restore 或其他历史物理写入 owner。

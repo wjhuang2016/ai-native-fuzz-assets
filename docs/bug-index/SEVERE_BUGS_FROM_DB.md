@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 02:16:54 +0800
+Generated at: 2026-07-25 02:48:21 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -60,3 +60,4 @@ Generated at: 2026-07-25 02:16:54 +0800
 | 2790003 | candidate | high | storage/data-integrity | Raft snapshot apply / GC compaction | snapshot cleanup / compaction-filter GC / RocksDB levels | `snapshot-cleanup-tombstones-excluded-from-cross-cf-gc` | Snapshot apply can lose restored Default CF data after lower-level GC compaction | [https://github.com/tikv/tikv/issues/19870](https://github.com/tikv/tikv/issues/19870) |
 | 2820003 | confirmed | high | data-integrity | RENAME TABLE | multi-table rename / foreign key | `rename-tables-fk-frozen-reference-graph` | Multi-table RENAME can silently bind a foreign key to the wrong parent |  |
 | 2850003 | confirmed | high | data-loss | IMPORT INTO / TRUNCATE TABLE | NextGen cross-keyspace DXF import target generation | `importinto-nextgen-stale-target-generation` | NextGen IMPORT INTO can report success after writing the full input into a truncated table generation |  |
+| 2880003 | confirmed | high | data-corruption | BR restore table / concurrent INSERT | BR snapshot restore target table mode | `br-snapshot-restore-missing-target-write-fence` | BR snapshot restore can report success after concurrent DML creates persistent unique-index corruption |  |

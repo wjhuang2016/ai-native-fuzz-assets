@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=2850003`, `COUNT(*)=134`, `COUNT(DISTINCT root_cause_id)=111`
-- High-severity entries: 56 total
+- Remote `found_bug`: `MAX(id)=2880003`, `COUNT(*)=135`, `COUNT(DISTINCT root_cause_id)=112`
+- High-severity entries: 57 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -66,6 +66,7 @@ Last verified: 2026-07-25
 | 2730003 | confirmed | atomicity / data integrity | `pessimistic-retry-reuses-preprocessed-scalar-constant` | Pessimistic RC retry can commit a fresh route with a scalar aggregate from the failed attempt. | [draft](../bug-drafts/ai-native-pessimistic-retry-scalar-subquery-constant-draft.md) | [case](../method-cases/ai-native-id2730003-attempt-local-preprocessed-constant.md) |
 | 2820003 | confirmed | data integrity | `rename-tables-fk-frozen-reference-graph` | One multi-table name rotation can silently bind an existing foreign key to a different physical table. | [draft](../bug-drafts/ai-native-rename-tables-fk-name-reuse-draft.md) | [case](../method-cases/ai-native-id2820003-batch-frozen-reference-graph.md) |
 | 2850003 | confirmed | data loss | `importinto-nextgen-stale-target-generation` | NextGen `IMPORT INTO` can report the full row count after writing every row into a table generation retired by `TRUNCATE`. | [draft](../bug-drafts/ai-native-import-into-truncated-target-generation-draft.md) | [case](../method-cases/ai-native-id2850003-live-generation-handoff.md) |
+| 2880003 | confirmed | data corruption | `br-snapshot-restore-missing-target-write-fence` | BR snapshot restore can report success after concurrent application DML leaves a stale unique key that returns a row violating its predicate. | [draft](../bug-drafts/ai-native-br-snapshot-concurrent-dml-index-corruption-draft.md) | [case](../method-cases/ai-native-id2880003-backdated-ingest-write-fence.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

@@ -831,3 +831,24 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: DDL verbs, file formats, queue delays, row counts, and target names are blast
   radius. Reopen only for a different persisted identity owner, generation fence, or irreversible
   consumer.
+
+## 2026-07-25 update: id2880003
+
+- Remote `found_bug`: 135 surfaces, 112 distinct root causes, 57 high-severity rows, and 119
+  confirmed rows.
+- New root: `br-snapshot-restore-missing-target-write-fence`.
+- Consequence: C3 silent persistent row/index corruption. BR reports `Table Restore success`, but
+  a stale unique key returns a row whose projected predicate is false; primary and index counts
+  differ, and `ADMIN CHECK TABLE` returns 8223.
+- Production trigger: a long table restore exposes its target as `Normal`; ordinary application
+  DML writes a backup primary key with a different unique value before SST ingest. Large data,
+  slow object storage, resource pressure, or a restore rate limit supplies the window.
+- Settings: official unmodified BR nightly, Classic real TiKV, MDL ON, default checksum OFF. The
+  strongest RED uses no source patch, failpoint, process pause, node failure, or concurrent DDL.
+- Verification: primary `128000/8192064000`, unique index `128001/8192064001`, wrong point lookup
+  through old `u=100001`, raw `128000` record versus `256001` table keys, and matched no-DML GREEN.
+- Distinctness: id2850003 retires a target generation across async IMPORT INTO owners. This root
+  keeps one live table ID and corrupts its row/index bijection by overlapping logical DML with
+  backdated physical restore.
+- Counting rule: row values, keys, indexes, data size, rate limit, and DML verbs are blast radius.
+  Reopen only for another write fence, timestamp domain, or durable physical consumer.

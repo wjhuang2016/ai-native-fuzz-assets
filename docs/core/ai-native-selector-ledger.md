@@ -2198,3 +2198,36 @@ status:     VALIDATED by id2850003. Current-master scheduler RED, matched no-DDL
 stop rule:  one root per persisted identity/generation fence/irreversible consumer tuple. DDL verbs,
             queue durations, resource names, row counts, and file formats are blast radius.
 ```
+
+## S65: backdated physical ingest without a write fence
+
+```text
+selector:   a restore, import, repair, or rebuild applies historical physical KV after publishing
+            the target to normal logical writers
+born from:  id2880003 (BR success leaves a stale unique-index key after one concurrent INSERT)
+candidate:  physical restore/import/repair/rebuild
+            intersect historical or backdated timestamps
+            intersect live target visibility before completion
+            intersect logical DML can mutate the same record/index owner
+            intersect physical writer bypasses SQL index-maintenance ownership
+            intersect success acknowledgement
+            minus protected table mode, write lease, write epoch, or fail-closed revalidation
+prediction:
+  - no-mutation control preserves record/index bijection;
+  - same-generation DML is more severe than name replacement because both writers remain durable;
+  - a newer record can win while an older index key survives without a matching delete;
+  - a forced index lookup can return a row that fails its own predicate;
+  - normal success/checksum settings may not observe the split.
+oracle gate:
+  - record terminal state and physical input count;
+  - compare forced primary and every affected index count plus aggregates;
+  - project the access predicate onto every returned row;
+  - run ADMIN CHECK and a raw key-prefix count;
+  - change only the logical mutation for GREEN;
+  - prove the mutation happened before the irreversible physical ingest.
+status:     VALIDATED by id2880003 on official nightly BR and real TiKV. MDL ON, target mode
+            Normal, one ordinary INSERT, no source patch/failpoint/process pause/DDL. Matched
+            no-DML control is GREEN.
+stop rule:  one root per target fence/timestamp domain/physical consumer tuple. Keys, indexes,
+            data sizes, transfer rates, and DML verbs are blast radius.
+```

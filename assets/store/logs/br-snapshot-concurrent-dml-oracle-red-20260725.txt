@@ -1,0 +1,53 @@
+Environment:
+  TiDB nightly commit: ed2376acc6e0feeff9f3e2c38db489727933aa80
+  BR nightly commit:   a942e4684f4346e8f3b1b4985dfbba38ae6305e2
+  topology:            one TiDB, one PD, one real TiKV
+  metadata lock:       1
+  fast table check:    1
+  target table mode:   Normal
+  BR rate limit:       1 MB/s per store
+
+Concurrent application write before SST ingest:
+
+  INSERT INTO brgenbig.t
+  VALUES (1,900000000,'app-write-during-restore');
+
+BR terminal result:
+
+  Table Restore success summary
+  total-kv=256000
+  total-kv-size=74.62MB
+  restore-files=36.434177459s
+
+Post-restore record/index differential:
+
+  primary_count  primary_sum
+  128000         8192064000
+
+  index_count    index_sum
+  128001         8192064001
+
+Forced stale-index lookup:
+
+  SELECT id,u,payload,(u=100001) AS predicate_holds
+  FROM brgenbig.t USE INDEX(u)
+  WHERE u=100001;
+
+  id  u          payload                    predicate_holds
+  1   900000000  app-write-during-restore   0
+
+Integrity check:
+
+  ERROR 8223 (HY000): data inconsistency in table: t, index: u, handle: 1,
+  index-values:"handle: 1, values: [KindInt64 100001]" !=
+  record-values:"handle: 1, values: [KindInt64 900000000]"
+
+Raw KV attribution:
+
+  table_id=265 record_keys=128000 table_keys=256001
+
+Matched no-DML control:
+
+  primary_count=128000 primary_sum=8192064000
+  index_count=128000 index_sum=8192064000
+  ADMIN CHECK TABLE succeeds
