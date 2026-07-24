@@ -2548,3 +2548,51 @@ parent lock-only proof 仍依赖已被 GC 删除的 write history。因此不新
 资产入口：`assets/store/txn-gc-retired-start-ts-commit-results.jsonl`、
 `docs/method-cases/ai-native-id2580003-safe-point-retirement-consumer-closure.md`、
 `scaffolds/tidb-tests/ai_native_gc_expired_txn_assertion_fk_probe_test.go`。
+
+**2026-07-25 跨模块 severe 命中：`id2820003` 证明批量操作使用冻结引用图会把 FK 静默绑定到错误
+父表。** 本轮按用户要求离开事务主线，从当前 TiDB master `231dad5225f0` 的 collection-level proof
+obligation 出发。`onRenameTables` 在循环外取得 InfoSchema，循环内逐项改名并共享
+`foreignKeyHelper`；前一项可以创造新的中间名称和 FK 边，后一项仍只查语句开始前的 referred-FK map。
+最小四步排列为 `p1 -> tmp, p2 -> p1, tmp -> p2, p3 -> tmp`：原始父表 `p1` 最终是 `p2`，实际 FK
+却保留为 `tmp`，并因此指向原始 `p3`。
+
+当前 master 定向 UT 与 one-TiDB/one-real-TiKV 都为 RED，FK 和 MDL 均为 ON，无并发、failpoint、重试或
+节点故障。DDL 成功后，已有合法 child 立即失去正确 parent，错误 parent 可以授权新 child，正确 parent
+可以被删除，`ADMIN CHECK TABLE` 仍为 GREEN。普通单表 rename 控制为 GREEN。仅让后续成员同时查询
+已加载的 evolving FK edge，并在 frozen lookup 为空时仍持久化 loaded table，同一测试转 GREEN，闭合
+因果链；该补丁只作反事实验证，已从 TiDB 工作树删除。
+
+远端 `found_bug id2820003/high/confirmed` 已入库，当前为 133 surfaces、110 roots、55 high、117
+confirmed；post-RED GitHub issue/PR 搜索无 exact root，尚未提 issue。新增 S63
+`COLLECTION_SNAPSHOT_MUTATION_GAP`：定位“循环外 snapshot/cache/name graph + 循环内 key/edge mutation
++ 后续成员复用生成 key + 持久化 consumer”，用三到四步 permutation 验证 object identity、旧数据和
+双向 enforcement。入口：
+`docs/bug-drafts/ai-native-rename-tables-fk-name-reuse-draft.md`、
+`docs/method-cases/ai-native-id2820003-batch-frozen-reference-graph.md`、
+`assets/store/ddl-rename-fk-name-reuse-results-20260725.jsonl`、
+`scaffolds/tidb-tests/ai_native_rename_tables_fk_name_reuse.sql`。暂停本 root 的 table-name、cycle、
+cross-schema、FK action 变体；下一轮将 S63 迁移到恢复、批量权限/规则、备份 manifest、任务发布等
+非事务 owner，继续只接收可落到持久化数据或发布状态的 high/critical 后果。
+
+**2026-07-25 跨模块 severe 命中：`id2850003` 证明 NextGen `IMPORT INTO` 会把整批数据写入已被
+`TRUNCATE` 退休的 table generation，并仍报告成功。** 当前 TiDB master 为 `231dad5225f0`。源码先在
+user keyspace 生成包含完整 `TableInfo/table ID` 的 plan 和 import job，再创建 SYSTEM-keyspace DXF task；
+Classic 路径会设置 `TableModeImport`，NextGen 路径跳过。`OnPrepare`、CSE worker 和 `finishJob` 都继续
+消费冻结 ID，没有把它绑定到执行时仍存活的 table generation。
+
+最强真实环境调度不使用产品 failpoint：先停 CSE TiKV worker，提交 detached import，确认任务入队后执行
+普通 `TRUNCATE TABLE t`，table ID 从 44 变为 46，并在新表写入 marker；恢复 worker 后，job
+`finished/row-count=2`，当前 `t` 只有 marker，底层按旧 ID 44 扫到两条导入 record key，当前表
+`ADMIN CHECK` 仍成功。无 DDL 控制为 GREEN。原先的 atomic rename/swap RED 只作为 identity consumer
+校准，因为 rename 可能跟随对象语义；升级到 generation retirement 后才通过 C3 severe admission。
+
+远端 `found_bug id2850003/high/confirmed` 已入库，当前为 134 surfaces、111 roots、56 high、118
+confirmed；post-RED GitHub issue 和远端库搜索无 exact root，尚未提 issue。新增 S64
+`LIVE_RESOURCE_GENERATION_ACROSS_ASYNC_OWNER_HANDOFF`，并完善原 S handoff 思路：遇到 stale identity
+后按 rename、replacement、retirement、reuse 分级；rename 用于定位，严重性必须由 replacement 或
+retirement 加 live/retired 双归属 oracle 证明。入口：
+`docs/bug-drafts/ai-native-import-into-truncated-target-generation-draft.md`、
+`docs/method-cases/ai-native-id2850003-live-generation-handoff.md`、
+`assets/store/import-into-stale-target-generation-results-20260725.jsonl`、
+`scaffolds/tidb-tests/ai_native_import_into_truncated_generation_test.go`。暂停本 root 的 DDL verb、格式和
+延迟枚举；下一轮把 S64 横向迁移到 TTL、BR/restore、distributed DDL 和其他异步 owner。

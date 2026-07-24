@@ -4,10 +4,10 @@ This index tracks the high-severity bug assets that should guide future mining.
 
 Source of truth for status and severity is the remote `found_bug` table. This file is curated so each row also points to the most useful local asset in this repository.
 
-Last verified: 2026-07-17
+Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=2790003`, `COUNT(*)=132`, `COUNT(DISTINCT root_cause_id)=109`
-- High-severity entries: 54 total
+- Remote `found_bug`: `MAX(id)=2850003`, `COUNT(*)=134`, `COUNT(DISTINCT root_cause_id)=111`
+- High-severity entries: 56 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -64,6 +64,8 @@ Last verified: 2026-07-17
 | 2670003 | issue-filed | atomicity / data integrity | `retry-autoid-positional-cache-overwrites-current-explicit-id` | Autocommit retry can combine an old explicit entity ID with the successful attempt's new payload. | [issue](https://github.com/pingcap/tidb/issues/69845), [draft](../bug-drafts/ai-native-autoid-retry-mixed-row-draft.md) | [case](../method-cases/ai-native-id2670003-retry-cache-row-identity.md) |
 | 2700003 | confirmed | atomicity / data integrity | `server-info-restart-publishes-live-session-before-registration` | Failed server-info republication can let MDL ADD INDEX and an old transaction both succeed with a missing index row. | [draft](../bug-drafts/ai-native-mdl-server-info-restart-publication-draft.md) | [case](../method-cases/ai-native-id2700003-failed-publication-live-owner.md) |
 | 2730003 | confirmed | atomicity / data integrity | `pessimistic-retry-reuses-preprocessed-scalar-constant` | Pessimistic RC retry can commit a fresh route with a scalar aggregate from the failed attempt. | [draft](../bug-drafts/ai-native-pessimistic-retry-scalar-subquery-constant-draft.md) | [case](../method-cases/ai-native-id2730003-attempt-local-preprocessed-constant.md) |
+| 2820003 | confirmed | data integrity | `rename-tables-fk-frozen-reference-graph` | One multi-table name rotation can silently bind an existing foreign key to a different physical table. | [draft](../bug-drafts/ai-native-rename-tables-fk-name-reuse-draft.md) | [case](../method-cases/ai-native-id2820003-batch-frozen-reference-graph.md) |
+| 2850003 | confirmed | data loss | `importinto-nextgen-stale-target-generation` | NextGen `IMPORT INTO` can report the full row count after writing every row into a table generation retired by `TRUNCATE`. | [draft](../bug-drafts/ai-native-import-into-truncated-target-generation-draft.md) | [case](../method-cases/ai-native-id2850003-live-generation-handoff.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

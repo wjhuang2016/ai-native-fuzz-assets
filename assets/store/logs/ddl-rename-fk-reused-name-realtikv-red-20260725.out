@@ -1,0 +1,15 @@
+tidb_version
+8.0.11-TiDB-v8.4.0-this-is-a-placeholder
+foreign_key_enabled
+1
+mdl_enabled
+1
+referenced_table_name
+tmp
+id	pid	expected_parent_exists	bound_parent_exists
+1	1	1	0
+id	pid	expected_parent_exists	bound_parent_exists
+1	1	0	0
+3	3	0	1
+referenced_table_name
+parent_new

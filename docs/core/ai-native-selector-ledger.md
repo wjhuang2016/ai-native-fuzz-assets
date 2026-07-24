@@ -2132,3 +2132,69 @@ status:     MECHANISM-VALIDATED / PRODUCTION-CANDIDATE by id2790003 on TiKV mast
 stop rule:  one root per subset authority/cross-owner effect/recovery generation/highest consumer.
             Keys, levels, safe points, snapshot causes, peer IDs, and value sizes are blast radius.
 ```
+
+## S63: collection snapshot mutation gap
+
+```text
+selector:   a batch captures a snapshot, cache, or name-indexed graph before iteration, while
+            earlier members mutate keys or edges that later members query through that frozen view
+born from:  id2820003 (multi-table RENAME leaves a child FK on a reused intermediate name)
+candidate:  multi-object loops and bulk operations
+            intersect a lookup source captured before the loop
+            intersect in-loop key/edge create, move, delete, or alias
+            intersect later reuse or consumption of a generated intermediate key
+            intersect persistent metadata, data, publication, or cleanup consumer
+            minus evolving graph, object-identity mapping, batch revalidation, or fail-closed behavior
+prediction:
+  - every isolated member and every disjoint-name batch can pass;
+  - a three- or four-step permutation creates a key absent from the initial graph;
+  - a later member queries that key and misses an edge changed by an earlier member;
+  - final names all exist, so the stale edge resolves successfully to the wrong object;
+  - ordinary structural checks can remain green.
+oracle gate:
+  - map original object identity to final identity across the complete permutation;
+  - preserve a pre-operation dependent row as an old-data witness;
+  - test both consumer directions: wrong object must not authorize and correct object must protect;
+  - include a simple single-member or disjoint-name control;
+  - change only lookup-graph evolution for GREEN;
+  - record any consistency-check blind spot.
+status:     VALIDATED by id2820003. Current-master unit RED, one-TiDB/one-real-TiKV RED with
+            FK and MDL enabled, normal single-rename GREEN, and evolving-loaded-edge counterfactual
+            GREEN are complete.
+stop rule:  one root per frozen graph/evolving batch/highest consumer tuple. Object counts, names,
+            longer cycles, cross-schema variants, and FK actions are blast radius.
+```
+
+## S64: live resource generation across async owner handoff
+
+```text
+selector:   asynchronous work persists a resource ID or metadata snapshot, crosses a transaction,
+            keyspace, process, scheduler, or queue owner, and later treats that frozen identity as
+            authority for an irreversible operation
+born from:  id2850003 (NextGen IMPORT INTO writes a complete input into a table generation retired
+            by TRUNCATE, then reports finished)
+candidate:  imports, restore, backup, TTL, distributed DDL, statistics, ingest, placement, and cleanup
+            intersect a persisted resource ID, name, epoch, or metadata snapshot
+            intersect a legal operation that can rename, replace, retire, or reuse the resource
+            intersect delayed execution by another owner
+            intersect write, delete, publish, cleanup, or success acknowledgement
+            minus generation lease, incompatible-operation fence, or live fail-closed revalidation
+prediction:
+  - no-mutation controls are green;
+  - rename identifies which object identity the consumer follows but can be semantically ambiguous;
+  - replacement or retirement makes the persisted generation differ from every live owner;
+  - the downstream worker still succeeds because cached metadata can construct a valid physical key;
+  - structural checks on the current object can remain green because the wrong keys are outside it.
+oracle gate:
+  - record submission-time and execution-time resource IDs or epochs;
+  - join public terminal state and affected count with current logical-object contents;
+  - inspect the retired or replaced physical owner directly;
+  - use rename only as calibration and require generation retirement/replacement for severe admission;
+  - use a legal queue or owner delay before product fault injection;
+  - name the cleanup owner for retired state.
+status:     VALIDATED by id2850003. Current-master scheduler RED, matched no-DDL real-stack GREEN,
+            and real NextGen CSE/TiKV worker-queue TRUNCATE RED are complete with MDL enabled and no
+            product failpoint.
+stop rule:  one root per persisted identity/generation fence/irreversible consumer tuple. DDL verbs,
+            queue durations, resource names, row counts, and file formats are blast radius.
+```

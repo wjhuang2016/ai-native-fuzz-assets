@@ -2,11 +2,11 @@
 > Started 2026-07-03. The headline metric for this method is **distinct root causes**, not
 > `COUNT(found_bug)`. This ledger is the corrected scoreboard and the counting convention.
 
-## Current remote snapshot (2026-07-17)
+## Current remote snapshot (2026-07-25)
 
-`found_bug`: 132 surfaces, 109 distinct recorded root IDs, 54 high-severity rows, and 116 confirmed rows.
-The newest entry is `id2790003`, a high-impact candidate: its cross-CF corruption mechanism is
-execution-verified, but its production state history is not yet proven reachable.
+`found_bug`: 134 surfaces, 111 distinct recorded root IDs, 56 high-severity rows, and 118 confirmed
+rows. The newest entry is `id2850003`: NextGen `IMPORT INTO` can acknowledge a complete import after
+writing all rows into a table generation retired by `TRUNCATE`.
 
 ## Counting convention
 
@@ -807,3 +807,27 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   only subset-local proof.
 - Promotion gate: reproduce the same identity collision through a legal cluster recovery/rollback
   lifecycle. Keys, levels, safe points, and value sizes are not substitutes for this proof.
+
+## 2026-07-25 update: id2850003
+
+- Remote `found_bug`: 134 surfaces, 111 distinct root causes, 56 high-severity rows, and 118
+  confirmed rows.
+- New root: `importinto-nextgen-stale-target-generation`.
+- Consequence: C3 direct full-input data loss from the live SQL object. The import job reports
+  `finished` with row count `2`, while the current target contains neither row. Both record keys are
+  written under the table ID retired by `TRUNCATE`.
+- Production trigger: a detached NextGen import waits for a CSE worker during autoscaling,
+  backpressure, restart, or temporary unavailability. A staging or maintenance workflow truncates
+  the target before the worker starts. Worker recovery executes the persisted stale plan.
+- Settings: MDL enabled, ordinary `TRUNCATE TABLE`, no product failpoint, no TiDB restart, and no
+  transaction tuning. The test pauses only the downstream worker to make a legal queue delay
+  deterministic.
+- Verification: matched no-DDL GREEN, scheduler stale-owner RED, real CSE/TiKV name-swap diagnostic
+  RED, and real CSE/TiKV `TRUNCATE` RED. The strongest run compares job status, row count, live table
+  ID/rows, and raw record keys under the retired ID.
+- Distinctness: Lightning checkpoint generation bugs authorize stale skip decisions. This root
+  carries live import execution authority across user-job, SYSTEM-task, scheduler, and worker owners
+  without a generation fence.
+- Counting rule: DDL verbs, file formats, queue delays, row counts, and target names are blast
+  radius. Reopen only for a different persisted identity owner, generation fence, or irreversible
+  consumer.

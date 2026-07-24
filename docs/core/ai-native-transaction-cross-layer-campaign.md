@@ -651,3 +651,29 @@ successful replay did not reuse the first positive check: it returned error 1452
 child rows were empty, the FK anti-join was zero, and physical checks passed. Close ordinary FK
 existence across autocommit retry; the next validation candidate must have a proof or conflict owner
 outside executor/transaction rebuild.
+
+### Owner-representation and terminal-state checkpoint (2026-07-17)
+
+The next corruption pass stopped enumerating SQL syntax and organized the matrix by physical owner
+representation. Thirty-six real-TiKV cells covered dual-unique retargeting, old-image retry across
+seven row/index representations, self-join, common-handle/MVI, partial statement rollback, and
+sixteen optimistic/pessimistic failed-statement removability cells. Two deterministic TiDB-layer
+cells separately closed ODKU/REPLACE duplicate-owner rebinding under one natural RC retry. All
+matched a serial or statement-removed control under exact rows, forced indexes, and ADMIN CHECK.
+
+The common opt-in BULK pass added eight STANDARD-versus-pipelined owner cells and was also GREEN.
+This closes the current row/index rebinding family. More UPDATE, REPLACE, or ODKU spellings are blast
+radius unless source analysis finds a new physical owner or terminal consumer.
+
+Two source candidates were retired before expensive execution. Cross-generation
+`CheckNotExists -> Put` reordering is forbidden because PipelinedMemDB serializes flush functions.
+Silent mutation truncation from an ignored iterator error has no normal producer because valid ART
+and RBT iteration does not return such an error. The sequential CheckNotExists probe is fail-closed,
+and an optimistic duplicate expected at statement time was `INVALID(trigger)` because checking was
+legally deferred to COMMIT.
+
+The LOOP now applies `owner difference -> scheduler reachability -> terminal-state consequence` in
+that order. A RED is promoted as corruption only when the client reports success and fresh durable
+row/index/MVCC state remains wrong after normal recovery. Full evidence and reopen rules are in
+`docs/method-cases/ai-native-txn-owner-representation-checkpoint-20260717.md` and
+`assets/store/txn-owner-representation-checkpoint-results-20260717.jsonl`.
