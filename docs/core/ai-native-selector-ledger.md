@@ -2274,3 +2274,37 @@ stop rule:  one root per persisted owner field/missed reconstruction family/high
             consumer. Peers versus restarts, schemas, row counts, values, and SQL spellings are
             blast radius.
 ```
+
+## S67: atomic admission before irreversible parallel owners
+
+```text
+selector:   a count, existence, or precondition read is treated as proof that the caller owns a
+            resource exclusively, but the ownership claim is published later or elsewhere
+born from:  id2940003 (two natural concurrent NextGen IMPORT INTO jobs both report failed after
+            leaving two record rows, four unique-index entries, and ADMIN CHECK error 8223)
+candidate:  zero-owner or empty-resource precheck
+            intersect owner/job/lease publication in another statement, transaction, or keyspace
+            intersect two actors independently generate IDs, ranges, epochs, or sibling artifacts
+            intersect irreversible write, delete, cleanup, or publication
+            intersect late validation has no rollback owner
+            minus unique claim, lock, lease, fencing token, or atomic compare-and-create
+prediction:
+  - a single-owner control is green;
+  - two actors can both pass the precheck and publish separate owners;
+  - disjoint logical inputs collide in a system-generated physical namespace;
+  - one sibling artifact overwrites while another accumulates;
+  - a late checksum can mark both jobs failed while durable corruption remains.
+oracle gate:
+  - record every accepted owner and terminal state;
+  - use disjoint logical inputs so the collision is system-generated;
+  - inspect the generated namespace and every sibling durable artifact;
+  - compare forced access paths and project predicates onto returned rows;
+  - run a structural checker after all jobs are terminal;
+  - prefer natural concurrency before a deterministic barrier;
+  - change only owner cardinality for GREEN.
+status:     VALIDATED by id2940003. Natural concurrent SQL reproduced 3/3 on current master,
+            NextGen real TiKV/CSE, MDL ON, and no product injection. A deterministic admission
+            barrier reproduced twice, and the exact single-owner control was GREEN.
+stop rule:  one root per missing atomic claim/generated namespace/irreversible consumer tuple.
+            Request counts, inputs, indexes, providers, values, and timing widths are blast radius.
+```

@@ -1,0 +1,45 @@
+TiDB source: 231dad5225f0d3c9cf38d4ab7ebc03a5326785c7
+TiKV/CSE image commit: ce46fc5067
+Environment: NextGen user + SYSTEM keyspaces, one real PD/TiKV, one CSE worker, MinIO, MDL ON.
+
+NATURAL RED 1
+No active hook, failpoint, process pause, node failure, or network/disk fault.
+jobs: 120001 failed ErrChecksumMismatch; 120002 failed ErrChecksumMismatch
+table scan:       (1,a1) (2,a2)
+unique-index scan:(1,a1) (2,a2) (1,b1) (2,b2)
+ADMIN CHECK: 8223, handle 1 index=b1 record=a1
+
+NATURAL RED 2
+No active hook, failpoint, process pause, node failure, or network/disk fault.
+jobs 150001 and 150002 were submitted at the same millisecond.
+jobs: 150001 failed ErrChecksumMismatch; 150002 failed ErrChecksumMismatch
+table scan:       (1,a1) (2,a2)
+unique-index scan:(1,a1) (2,a2) (1,b1) (2,b2)
+ADMIN CHECK: 8223, handle 1 index=b1 record=a1
+
+FINAL NATURAL RED, UNMODIFIED PRODUCT PACKAGES
+Only the real-TiKV test was added; git diff for pkg/ was empty.
+job 180001 and job 180002 were both submitted at 2026-07-25 04:36:32.984 +08:00.
+jobs: 180001 failed ErrChecksumMismatch; 180002 failed ErrChecksumMismatch
+checksum: remote total_kvs=6 versus each job local total_kvs=4
+table scan:       (1,b1) (2,b2)
+unique-index scan:(1,a1) (2,a2) (1,b1) (2,b2)
+ADMIN CHECK: 8223, handle 1 index=a1 record=b1
+test verdict: RED at require.NoError(ADMIN CHECK TABLE)
+
+DETERMINISTIC MECHANISM RED
+A test-only barrier after both GetActiveJobCnt calls returned zero forced the same interleaving.
+Two repeated runs both produced failed jobs, a 2-row table, a 4-entry unique index, and error 8223.
+The winning record input reversed across runs while the corruption shape remained stable.
+
+MATCHED SINGLE-OWNER CONTROL
+Same cluster, object store, table shape, and worker; one detached import only.
+job status: finished
+table scan:       (1,a1) (2,a2)
+unique-index scan:(1,a1) (2,a2)
+ADMIN CHECK: success
+test verdict: PASS
+
+Post-RED dedup:
+- GitHub issue search: no exact concurrent same-target IMPORT INTO data-corruption issue.
+- Remote found_bug search: no exact root.

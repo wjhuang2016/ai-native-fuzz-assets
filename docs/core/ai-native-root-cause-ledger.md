@@ -4,9 +4,9 @@
 
 ## Current remote snapshot (2026-07-25)
 
-`found_bug`: 134 surfaces, 111 distinct recorded root IDs, 56 high-severity rows, and 118 confirmed
-rows. The newest entry is `id2850003`: NextGen `IMPORT INTO` can acknowledge a complete import after
-writing all rows into a table generation retired by `TRUNCATE`.
+`found_bug`: 137 surfaces, 114 distinct recorded root IDs, 59 high-severity rows, and 121 confirmed
+rows. The newest entry is `id2940003`: concurrent NextGen `IMPORT INTO` jobs can both report failed
+after leaving one live table with persistent record/index corruption.
 
 ## Counting convention
 
@@ -852,3 +852,41 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   backdated physical restore.
 - Counting rule: row values, keys, indexes, data size, rate limit, and DML verbs are blast radius.
   Reopen only for another write fence, timestamp domain, or durable physical consumer.
+
+## 2026-07-25 update: id2910003
+
+- Remote `found_bug`: 136 surfaces, 113 distinct root causes, 58 high-severity rows, and 120
+  confirmed rows.
+- Regression root: `cross-schema-rename-autoid-owner-not-reloaded`.
+- Consequence: after cross-database `RENAME TABLE`, a cold TiDB reconstructs the allocator from the
+  current schema instead of the persisted owner. With `AUTO_ID_CACHE=1`, `REPLACE` generates an
+  existing ID, returns success, and silently overwrites its old row.
+- Production trigger: an ordinary schema migration followed by scale-out, restart, rolling
+  deployment, or routing to a cold peer.
+- Verification: current nightly RED across PK insert, nonunique insert, and successful REPLACE data
+  loss; exact current-source owner-resolution counterfactual GREEN on the same real TiKV.
+- Distinctness: post-RED history found closed #55846/#55847, so this is recorded as a current-master
+  regression with a stronger successful data-loss consumer.
+- Counting rule: schemas, peers versus restarts, row counts, and SQL spellings are blast radius.
+
+## 2026-07-25 update: id2940003
+
+- Remote `found_bug`: 137 surfaces, 114 distinct root causes, 59 high-severity rows, and 121
+  confirmed rows.
+- New root: `nextgen-import-active-owner-check-then-create-race`.
+- Consequence: C3 persistent relational corruption. Two import jobs both report failed, but the
+  live table has two record rows and four unique-index entries; forced access paths disagree and
+  `ADMIN CHECK TABLE` returns 8223.
+- Production trigger: two operators, pipeline workers, or an orchestrator retry submit detached
+  imports into the same empty NextGen target at nearly the same time. The files can contain disjoint
+  values; the collision is in independently generated hidden handles.
+- Settings: NextGen user and SYSTEM keyspaces, real PD/TiKV and CSE worker, MDL ON. The strongest
+  run used no product source modification, failpoint, process pause, node failure, or network/disk
+  fault.
+- Verification: natural concurrency RED on three consecutive first attempts, deterministic
+  check-to-create barrier RED twice, and an exact single-owner GREEN.
+- Distinctness: id1590002 is one importer's partial data/index finalization; id2850003 is stale
+  target generation; id2880003 is BR/live-DML write fencing. This root is a missing atomic
+  singleton-owner claim that admits two healthy import jobs to one live target.
+- Counting rule: request counts, files, values, index shapes, object stores, and timing widths are
+  blast radius. Reopen only for another atomic claim, generated namespace, or durable consumer.

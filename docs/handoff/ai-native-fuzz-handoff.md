@@ -2657,3 +2657,32 @@ writer/readers，并覆盖 warm writer、healthy cold peer、brand-new full load
 `assets/store/autoid-cross-schema-rename-regression-results-20260725.jsonl`、
 `scaffolds/tidb-tests/ai_native_autoid_cross_schema_rename_reload.sql`。暂停本 root 的 schema、ID 数量、
 peer/restart 和 SQL 语法变体；下一轮把 S66 横向迁移到 placement、TTL、统计、恢复、任务和权限 owner。
+
+**2026-07-25 跨模块 critical 数据损坏命中：`id2940003` 证明 NextGen 同表并发
+`IMPORT INTO` 的 active-job precheck 不能保证单 owner，两个 job 都失败后仍会留下持久化表/索引损坏。**
+选题来自 singleton-owner 证明义务：`GetActiveJobCnt` 先读 pending/running 数量，后续还会执行空表、
+CDC/PiTR、对象存储检查，`CreateJob` 才在之后插入 pending job；两者之间没有 target-unique claim。
+Classic 会设置 `TableModeImport`，NextGen user-keyspace 路径跳过。
+
+最小目标表 `t(v VARCHAR(100), UNIQUE KEY uk(v))` 没有主键，两份输入 `a1/a2` 与 `b1/b2` 完全不重复。
+两个普通 session 同时提交 detached import 后，都按同一空表状态生成 hidden handle 1/2，record 与 index
+KV group 分开 ingest。最终两个 job 都以 `ErrChecksumMismatch` 失败，但表扫描只有一组 2 行，强制唯一
+索引扫描保留两组 4 条，`ADMIN CHECK TABLE` 报 8223；不同 run 的 record winner 会反转，坏形态稳定。
+
+最终证据使用 current master `231dad5225f0` 的未修改产品 packages、NextGen TiKV/CSE `ce46fc5067`、
+真实 PD/TiKV、user/SYSTEM keyspace、MinIO、MDL ON，无 failpoint、source hook、进程暂停、节点故障或
+网络/磁盘错误。自然并发连续 3 次首轮均 RED；test-only check-to-create barrier 两次 RED 只用于机制
+定位；相同环境单 job 对照为 `finished + table/index 2/2 + ADMIN GREEN`。post-RED GitHub issue 与远端
+bug 库无 exact root。
+
+远端 `found_bug id2940003/high/confirmed` 入库后为 137 surfaces、114 roots、59 high、121 confirmed。
+新增 S67 `ATOMIC_ADMISSION_BEFORE_IRREVERSIBLE_PARALLEL_OWNERS`：看到 count/existence precheck 用来
+证明 exclusive owner 时，必须检查 claim 是否与 read 原子；若不原子，用互不重复的逻辑输入去碰撞
+owner 自己生成的 ID/range/epoch，并把 terminal、主产物、每个 sibling artifact 和结构检查闭包。
+入口：`docs/bug-drafts/ai-native-nextgen-concurrent-import-index-corruption-draft.md`、
+`docs/method-cases/ai-native-id2940003-atomic-admission-owner-claim.md`、
+`assets/store/nextgen-concurrent-import-admission-race-results-20260725.jsonl`、
+`scaffolds/tidb-tests/ai_native_nextgen_concurrent_import_data_corruption_test.go`。暂停本 root 的文件格式、
+行数、索引、并发数和 object store 变体；下一轮把 S67 横向迁移到 DDL job、repair、TTL、stats、
+placement 和其他 singleton-owner admission。资产库已导入 7 个新增资产、8 条关系、4 次运行和 1 个
+target；按 `dxf/importinto + S67` 生成的复用包包含 8 个资产，`open_gaps=[]`。
