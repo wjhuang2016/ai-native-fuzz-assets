@@ -1,0 +1,72 @@
+Classic IMPORT INTO same-target owner race, 2026-07-25
+
+Environment
+-----------
+TiDB binary: v9.0.0-beta.2.pre-2017-ged2376acc6
+Current source: 231dad5225f0d3c9cf38d4ab7ebc03a5326785c7
+Relevant source diff between the two commits: empty
+Topology: one TiDB, one PD, one real TiKV
+MDL: ON
+Target: t(v VARCHAR(64) NOT NULL, UNIQUE KEY uk(v)), hidden row handle
+Inputs: disjoint aNNNNNNN and bNNNNNNN values
+Fault injection or product modification: none
+
+Default-config natural RED, 1,000,000 rows per input
+----------------------------------------------------
+Two ordinary MySQL clients submitted detached imports concurrently.
+
+job 8:
+  created 2026-07-25 05:27:42.817071
+  started 2026-07-25 05:27:43.354266
+  failed during validation with ErrChecksumMismatch
+  remote total_kvs=3000000, local total_kvs=2000000
+
+job 9:
+  created 2026-07-25 05:27:42.817201
+  started 2026-07-25 05:27:43.874099
+  finished successfully with imported_rows=1000000
+
+Durable state after both terminal results:
+  record scan:       1000000 rows, A=0,       B=1000000
+  unique-index scan: 2000000 rows, A=1000000, B=1000000
+  lookup a0000001 through uk returned handle 1, value b0000001
+  lookup b0000001 through uk returned handle 1, value b0000001
+  ADMIN CHECK TABLE: error 8223
+
+The same default-config RED occurred with 100,000 rows per input:
+  both jobs were admitted
+  one finished and one failed checksum
+  record/index counts were 100000/200000
+  the winner reversed between runs
+
+A 100,000-row rate-limited run also produced the same RED shape. The
+rate limit was used only to observe phases and is not required by the bug.
+
+Matched controls
+----------------
+Sequential submission while the first job was running:
+  second IMPORT INTO failed before admission with error 8258
+  "Table t is in mode Import"
+  first job finished
+  record/index counts were 100000/100000
+  ADMIN CHECK TABLE succeeded
+
+One default 100,000-row concurrent run admitted both jobs, but DXF happened
+to schedule them serially. The second job then failed precheck with
+"target table is not empty", and record/index counts were 100000/100000.
+This isolates the irreversible boundary: dual admission becomes corruption
+when both accepted owners overlap physical ingest.
+
+Source closure
+--------------
+GetActiveJobCnt and CreateJob do not form one atomic per-target claim.
+Classic then relies on TableModeImport, but TableMode carries no owner ID and
+CanTransitionTo explicitly allows Import -> Import. Two submissions that both
+plan before the first schema change becomes visible can therefore both commit
+the same mode and publish separate jobs. A later sequential submission is
+blocked by optimizer error 8258, matching the control.
+
+The standalone Lightning write-overlap probe produced the same physical
+record/index corruption, but official product documentation states that
+physical Lightning requires an empty target and no writes during import.
+That result is retained only as a mechanism calibration, not as a new bug.

@@ -5,7 +5,7 @@
 ## Current remote snapshot (2026-07-25)
 
 `found_bug`: 137 surfaces, 114 distinct recorded root IDs, 59 high-severity rows, and 121 confirmed
-rows. The newest entry is `id2940003`: concurrent NextGen `IMPORT INTO` jobs can both report failed
+rows. The newest entry is `id2940003`: concurrent Classic or NextGen `IMPORT INTO` jobs can terminate
 after leaving one live table with persistent record/index corruption.
 
 ## Counting convention
@@ -873,18 +873,21 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 
 - Remote `found_bug`: 137 surfaces, 114 distinct root causes, 59 high-severity rows, and 121
   confirmed rows.
-- New root: `nextgen-import-active-owner-check-then-create-race`.
-- Consequence: C3 persistent relational corruption. Two import jobs both report failed, but the
-  live table has two record rows and four unique-index entries; forced access paths disagree and
-  `ADMIN CHECK TABLE` returns 8223.
+- New root: `import-target-active-owner-check-then-create-race`.
+- Consequence: C3 persistent relational corruption. Two accepted import jobs can leave one record
+  generation and both unique-index generations. On Classic, one job can report `finished`; point
+  lookup for the losing input returns the winner row, and `ADMIN CHECK TABLE` returns 8223.
 - Production trigger: two operators, pipeline workers, or an orchestrator retry submit detached
-  imports into the same empty NextGen target at nearly the same time. The files can contain disjoint
-  values; the collision is in independently generated hidden handles.
-- Settings: NextGen user and SYSTEM keyspaces, real PD/TiKV and CSE worker, MDL ON. The strongest
-  run used no product source modification, failpoint, process pause, node failure, or network/disk
-  fault.
-- Verification: natural concurrency RED on three consecutive first attempts, deterministic
-  check-to-create barrier RED twice, and an exact single-owner GREEN.
+  imports into the same empty target at nearly the same time. The files can contain disjoint values;
+  the collision is in independently generated hidden handles.
+- Settings: Classic default import speed on one TiDB/PD/real TiKV and NextGen user/SYSTEM keyspaces
+  with a CSE worker; MDL ON. The strongest runs used no product source modification, failpoint,
+  process pause, node failure, or network/disk fault.
+- Verification: NextGen natural concurrency RED on three consecutive first attempts. Classic
+  default-config 100K and 1M overlapping runs were RED; the 1M run ended with 1M records and 2M
+  unique-index entries. A sequential second Classic request was rejected with 8258 and the
+  single-owner result was GREEN. A Classic run where DXF serialized both admitted jobs also stayed
+  GREEN, isolating overlap across physical ingest as the irreversible boundary.
 - Distinctness: id1590002 is one importer's partial data/index finalization; id2850003 is stale
   target generation; id2880003 is BR/live-DML write fencing. This root is a missing atomic
   singleton-owner claim that admits two healthy import jobs to one live target.

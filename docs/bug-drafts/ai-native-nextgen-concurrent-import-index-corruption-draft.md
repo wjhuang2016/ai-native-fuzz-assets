@@ -1,42 +1,49 @@
-# Concurrent NextGen IMPORT INTO jobs can leave persistent row/index corruption
+# Concurrent same-table IMPORT INTO jobs can leave persistent row/index corruption
 
-Status: confirmed on current master with real TiKV. Proposed bug DB ID: `id2940003`.
+Status: confirmed on current master with real TiKV. Remote bug DB ID: `id2940003`.
 Catalog severity: high; consequence: critical persistent data corruption.
 
 ## Summary
 
-NextGen `IMPORT INTO` checks whether the target already has an active import job, then creates the
-new job later. The read and the ownership claim are not atomic. Two requests can both observe zero
-active jobs and both start bulk ingest against the same empty table.
+`IMPORT INTO` checks whether the target already has an active import job, then creates the new job
+later. The read and the ownership claim are not atomic. Two requests can both observe zero active
+jobs and both start bulk ingest against the same empty table.
+
+NextGen skips Classic's `TableModeImport` guard. Classic sets the guard, but table mode carries no
+owner identity and explicitly permits `Import -> Import`. Two sessions that race before either
+schema change is visible can therefore both publish jobs. A later sequential request is blocked,
+which makes this an admission race rather than a generally missing check.
 
 For a table without a clustered primary key, both importers allocate the same hidden row handles
 starting at 1. Their record and secondary-index KV groups are ingested independently. One set of
 record values wins for handles 1 and 2, while index entries from both inputs remain.
 
-Both jobs eventually report `failed` because checksum detects the combined state. The physical
-writes are already durable and are not rolled back. A normal table scan and a forced unique-index
-scan disagree, and `ADMIN CHECK TABLE` reports error 8223.
+NextGen runs made both jobs report `failed`. Classic runs made one job report `finished` while the
+other failed checksum. In both cases the physical writes were already durable and were not rolled
+back. A normal table scan and a forced unique-index scan disagree, point lookups can return the
+wrong row, and `ADMIN CHECK TABLE` reports error 8223.
 
 ## Production trigger
 
 The production-shaped trigger is small:
 
-1. Run NextGen with a user keyspace and the normal DXF/CSE import worker.
-2. Create an empty table without a primary key and with a secondary unique index.
-3. Submit two `IMPORT INTO ... WITH DETACHED` statements for that table at nearly the same time.
-4. Let both jobs finish.
+1. Create an empty table without a primary key and with a secondary unique index.
+2. Submit two `IMPORT INTO ... WITH DETACHED` statements for that table at nearly the same time.
+3. Use disjoint input files large enough that both accepted jobs naturally overlap physical ingest.
+4. Let both jobs reach a terminal state.
 
 The input files do not need duplicate logical values. The reproduced files contained `a1,a2` and
 `b1,b2`. Common sources of the duplicate submission include two operators starting the same load,
 an orchestrator retry racing the original request, or two pipeline workers claiming the same target.
 
-The final current-master run used ordinary concurrent SQL with no product source modification,
-failpoint, process pause, node failure, or network/disk fault. MDL remained enabled. Natural
-concurrency hit the race on three consecutive runs.
+Classic reproduced with one TiDB, one PD, one real TiKV, MDL enabled, and default import write
+speed. The strongest run used 1,000,000 rows per input. NextGen natural concurrency hit the race on
+three consecutive runs. None of the production-shaped RED runs used product source modification,
+failpoints, process pauses, node failures, or network/disk faults.
 
 ## Reproduction
 
-Create two object-store files:
+Create two disjoint files:
 
 ```text
 a.csv: a1
@@ -57,7 +64,17 @@ CREATE TABLE t (
 );
 ```
 
-From two sessions, submit these statements concurrently:
+On Classic, local paths are sufficient. From two sessions, submit these statements concurrently:
+
+```sql
+IMPORT INTO t FROM '/absolute/path/a.csv' WITH DETACHED, thread=1;
+```
+
+```sql
+IMPORT INTO t FROM '/absolute/path/b.csv' WITH DETACHED, thread=1;
+```
+
+For NextGen, use the equivalent object-store statements:
 
 ```sql
 IMPORT INTO t
@@ -86,6 +103,8 @@ ADMIN CHECK TABLE t;
 
 The drop-in real-TiKV probe is
 [`ai_native_nextgen_concurrent_import_data_corruption_test.go`](../../scaffolds/tidb-tests/ai_native_nextgen_concurrent_import_data_corruption_test.go).
+The Classic command-line repro is
+[`ai_native_classic_concurrent_import_owner_race.sh`](../../scaffolds/top-level/ai_native_classic_concurrent_import_owner_race.sh).
 
 ## Actual result
 
@@ -115,6 +134,21 @@ all four entries. The corrupted shape remained the same.
 The matched single-import control finished successfully with two table rows, two index entries, and
 a successful `ADMIN CHECK TABLE`.
 
+A Classic default-config run returned:
+
+```text
+job 8: failed, ErrChecksumMismatch, remote total_kvs=3000000 vs local total_kvs=2000000
+job 9: finished, imported_rows=1000000
+
+record scan:       1000000 rows, all from b.csv
+forced index scan: 2000000 rows, 1000000 from each file
+lookup a0000001:   handle 1, value b0000001
+ADMIN CHECK TABLE: ERROR 8223
+```
+
+The sequential Classic control rejected the second request with error 8258 while the first job was
+running. The first job finished with equal record/index counts and a successful structural check.
+
 ## Expected result
 
 At most one active import owner may exist for a target table. The ownership claim must be atomic
@@ -129,7 +163,9 @@ A failed import must not leave a table whose record and index access paths disag
 - `CreateJob` later inserts a pending row into `mysql.tidb_import_jobs`.
 - The table has no uniqueness constraint or lock that turns "zero active jobs" into an atomic
   per-target ownership claim.
-- Classic submission sets `TableModeImport`; the NextGen user-keyspace path skips it.
+- NextGen skips `TableModeImport`.
+- Classic sets `TableModeImport`, but `TableMode` has no owner ID and `CanTransitionTo` permits
+  `Import -> Import`. Two concurrently planned submissions can both publish the same state.
 - Both accepted plans allocate hidden handles 1 and 2 from the same empty target.
 - Data and index KV groups are ingested separately. Competing record keys overwrite by MVCC order,
   while distinct unique-index values from both jobs survive.
@@ -147,16 +183,19 @@ by keyspace and stable table identity, enforce uniqueness for active states, and
 all irreversible ingest and post-processing steps.
 
 Possible implementations include a dedicated active-owner row with a unique target key, a stable
-metadata row locked in the same transaction, or a NextGen-compatible table mode/lease. A second
-request must fail before planning or SST ingest. Terminal cleanup must release the claim, and worker
-recovery must verify that the claim still belongs to its job.
+metadata row locked in the same transaction, or an owner-bearing table mode/lease. Same-mode
+transitions from a different owner must fail. A second request must fail before planning or SST
+ingest. Terminal cleanup must release only its own claim, and worker recovery must verify that the
+claim still belongs to its job.
 
 Checksum should remain a defense-in-depth oracle; it cannot serve as admission or rollback.
 
 ## Scope and deduplication
 
-Verified at TiDB `231dad5225f0d3c9cf38d4ab7ebc03a5326785c7` with NextGen TiKV/CSE
-`ce46fc5067`, real PD/TiKV, user and SYSTEM keyspaces, object storage, and MDL enabled.
+Verified against TiDB source `231dad5225f0d3c9cf38d4ab7ebc03a5326785c7`. Classic execution used
+nightly `ed2376acc6`, with no relevant source diff to current master, one real TiKV, local files,
+default import write speed, and MDL enabled. NextGen execution used TiKV/CSE `ce46fc5067`, real
+PD/TiKV, user and SYSTEM keyspaces, object storage, and MDL enabled.
 
 Post-RED searches of TiDB issues and the remote `found_bug` table found no exact root. This differs
 from:

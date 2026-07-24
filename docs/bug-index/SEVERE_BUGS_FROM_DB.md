@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 02:48:21 +0800
+Generated at: 2026-07-25 05:36:47 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -61,3 +61,5 @@ Generated at: 2026-07-25 02:48:21 +0800
 | 2820003 | confirmed | high | data-integrity | RENAME TABLE | multi-table rename / foreign key | `rename-tables-fk-frozen-reference-graph` | Multi-table RENAME can silently bind a foreign key to the wrong parent |  |
 | 2850003 | confirmed | high | data-loss | IMPORT INTO / TRUNCATE TABLE | NextGen cross-keyspace DXF import target generation | `importinto-nextgen-stale-target-generation` | NextGen IMPORT INTO can report success after writing the full input into a truncated table generation |  |
 | 2880003 | confirmed | high | data-corruption | BR restore table / concurrent INSERT | BR snapshot restore target table mode | `br-snapshot-restore-missing-target-write-fence` | BR snapshot restore can report success after concurrent DML creates persistent unique-index corruption |  |
+| 2910003 | known-regression | high | ddl/data-integrity | RENAME TABLE | AUTO_ID_CACHE=1 / InfoSchema reload | `cross-schema-rename-autoid-owner-not-reloaded` | Cross-database RENAME with AUTO_ID_CACHE=1 can reuse generated IDs after a cold InfoSchema load | [https://github.com/pingcap/tidb/issues/55846](https://github.com/pingcap/tidb/issues/55846) |
+| 2940003 | confirmed | high | data-corruption | IMPORT INTO / concurrent job admission | Classic and NextGen import target admission | `import-target-active-owner-check-then-create-race` | Concurrent same-table IMPORT INTO jobs can leave persistent row/index corruption |  |

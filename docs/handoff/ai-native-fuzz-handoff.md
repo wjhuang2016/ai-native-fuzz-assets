@@ -2658,11 +2658,12 @@ writer/readers，并覆盖 warm writer、healthy cold peer、brand-new full load
 `scaffolds/tidb-tests/ai_native_autoid_cross_schema_rename_reload.sql`。暂停本 root 的 schema、ID 数量、
 peer/restart 和 SQL 语法变体；下一轮把 S66 横向迁移到 placement、TTL、统计、恢复、任务和权限 owner。
 
-**2026-07-25 跨模块 critical 数据损坏命中：`id2940003` 证明 NextGen 同表并发
-`IMPORT INTO` 的 active-job precheck 不能保证单 owner，两个 job 都失败后仍会留下持久化表/索引损坏。**
+**2026-07-25 跨模块 critical 数据损坏命中：`id2940003` 证明 Classic 和 NextGen 同表并发
+`IMPORT INTO` 的 active-job precheck 不能保证单 owner，任务终止后仍会留下持久化表/索引损坏。**
 选题来自 singleton-owner 证明义务：`GetActiveJobCnt` 先读 pending/running 数量，后续还会执行空表、
 CDC/PiTR、对象存储检查，`CreateJob` 才在之后插入 pending job；两者之间没有 target-unique claim。
-Classic 会设置 `TableModeImport`，NextGen user-keyspace 路径跳过。
+NextGen user-keyspace 路径跳过 `TableModeImport`。Classic 虽然设置该模式，但 mode 不携带 job owner，
+`CanTransitionTo` 又允许 `Import -> Import`；两个 session 在 mode 发布前并发完成 plan 时仍可双双入场。
 
 最小目标表 `t(v VARCHAR(100), UNIQUE KEY uk(v))` 没有主键，两份输入 `a1/a2` 与 `b1/b2` 完全不重复。
 两个普通 session 同时提交 detached import 后，都按同一空表状态生成 hidden handle 1/2，record 与 index
@@ -2686,3 +2687,17 @@ owner 自己生成的 ID/range/epoch，并把 terminal、主产物、每个 sibl
 行数、索引、并发数和 object store 变体；下一轮把 S67 横向迁移到 DDL job、repair、TTL、stats、
 placement 和其他 singleton-owner admission。资产库已导入 7 个新增资产、8 条关系、4 次运行和 1 个
 target；按 `dxf/importinto + S67` 生成的复用包包含 8 个资产，`open_gaps=[]`。
+
+**2026-07-25 Classic 扩展验证：同一 root 已在默认配置复现，不能再把 table mode 当作充分保护。**
+本地一 TiDB、一 PD、一真实 TiKV，MDL ON；两个普通 mysql client 同时向空 hidden-row-ID 表提交互不重复
+的文件。100 万行/文件、默认写速时，job 创建只差 130 微秒，两者都进入 ingest；job 8 checksum 失败，
+job 9 报 finished。终态 record/index 为 100 万/200 万，按失败方 key 查会返回另一方 row，
+`ADMIN CHECK TABLE` 报 8223。默认 10 万行另一次也 RED；观察用 1MiB 限速矩阵同样 RED。
+
+严格对照：第一个 job 已 running 后再提交第二个会报 8258；单 owner 最终 record/index 10 万/10 万且
+ADMIN GREEN。另一次并发虽然两个 job 都被创建，但 DXF 恰好串行，第二个在 ingest 前因非空表失败，
+最终仍 GREEN。因而证明链为：双 admission 只是必要条件，两个 owner 都跨过物理 ingest 才形成 C3。
+远端 `found_bug id2940003` 应更新为 generalized root
+`import-target-active-owner-check-then-create-race`，不新增 surface/root 计数。新增 Classic evidence log、
+table-mode fault asset、默认 RED/串行 GREEN runs 和命令行 scaffold。standalone Lightning 也可产生同一
+坏形态，但官方物理导入契约明确要求导入期间停写，因此只保留为机制校准，不计新 bug。

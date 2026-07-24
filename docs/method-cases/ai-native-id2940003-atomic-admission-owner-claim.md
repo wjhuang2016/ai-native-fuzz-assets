@@ -24,9 +24,12 @@ An exclusivity precheck and the corresponding owner publication must be one atom
 | One detached import | none | finished; table/index 2/2; ADMIN green | GREEN |
 | Two concurrent imports, forced after both zero reads | test-only barrier | both failed; table/index 2/4; 8223 | RED |
 | Two concurrent imports | none | both admitted and failed; table/index 2/4; 8223 | RED, 3/3 |
+| Classic, second request after mode is visible | none | second rejected 8258; first and table/index green | GREEN |
+| Classic, concurrent 1M-row imports, default write speed | none | one finished, one failed; table/index 1M/2M; wrong lookup; 8223 | RED |
 
-The natural row is the severity result. The barrier row only proves the exact check-to-claim
-interleaving.
+The natural rows are the severity result. The barrier row only proves the exact check-to-claim
+interleaving. The Classic serialized control shows that table mode blocks a later owner but cannot
+distinguish two owners that race its publication.
 
 ## Strong oracle
 
@@ -36,10 +39,11 @@ Join five observations:
 2. terminal truth: both jobs are failed with checksum mismatch;
 3. primary owner view: hidden row handles and values from a table scan;
 4. sibling owner view: the same handles and values through every affected index;
-5. structural truth: `ADMIN CHECK TABLE` and the reported handle/value mismatch.
+5. point truth: look up one value from each sibling input and compare the returned row;
+6. structural truth: `ADMIN CHECK TABLE` and the reported handle/value mismatch.
 
-The late job failure is not a safety success. Durable row/index disagreement remains after both
-terminal states.
+The late job failure is not a safety success, and one sibling reporting `finished` is not table
+success. Durable row/index disagreement remains after both terminal states.
 
 ## Selector
 
@@ -68,6 +72,11 @@ what two admitted owners generate independently:
 That trace converted a duplicate-job concern into a deterministic physical corruption oracle.
 Disjoint logical inputs were important: they show that user data contained no duplicate values and
 that the collision came from importer-owned identity allocation.
+
+Reusing the same assets against Classic found a different missing guard: the system added
+`TableModeImport`, but represented only the mode and not the owning job. This demonstrates the
+incremental loop: preserve the oracle and scenario, replace one admission primitive, and test
+whether the new primitive closes the same proof obligation.
 
 ## Loop improvement
 
