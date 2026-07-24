@@ -2345,3 +2345,29 @@ status:     VALIDATED by id2970003. Unmodified current master and nightly were R
 stop rule:  one root per semantic resource/mismatched transfer primitive/highest irreversible
             consumer. Cache values, shard bits, row counts, and SQL spellings are blast radius.
 ```
+
+## S69: future sibling effect as admission proof
+
+```text
+shape:      batch admission checks the complete requested sibling set
+            + items execute as independent committed jobs
+            + an earlier item relies on a later sibling's promised effect
+            + the future sibling identity or membership can change before its job
+proof gap:  "requested later" is treated as "already durable or atomically guaranteed"
+test:       mutate or cancel the future sibling immediately after the first irreversible item;
+            move the same sibling before that boundary for the matched GREEN
+consumer:   lift residual metadata into a durable consumer such as orphan rows, stale indexes,
+            wrong-object cleanup, or false terminal success
+exclude:    truly atomic batch actions; immutable identity binding; per-item latest-state
+            revalidation before publication
+```
+
+Born from: id3000003. `DROP TABLE` checks all requested names as one FK closure, then commits one
+DDL job per table. A child listed after its parent can be renamed after the parent commits; both
+statements succeed, the child survives with a dangling FK, and ordinary writes create durable
+orphans.
+
+Cross-module targets: backup/restore object lists, import manifests, cleanup queues,
+multi-resource configuration changes, and background task groups.
+
+Status: **VALIDATED** by current-master/nightly RED and child-first matched GREEN.

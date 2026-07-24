@@ -3711,3 +3711,23 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   consequence. Post-RED issue and bug-asset searches found no exact root.
 - Pause gate: cache values, shard bits, row counts, and DML spellings are blast radius. Reopen only
   for another owner-transfer primitive or higher irreversible consumer.
+
+## id3000003 - batch DROP treats a future child effect as already complete
+
+- Target: `target.id3000003.drop-table-fk-future-sibling.v1`.
+- Selector: `FUTURE_SIBLING_EFFECT_AS_ADMISSION_PROOF`.
+- **P**: child `c` appears later in the same admitted drop list.
+- **Q**: `c` will be absent when dropping parent `p` becomes durable.
+- **F**: objects are separate committed DDL jobs, and `c` can be renamed before its job starts.
+- C3 oracle: both DDL statements report success; `c_survivor` retains `REFERENCES p`; ordinary
+  missing-parent writes create orphans that remain after same-name parent recreation.
+- Production trigger: overlapping cleanup and schema-deployment tools issue a parent-first batch
+  drop and a child rename over the same object group.
+- Settings: Classic real TiKV, MDL ON, foreign-key checks ON, no failpoint, source modification,
+  process pause, node failure, or nondefault transaction isolation.
+- Matched GREEN: move the child before the parent in the same list; the child is gone before the
+  parent boundary, the rename gets 1146, and no survivor exists.
+- Status: **CONFIRMED**, remote `found_bug id3000003`, high severity / critical persistent-integrity
+  consequence. Post-RED issue and bug-asset searches found no exact root.
+- Pause gate: names, filler counts, row values, and warning text are blast radius. Reopen only for
+  another batch admission primitive, identity boundary, or higher irreversible consumer.

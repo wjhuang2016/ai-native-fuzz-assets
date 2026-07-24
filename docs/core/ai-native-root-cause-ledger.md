@@ -917,3 +917,24 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: cache values, shard bits, row counts, and generated-write spellings are blast
   radius. Reopen only for another semantic owner, transfer primitive, or higher irreversible
   consumer.
+
+## 2026-07-25 update: id3000003
+
+- Remote `found_bug`: 139 surfaces, 116 distinct root causes, 61 high-severity rows, and 123
+  confirmed rows.
+- New root: `drop-table-fk-future-sibling-admission`.
+- Consequence: C3 persistent relational corruption. Both DDL statements return success, but the
+  renamed child survives without its parent; ordinary writes create orphan rows that persist after
+  same-name parent recreation while `ADMIN CHECK TABLE` remains green.
+- Production trigger: one cleanup or migration tool issues a parent-first multi-object
+  `DROP TABLE IF EXISTS`; another deployment renames the future child after the parent job commits.
+  Large object lists and ordinary DDL latency widen the window.
+- Settings: unmodified current master and official nightly, Classic real TiKV, MDL ON, foreign-key
+  checks ON, and no failpoint, source change, process pause, node failure, or transaction tuning.
+- Verification: parent-first RED, child-first matched GREEN, fresh orphan anti-join, future valid
+  and invalid write controls, source trace through full-list admission and per-object `doDDLJob2`.
+- Distinctness: id2820003 freezes a reference graph inside multi-table rename; id1500002 rebinds a
+  flashed-back child to a same-name parent; id2490003 loses rollback closure during FK cascade.
+- Counting rule: table names, filler counts, row values, rename destinations, and `IF EXISTS`
+  warning text are blast radius. Reopen only for another batch admission primitive, identity
+  boundary, or higher irreversible consumer.

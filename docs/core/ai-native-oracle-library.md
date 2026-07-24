@@ -1773,3 +1773,36 @@ specificity: HIGH when paired with a default-representation control, owner-only 
              preimage validation, and actual DDL-owner revision.
 status:      USED + EXECUTION-CONFIRMED by id2970003.
 ```
+
+## O68 fk_edge_closure_after_batch_terminal
+
+```text
+Use for:
+  a batch operation whose earlier item is admitted because a later sibling is expected to remove,
+  move, or otherwise close a foreign-key/reference edge
+
+Observe:
+  terminal status of every concurrent operation
+  post-boundary parent and child object identities
+  surviving child FK metadata
+  anti-join orphan count before and after same-name parent recreation
+  valid and invalid writes after recreation
+  same batch with the child moved before the irreversible boundary
+
+RED:
+  both operations report success
+  AND the parent is absent while the renamed child survives with the FK
+  AND a missing-parent write succeeds
+  AND orphan rows remain after parent recreation
+
+GREEN:
+  child-first ordering removes the child before the parent boundary
+  AND the concurrent rename fails because the child is already absent
+  AND no survivor or orphan remains
+```
+
+`ADMIN CHECK TABLE` is a weak control here: the row/index representation can be structurally valid
+while the declared cross-table relationship is broken.
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3000003 on current master and official nightly with real
+TiKV, MDL ON, and foreign-key checks ON.

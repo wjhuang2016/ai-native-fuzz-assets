@@ -2735,3 +2735,29 @@ counterfactual 因未修改的 4000 仍是 DDL owner 而被判无效，这条检
 `scaffolds/top-level/ai_native_autoid_cache1_autorandom_migration.sh`。暂停 cache 值、shard bits、行数与
 SQL 写法变体；下一轮把 S68 横向迁移到 BR/restore、import/checkpoint、sequence、statistics、
 placement、cache generation 和后台任务 owner。
+
+### 2026-07-25: id3000003 - batch DROP 的 future-sibling 证明失效
+
+范围已从事务模块放开到所有高危模块。新命中来自 DDL/FK：`DROP TABLE` 在 admission 和 owner
+复查时都把完整对象列表当作 ignore set，却逐表调用独立的 `doDDLJob2`。父表排在子表前时，父表
+job 依赖的是“未来子表会被删除”；父表提交后、子表 job 开始前，普通并发
+`RENAME TABLE c TO c_survivor` 可以让这个承诺失效。
+
+未修改 current master `231dad5225` 和官方 nightly 均 RED：父表优先的 batch DROP 与并发 RENAME
+都返回成功，`c_survivor` 保留 `REFERENCES p(id)`；父表缺失期间普通 INSERT 产生新孤儿，重建
+同名父表后旧孤儿仍在，后续非法写入又会被 1452 拒绝，`ADMIN CHECK TABLE` 仍为 GREEN。只把
+子表移到列表最前的 matched GREEN 中，子表先消失、RENAME 返回 1146、没有 survivor。
+
+远端 `found_bug id3000003/high/confirmed` 已入库：139 surfaces、116 roots、61 high、123
+confirmed。新增 S69 `FUTURE_SIBLING_EFFECT_AS_ADMISSION_PROOF` 与 O68
+`FK_EDGE_CLOSURE_AFTER_BATCH_TERMINAL`。方法论增量：审计 batch API 时，要区分一次 admission
+与是否原子提交；逐项标出它依赖的 sibling 是 past/current/future；对 future sibling，在第一个
+不可逆边界后立即做 rename/cancel/rebind，再用 sibling-before-boundary 作为一维 GREEN。这个
+selector 可横向用于 restore object list、import manifest、cleanup queue、multi-resource config
+和后台 task group。
+
+入口：
+`docs/bug-drafts/ai-native-drop-table-fk-future-sibling-race-draft.md`、
+`docs/method-cases/ai-native-id3000003-future-sibling-admission.md`、
+`assets/store/drop-table-fk-future-sibling-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_drop_table_fk_future_sibling_race.sh`。

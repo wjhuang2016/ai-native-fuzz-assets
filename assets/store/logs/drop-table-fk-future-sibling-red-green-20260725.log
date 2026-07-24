@@ -1,0 +1,27 @@
+server_version=8.0.11-TiDB-231dad5225
+ddl_owner:
+842	75052acc-499e-4b4a-b682-d483986c3a55	127.0.0.1:4002		75052acc-499e-4b4a-b682-d483986c3a55	
+
+=== RED: parent first, future child renamed between independent jobs ===
+Note	1051	Unknown table 'ai_native_drop_fk_packaged_red.c'
+drop_returned_success
+rename_returned_success
+c_survivor	CREATE TABLE `c_survivor` (
+  `id` int NOT NULL,
+  `pid` int DEFAULT NULL,
+  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,
+  KEY `fk_c_p` (`pid`),
+  CONSTRAINT `fk_c_p` FOREIGN KEY (`pid`) REFERENCES `p` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+invalid_insert_rc=1
+ERROR 1452 (23000) at line 2: Cannot add or update a child row: a foreign key constraint fails (`ai_native_drop_fk_packaged_red`.`c_survivor`, CONSTRAINT `fk_c_p` FOREIGN KEY (`pid`) REFERENCES `p` (`id`))
+red survivor=1 parent_after_drop=0 orphan_count=2 rename_rc=0
+10	1	NULL
+11	1	NULL
+12	999	999
+
+=== GREEN: child first, no future-child assumption ===
+drop_returned_success
+ERROR 1146 (42S02) at line 2: Table 'ai_native_drop_fk_packaged_green.c' doesn't exist
+green survivor=0 child=0 rename_rc=1
+VERDICT=RED_WITH_MATCHED_GREEN

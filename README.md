@@ -14,11 +14,11 @@ It treats three things as first-class reusable assets:
 - `docs/handoff/`: latest handoff snapshot for session-to-session continuation.
 - `docs/bug-index/`: curated and generated high-severity bug indexes.
 - `docs/github-issues/`: filed GitHub issue bodies for important bugs, including #69845.
-- `docs/bug-drafts/`: 133 draft bug writeups and filed-issue source bodies.
-- `docs/method-cases/`: 125 compact case summaries tied to bug-db entries.
+- `docs/bug-drafts/`: 137 draft bug writeups and filed-issue source bodies.
+- `docs/method-cases/`: 130 compact case summaries tied to bug-db entries.
 - `assets/store/`: JSONL/SQLite/log evidence store and seed/selector assets.
 - `assets/bug-db/`: local bug-db sync helpers such as pending SQL.
-- `scaffolds/top-level/`: 67 top-level Python/shell/data scaffolds from the working directory.
+- `scaffolds/top-level/`: 70 top-level Python/shell/data scaffolds from the working directory.
 - `scaffolds/go-probes/`: 29 Go probe/source-scanner files plus `go.mod` and `go.sum`.
 - `scaffolds/client-go-tests/`: reusable client-go integration probes and counterfactual patches.
 - `scaffolds/tidb-tests/`: 75 TiDB-side AI-native test/probe and counterfactual fixtures.
