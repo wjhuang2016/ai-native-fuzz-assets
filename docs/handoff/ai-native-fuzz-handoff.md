@@ -2761,3 +2761,31 @@ selector 可横向用于 restore object list、import manifest、cleanup queue�
 `docs/method-cases/ai-native-id3000003-future-sibling-admission.md`、
 `assets/store/drop-table-fk-future-sibling-results-20260725.jsonl`、
 `scaffolds/top-level/ai_native_drop_table_fk_future_sibling_race.sh`。
+
+### 2026-07-25: id3030003 - PiTR 必需修复失败后仍返回成功
+
+跨模块扫描转到 BR/PiTR。当前 master 为修复 #69485，在日志回放后逐表读取持久化 IncrementID 并
+ForceRebase `AUTO_ID_CACHE=1` 的 autoid service；但单表错误被标为 `Best effort`，只记 warning，
+公开 helper 固定返回 nil，BR 后续仍可打印 restore success。
+
+无需修改产品代码的 RED/GREEN 已完成。测试先模拟 raw replay：service 保持低位，TiKV 中加入恢复行
+`id=2/restored-two` 并把持久化高水位推到 1004000。开启仓库已有
+`pkg/kv/mockCommitErrorInNewTxn=return("no_retry")` 后，最终 rebase 记录 `mock commit error` 但
+helper 成功；真实 `REPLACE` 返回 `ROW_COUNT=2,LAST_INSERT_ID=2`，fresh read 只剩
+`id=2/replacement`。只关闭该错误，rebase 到 1004000，同一 SQL 分配 1004001，恢复行保留。
+
+生产入口包括最终元数据事务的瞬时 TiKV 错误，以及 autoid owner 切换返回非 RPC 形态的
+`not leader`；两者都可能只影响一张表。后续没有 generated-ID closure check。远端
+`found_bug id3030003/high/confirmed` 入库后为 140 surfaces、117 roots、62 high、124 confirmed。
+它有静默持久化数据丢失 consumer，但触发还要求 PiTR、`AUTO_ID_CACHE=1`、修复期错误和破坏型
+upsert，因此不拔高为 critical。
+
+新增 S70 `SAFETY_REPAIR_ERROR_DOWNGRADED_TO_BEST_EFFORT` 和 O69：修复如果是某个安全不变量的
+唯一 closure owner，它的错误处理就继承原事故的严重性；逐个枚举 repair error，追到 public
+terminal，复用原 bug 的最高 consumer，再用 one-error RED / exact no-error GREEN 验证。入口：
+`docs/bug-drafts/ai-native-pitr-autoid-rebase-fail-open-draft.md`、
+`docs/method-cases/ai-native-id3030003-required-repair-fail-open.md`、
+`assets/store/pitr-autoid-rebase-failopen-results-20260725.jsonl`、
+`scaffolds/tidb-tests/ai_native_pitr_autoid_rebase_failopen_test.go`。资产图已导入 7 个资产、
+8 条关系、RED/GREEN 各 1 次和 1 个 validated target；按 `br/pitr + S70` 生成的复用包
+`open_gaps=[]`。

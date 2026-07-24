@@ -3789,3 +3789,37 @@ completed before the consumer runs, and that the injected physical history can a
 product lifecycle. Otherwise a partial-apply race, impossible file set, or impossible state lineage
 can look like a severe hit. Source-level scheduler proof plus real physical state closes only the
 scheduler dimension; it cannot substitute for lineage reachability.
+
+## Audit the error contract of every required safety repair
+
+Recovery and repair code often enters a known unsafe intermediate state on purpose, then relies on
+one final operation to close it. Treat that operation as part of the original safety proof:
+
+```text
+unsafe state U is allowed temporarily
+repair R is the only owner that establishes invariant I
+R returns error
+caller logs and continues to public success
+no later owner proves I
+```
+
+The word `best effort` is a selector, not a verdict. For each downgraded error, ask:
+
+| Question | Required evidence |
+| --- | --- |
+| Why does the repair exist? | Name the unsafe state and original incident it closes. |
+| Who else can close it? | Retry, restart, fencing, or a later validator with exact coverage. |
+| Can success still publish? | Trace the error branch to the public terminal and success summary. |
+| What is the highest consumer? | Reuse the original failure, then prefer a successful irreversible consumer. |
+| Is the fault natural? | Map the injection to a real transaction, owner, RPC, storage, or context error. |
+| What is the GREEN? | Remove only the repair fault and prove the invariant plus preimage preservation. |
+
+`id3030003` is the calibration. PiTR raw replay can leave the separated autoid service stale. The
+final per-table rebase is the only closure owner, yet one metadata transaction error is logged and
+discarded. The helper returns success; generated `REPLACE` reuses restored `id=2` and removes its
+payload. With only the error disabled, the allocator reaches the persisted high water and preserves
+the row. Store the selector as `SAFETY_REPAIR_ERROR_DOWNGRADED_TO_BEST_EFFORT`.
+
+Grade consequence and trigger probability separately. This sample has a silent data-loss consumer
+but remains high/major because PiTR, `AUTO_ID_CACHE=1`, a final-repair error, and destructive upsert
+must coincide.

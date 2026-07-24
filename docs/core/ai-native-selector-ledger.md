@@ -2371,3 +2371,28 @@ Cross-module targets: backup/restore object lists, import manifests, cleanup que
 multi-resource configuration changes, and background task groups.
 
 Status: **VALIDATED** by current-master/nightly RED and child-first matched GREEN.
+
+## S70: safety repair error downgraded to best effort
+
+```text
+shape:      an operation intentionally enters a known unsafe intermediate state
+            + one repair is the only owner that closes the safety invariant
+            + repair errors are logged or counted and the public operation continues
+            + no later closure check covers the failed item
+proof gap:  "one repair failed" is treated as "the operation is still safe to publish"
+test:       inject one natural-shaped error at the repair boundary; keep the original unsafe state
+            and highest consumer; disable only the error for the matched GREEN
+consumer:   reuse the incident that motivated the repair, then lift fail-closed errors to the first
+            successful destructive or wrong-result consumer
+exclude:    independently owned retry, fencing, failover, or terminal validation that proves every
+            failed item reached the required state
+```
+
+Born from: id3030003. PiTR raw replay leaves `AUTO_ID_CACHE=1` service state stale. Final rebase is
+the only repair, but a per-table transaction error is downgraded to a warning; BR can report success
+and generated `REPLACE` overwrites a restored row.
+
+Cross-module targets: checkpoint repair, index reconciliation, GC recovery, orphan cleanup, schema
+reload, placement repair, metadata backfill, and restore finalization.
+
+Status: **VALIDATED** by an existing-failpoint RED and exact no-error GREEN on current master.

@@ -4,9 +4,9 @@
 
 ## Current remote snapshot (2026-07-25)
 
-`found_bug`: 137 surfaces, 114 distinct recorded root IDs, 59 high-severity rows, and 121 confirmed
-rows. The newest entry is `id2940003`: concurrent Classic or NextGen `IMPORT INTO` jobs can terminate
-after leaving one live table with persistent record/index corruption.
+`found_bug`: 140 surfaces, 117 distinct recorded root IDs, 62 high-severity rows, and 124 confirmed
+rows. The newest entry is `id3030003`: PiTR can report success after a required AUTO_ID repair fails,
+allowing a later generated `REPLACE` to overwrite a restored row.
 
 ## Counting convention
 
@@ -938,3 +938,24 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: table names, filler counts, row values, rename destinations, and `IF EXISTS`
   warning text are blast radius. Reopen only for another batch admission primitive, identity
   boundary, or higher irreversible consumer.
+
+## 2026-07-25 update: id3030003
+
+- Remote `found_bug`: 140 surfaces, 117 distinct root causes, 62 high-severity rows, and 124
+  confirmed rows.
+- New root: `pitr-autoid-required-repair-fail-open`.
+- Consequence: successful persistent data loss. A final per-table rebase error is logged and
+  swallowed; generated `REPLACE` can reuse a restored primary key and remove its preimage.
+- Production trigger: point restore of an `AUTO_ID_CACHE=1` table, one transient metadata or autoid
+  owner error during final repair, traffic resumption before allocator refresh, and a destructive
+  generated-ID upsert.
+- Verification: existing `pkg/kv/mockCommitErrorInNewTxn` RED, exact no-error GREEN, real SQL
+  `ROW_COUNT`/`LAST_INSERT_ID`, fresh preimage reads, and source trace to BR's success terminal.
+- Severity calibration: high/major. The durable consumer is critical-class, but the conjunction of
+  PiTR, a nondefault table option, a repair-time failure, and `REPLACE` is too narrow for a critical
+  production-frequency claim.
+- Distinctness: #69485 owns the unconditional stale allocator before the repair existed. This root
+  owns the repair's fail-open error contract on current master.
+- Counting rule: error codes, table counts, ID values, and destructive upsert spellings are blast
+  radius. Reopen only for another required invariant, repair owner, success terminal, or a
+  materially more common trigger.

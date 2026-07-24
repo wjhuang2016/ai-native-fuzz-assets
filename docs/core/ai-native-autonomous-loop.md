@@ -2205,3 +2205,26 @@ and for-update reads to one attempt-local statement TS, shrinking the legal set 
 symptom into a strong RED. Add `ATTEMPT_LOCAL_PREPROCESSED_CONSTANT_REUSE` and O66; future ticks scan
 planning-time data reads that emit ordinary constants or fields, then intersect them with retry paths
 that refresh an omitted generation argument.
+
+## Required-repair fail-open tick: PiTR AUTO_ID rebase, EXECUTED (2026-07-25)
+
+This cross-module tick reused the proof obligation behind a repaired historical failure, then varied
+the repair's error contract. Issue and bug-library search remained closed until RED/GREEN.
+
+```text
+U:             PiTR raw replay advances persisted IncrementID but leaves autoid service stale.
+R:             final per-table ForceRebase is the only owner that closes U.
+F:             one metadata transaction error is warned and swallowed; helper returns nil.
+RED:           generated REPLACE reuses id=2; ROW_COUNT=2; restored payload disappears.
+GREEN:         disable only the fault; rebase=1004000; next id=1004001; preimage remains.
+NATURAL MAP:   transient TiKV metadata error or autoid owner transition returning not leader.
+DEDUP:         #69485 owns unconditional stale state; no exact fail-open repair root found.
+INTEGRATE:     id3030003 high/major; 140 surfaces, 117 roots, 62 high, 124 confirmed.
+```
+
+Method improvement: add `SAFETY_REPAIR_ERROR_DOWNGRADED_TO_BEST_EFFORT`. A safety repair inherits
+the severity of the unsafe state it closes until another owner proves closure. Enumerate repair
+errors, trace each to the public terminal, reuse the original highest consumer, and pair one-error
+RED with an exact no-error GREEN. Keep consequence separate from production frequency; this finding
+is high rather than critical because its trigger conjunction is narrow. The asset graph imported
+7 assets, 8 relations, 2 runs, and 1 validated target; the `br/pitr + S70` pack has no open gaps.

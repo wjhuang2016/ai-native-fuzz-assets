@@ -3731,3 +3731,22 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   consequence. Post-RED issue and bug-asset searches found no exact root.
 - Pause gate: names, filler counts, row values, and warning text are blast radius. Reopen only for
   another batch admission primitive, identity boundary, or higher irreversible consumer.
+
+## id3030003 - required PiTR allocator repair fails open
+
+- Target: `target.id3030003.pitr-autoid-required-repair.v1`.
+- Selector: `SAFETY_REPAIR_ERROR_DOWNGRADED_TO_BEST_EFFORT`.
+- **P**: one restored table's final allocator rebase returned an error.
+- **Q**: warning and continuing still leave the cluster safe to return to generated writes.
+- **F**: raw log replay leaves the autoid service stale; this rebase is the only closure owner, and
+  no later restore stage checks generated-ID disjointness.
+- C3 oracle: helper returns success; generated `REPLACE` reports `ROW_COUNT=2`,
+  `LAST_INSERT_ID=2`, and fresh reads show the restored `id=2` payload was replaced.
+- Production trigger: PiTR of `AUTO_ID_CACHE=1`, one metadata transaction or autoid owner error
+  during finalization, then application traffic using generated `REPLACE`.
+- Counterfactual: disable only the transaction fault. Rebase reaches the persisted high water, the
+  next ID is `1004001`, and the restored preimage remains.
+- Status: **CONFIRMED**, remote `found_bug id3030003`, high severity / major production grade.
+  Current-master RED/GREEN uses an existing repository failpoint and no product-code probe.
+- Pause gate: errors, table counts, ID values, and upsert spellings are blast radius. Reopen only for
+  another repair owner, public terminal, invariant, or materially higher-probability trigger.

@@ -1806,3 +1806,37 @@ while the declared cross-table relationship is broken.
 
 Sensitivity: **EXECUTION-CONFIRMED** by id3000003 on current master and official nightly with real
 TiKV, MDL ON, and foreign-key checks ON.
+
+## O69 post_restore_generated_id_disjointness_and_preimage_preservation
+
+```text
+Use for:
+  a restore or recovery path that writes allocator metadata without updating its runtime owner
+  and later performs a final synchronization or rebase
+
+Observe:
+  exact repair error and activation witness
+  public restore/helper terminal status
+  persisted high water and next generated ID
+  ROW_COUNT and LAST_INSERT_ID of the first destructive generated-ID consumer
+  fresh fingerprints of every restored preimage
+  identical no-error repair control
+
+RED:
+  required repair fails
+  AND the public operation still reports success
+  AND the next generated ID overlaps a restored identity
+  AND a successful consumer removes or changes the restored preimage
+
+GREEN:
+  only the repair fault is removed
+  AND the allocator reaches the persisted high water
+  AND the next identity is disjoint
+  AND every restored preimage remains
+```
+
+A duplicate-key error alone proves stale allocation but not persistent loss. Use `REPLACE` or
+another legitimate destructive consumer only after the stale-ID witness is established.
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3030003 on current master with the existing internal
+transaction failpoint and real SQL DML.
