@@ -3026,3 +3026,46 @@ TIMESTAMP partial index 与混合 session 时区。
 `scaffolds/top-level/ai_native_partial_index_timestamp_timezone_repro.sh`。脚手架已从空库独立复跑并
 自动清理。下一轮把该 selector 横向迁移到 generated column、索引 backfill/check 和其他持久化
 derived state，不枚举更多 offset、timestamp 或同根 DML。
+
+### 2026-07-25: id3240003 - 等价组合绕过 unsafe expression-index 门并触发直接数据丢失
+
+把 id3210003 的 persisted-context selector 迁移到 generated column 后，先得到 STORED generated value
+与当前表达式不一致；继续提升到 VIRTUAL generated column + ordinary index 后，形成更硬的新 root。
+
+TiDB 默认拒绝 `CREATE INDEX ... ((DATE(ts)))`，明确报 8200：unsafe function 需要
+`allow-expression-index`。但等价写法
+`d DATE AS (DATE(ts)) VIRTUAL, INDEX idx_d(d)` 被默认接受。源码中
+`checkIllegalFn4Generated` 对两种语法都会记录 `hasNotGAFunc4ExprIdx`，却只在
+`genType==typeIndex` 时拒绝；手写 generated column 作为 `typeColumn` 进入，后续普通索引不再复核
+源表达式。
+
+真实 TiKV 最小 RED 只需一行。`+08:00` 写入
+`ts='2025-01-01 04:00:00'`，索引持久化 key `2025-01-01`；`-08:00` 读取时同一 stored TIMESTAMP
+显示为 `2024-12-31 12:00:00`，virtual `d` 与 `DATE(ts)` 都是 `2024-12-31`。此时
+`IGNORE INDEX` 对 `d='2025-01-01'` 返回空，默认/`USE INDEX` 返回 id=1，且同一行投影
+`predicate_holds=0`。普通 DELETE 走 IndexRangeScan，成功删除 1 行；matched root DELETE 删除 0
+并保留该行。默认 fast `ADMIN CHECK TABLE` 在这个 data-loss 方向仍通过。相同时区 control 和
+DATETIME cross-timezone control 都为 GREEN。
+
+环境为一 TiDB/PD/真实 TiKV、默认 strict sql_mode、MDL ON、默认禁用 unsafe expression index；
+无 partial index、并发、retry、failpoint、source patch 或基础设施故障。相关 source 在测试 nightly
+`ed2376acc6` 与 current master `05b396fb66` 间无 diff。post-RED GitHub 和远端库无 exact root；
+与 id3210003 的 partial-index membership owner 不同。
+
+新增 `COMPOSABLE_SAFETY_GATE_CLOSURE`：把被直接入口拒绝的对象正规化为 expression、derived state、
+context 和 consumer，再枚举语义等价的组合入口；若组合跳过同一 admission predicate，就直接使用
+原拒绝理由选择差分维度，并提升到最高不可逆 consumer。产品自己的 rejection 因此同时充当 hypothesis
+和 negative control，比随机 fuzz generated expressions 更快。
+
+远端 `found_bug id3240003/high/confirmed` 已入库，当前为 147 surfaces、124 roots、69 high、
+131 confirmed。按现有 catalog 约定存 high，但这是默认配置、常见 schema pattern 下的直接静默数据
+丢失，具备 upstream `severity/critical` 的定级依据。资产图为 577 revisions、RED 121、GREEN 122、
+validated targets 65。
+
+入口：
+`docs/bug-drafts/ai-native-virtual-generated-timestamp-index-timezone-data-loss-draft.md`、
+`docs/method-cases/ai-native-id3240003-composable-safety-gate-closure.md`、
+`assets/store/virtual-generated-timestamp-index-timezone-results-20260725.jsonl`、
+`assets/store/logs/virtual-generated-timestamp-index-timezone-red-control-20260725.log`、
+`scaffolds/top-level/ai_native_virtual_generated_timestamp_index_timezone_repro.sh`。脚手架已从空库
+独立复跑并自动清理；本 root 暂停枚举函数、offset、storage mode 和 DML 变体。

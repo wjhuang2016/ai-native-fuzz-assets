@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=3210003`, `COUNT(*)=146`, `COUNT(DISTINCT root_cause_id)=123`
-- High-severity entries: 68 total
+- Remote `found_bug`: `MAX(id)=3240003`, `COUNT(*)=147`, `COUNT(DISTINCT root_cause_id)=124`
+- High-severity entries: 69 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -78,6 +78,7 @@ Last verified: 2026-07-25
 | 3150003 | confirmed | data loss | `tikv-json-cast-string-return-type-context-omission` | TiKV JSON-to-CHAR pushdown can silently delete rows after the matched TiDB evaluator would abort. | [draft](../bug-drafts/ai-native-tikv-json-char-flen-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3150003-remote-evaluator-context-closure.md) |
 | 3180003 | confirmed | data loss | `tikv-week-without-mode-default-week-format-context-omission` | TiKV can ignore `default_week_format` for pushed `WEEK(date)` and delete the wrong dates. | [draft](../bug-drafts/ai-native-tikv-week-default-format-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3180003-hidden-session-input-pushdown-closure.md) |
 | 3210003 | confirmed | data corruption | `partial-index-timestamp-membership-writer-timezone-dependent` | Mixed writer time zones can corrupt TIMESTAMP partial-index membership, violate logical uniqueness, and make indexed DELETE silently miss rows. | [draft](../bug-drafts/ai-native-partial-index-timestamp-session-timezone-draft.md) | [case](../method-cases/ai-native-id3210003-persisted-evaluator-context-closure.md) |
+| 3240003 | confirmed | data loss | `virtual-generated-timestamp-index-writer-timezone-dependent` | An indexed virtual `DATE(TIMESTAMP)` can return a row whose current predicate is false and make ordinary DELETE silently remove it after a session time-zone change. | [draft](../bug-drafts/ai-native-virtual-generated-timestamp-index-timezone-data-loss-draft.md) | [case](../method-cases/ai-native-id3240003-composable-safety-gate-closure.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

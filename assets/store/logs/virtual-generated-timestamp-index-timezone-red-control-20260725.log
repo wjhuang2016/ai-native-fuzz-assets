@@ -1,0 +1,114 @@
+Environment
+===========
+TiDB runtime: ed2376acc6e0feeff9f3e2c38db489727933aa80
+TiKV runtime: 730be34f959185c934b7d3db730ca1dbeb3949f8
+Topology: one TiDB, one PD, one real TiKV
+Configuration: default strict sql_mode, MDL ON, fast table check ON, no failpoint
+Current TiDB master: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+Relevant files are unchanged between the runtime and current master.
+
+DEFAULT SAFETY GATE
+===================
+CREATE TABLE direct_expr(id INT PRIMARY KEY, ts TIMESTAMP);
+CREATE INDEX direct_idx ON direct_expr((DATE(ts)));
+
+ERROR 8200 (HY000): Unsupported creating expression index containing unsafe
+functions without allow-expression-index in config
+
+Equivalent composition accepted under the same default configuration:
+
+CREATE TABLE red_index(
+  id INT PRIMARY KEY,
+  ts TIMESTAMP,
+  d DATE AS (DATE(ts)) VIRTUAL,
+  INDEX idx_d(d)
+);
+
+RED: INDEX RETURNS A ROW WHOSE CURRENT PREDICATE IS FALSE
+========================================================
+CREATE TABLE red_root LIKE red_index;
+
+SET time_zone='+08:00';
+INSERT INTO red_index(id,ts) VALUES (1,'2025-01-01 04:00:00');
+INSERT INTO red_root(id,ts) VALUES (1,'2025-01-01 04:00:00');
+
+SET time_zone='-08:00';
+
+SELECT GROUP_CONCAT(id ORDER BY id)
+FROM red_index IGNORE INDEX(idx_d)
+WHERE d='2025-01-01';
+
+NULL
+
+SELECT id,ts,d,DATE(ts),d='2025-01-01' AS predicate_holds
+FROM red_index USE INDEX(idx_d)
+WHERE d='2025-01-01';
+
+id  ts                   d          DATE(ts)   predicate_holds
+1   2024-12-31 12:00:00  2024-12-31 2024-12-31 0
+
+EXPLAIN FORMAT='brief'
+SELECT id FROM red_index WHERE d='2025-01-01';
+
+IndexReader
+└─Projection
+  └─IndexRangeScan table:red_index, index:idx_d(d),
+                   range:[2025-01-01,2025-01-01]
+
+ADMIN CHECK TABLE red_index;
+
+<no error under default fast table check>
+
+RED: ORDINARY DELETE REMOVES THE PREDICATE-FALSE ROW
+====================================================
+EXPLAIN FORMAT='brief'
+DELETE FROM red_index WHERE d='2025-01-01';
+
+Delete
+└─IndexReader
+  └─IndexRangeScan table:red_index, index:idx_d(d),
+                   range:[2025-01-01,2025-01-01]
+
+DELETE FROM red_index WHERE d='2025-01-01';
+SELECT ROW_COUNT();
+
+1
+
+DELETE FROM red_root IGNORE INDEX(idx_d) WHERE d='2025-01-01';
+SELECT ROW_COUNT();
+
+0
+
+SELECT COUNT(*) FROM red_index;
+
+0
+
+SELECT id,ts,d,d='2025-01-01' AS predicate_holds
+FROM red_root IGNORE INDEX(idx_d);
+
+id  ts                   d          predicate_holds
+1   2024-12-31 12:00:00  2024-12-31 0
+
+GREEN CONTROL 1: SAME SESSION TIME ZONE
+=======================================
+CREATE TABLE green_same LIKE red_index;
+SET time_zone='+08:00';
+INSERT INTO green_same(id,ts) VALUES (1,'2025-01-01 04:00:00');
+
+Both IGNORE INDEX and USE INDEX return id 1 for d='2025-01-01'.
+ADMIN CHECK TABLE green_same passes.
+
+GREEN CONTROL 2: DATETIME DOES NOT CHANGE REPRESENTATION
+========================================================
+CREATE TABLE green_datetime(
+  id INT PRIMARY KEY,
+  dt DATETIME,
+  d DATE AS (DATE(dt)) VIRTUAL,
+  INDEX idx_d(d)
+);
+SET time_zone='+08:00';
+INSERT INTO green_datetime(id,dt) VALUES (1,'2025-01-01 04:00:00');
+SET time_zone='-08:00';
+
+Both IGNORE INDEX and USE INDEX return id 1 for d='2025-01-01'.
+ADMIN CHECK TABLE green_datetime passes.

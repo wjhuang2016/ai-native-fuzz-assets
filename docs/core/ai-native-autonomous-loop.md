@@ -2252,3 +2252,28 @@ evaluator context and the representation context of each operand. Hold the schem
 canonical value fixed, vary one representation owner, then compare source-of-truth rows with the
 derived structure and its highest DML consumer. A fixed evaluator is not closure proof when its input
 has already been shaped by mutable session state.
+
+## Composable safety-gate tick: virtual generated index data loss, EXECUTED (2026-07-25)
+
+The previous persisted-context selector was moved from partial indexes to generated values. The
+decisive source shortcut was a rejected direct expression index and an accepted equivalent
+composition.
+
+```text
+DIRECT GATE:   DATE(TIMESTAMP) expression index => ERROR 8200 unsafe function.
+COMPOSITION:   virtual DATE generated column + ordinary secondary index => accepted.
+P:             direct unsafe semantic graph is blocked under default config.
+Q:             equivalent accepted compositions preserve the same safety invariant.
+F:             non-GA check is enforced only for genType=typeIndex, not indexed typeColumn.
+RED:           root set empty; index set {1}; returned row has predicate_holds=0.
+DML LIFT:      default DELETE removes 1; root-owned twin removes 0 and preserves the row.
+CONTROLS:      same timezone GREEN; DATETIME cross-timezone GREEN; direct syntax rejected.
+INTEGRATE:     id3240003 high / critical consequence; 147 surfaces, 124 roots, 69 high,
+               131 confirmed.
+```
+
+Method improvement: add `COMPOSABLE_SAFETY_GATE_CLOSURE`. Normalize a rejected operation into its
+semantic graph, then rebuild that graph from lower-level accepted features. Revalidate the original
+admission predicate at every composition boundary. The rejection reason selects the first matrix
+dimension, while the derived structure's highest irreversible consumer selects the oracle. This
+turns product guards into candidate generators and avoids broad syntax fuzzing.
