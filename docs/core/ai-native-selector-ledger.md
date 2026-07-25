@@ -2643,3 +2643,35 @@ source `id2:g53` and covering index `id1:g0`.
 
 Status: **VALIDATED** by three deterministic official-nightly real-TiKV RED runs, an explicit-mode
 GREEN, direct ERROR 8200 admission control, and current-master focused RED/counterfactual GREEN.
+
+## S79: optional sibling early-return closure
+
+```text
+shape:      an early return is controlled by disabled optional stages
+            + later code in the same lifecycle owns another configured action
+            + that action protects publication, repair, deduplication, or cleanup
+proof gap:  "all named optional stages are off" is treated as "no required work remains"
+test:       inventory later sibling actions; classify optional versus required; cross all optional
+            stages off with one required action configured and its smallest observable witness
+consumer:   successful import/restore/DDL, durable index state, cleanup, or external publication
+exclude:    the same option explicitly disables the later action, an outer owner closes it before
+            success, or configuration is rejected before mutation
+```
+
+Born from: id3390003. Lightning's local backend returned when checksum and analyze were both off,
+before the configured `conflict.strategy=replace` duplicate collection and resolution. Two CSV rows
+sharing one unique key made Lightning exit successfully with two record rows, one unique-index row,
+and `ADMIN CHECK TABLE` error 8223. Changing only checksum to required resolved two conflicts.
+
+The current-master counterfactual kept checksum and analyze off but narrowed the early return so
+configured local conflict work still ran. It restored record/index parity and passed ADMIN CHECK.
+This separates the required safety action from the optional reporting stages without changing the
+scenario.
+
+Cross-module targets: backup/restore reconciliation, DDL publication and repair, storage ingestion,
+statistics maintenance, GC/cleanup, and any lifecycle whose `no reporters enabled` shortcut jumps
+over validation, fencing, reconciliation, or deduplication.
+
+Status: **VALIDATED** by official-nightly real-TiKV RED/GREEN reproduced 3/3 and current-master
+counterfactual GREEN. MDL was enabled and strict mode was default; no concurrency, injection, source
+patch in RED, or infrastructure fault was used.

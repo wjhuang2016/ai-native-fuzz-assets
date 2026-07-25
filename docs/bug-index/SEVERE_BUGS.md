@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=3360003`, `COUNT(*)=151`, `COUNT(DISTINCT root_cause_id)=128`
-- High-severity entries: 73 total, including 3 `known-duplicate` calibration rows
+- Remote `found_bug`: `MAX(id)=3390003`, `COUNT(*)=152`, `COUNT(DISTINCT root_cause_id)=129`
+- High-severity entries: 74 total, including 3 `known-duplicate` calibration rows
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -81,6 +81,7 @@ Last verified: 2026-07-25
 | 3240003 | confirmed | data corruption | `indexed-virtual-generated-session-context-safety-gate-bypass` | Indexed virtual values can drift across session contexts; ordinary DELETE can leave a real row without its index and a stale index entry for a deleted row. | [draft](../bug-drafts/ai-native-virtual-generated-timestamp-index-timezone-data-loss-draft.md) | [case](../method-cases/ai-native-id3240003-composable-safety-gate-closure.md) |
 | 3330003 | confirmed | data loss | `tikv-float-to-uint-half-tie-rounding-semantic-drift` | TiKV can round `CAST(DOUBLE AS UNSIGNED)` half ties differently and make ordinary DELETE silently remove a row that fails the TiDB predicate. | [draft](../bug-drafts/ai-native-tikv-float-uint-half-tie-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3330003-rounding-parity-method-case.md) |
 | 3360003 | confirmed | data integrity | `add-fk-validator-not-in-null-poisoning` | `ADD FOREIGN KEY` can publish a constraint over historical orphan rows when the referenced nullable key contains `NULL`. | [draft](../bug-drafts/ai-native-add-fk-nullable-parent-notin-draft.md) | [case](../method-cases/ai-native-id3360003-null-safe-absence-proof-method-case.md) |
+| 3390003 | confirmed | data corruption | `lightning-postprocess-off-returns-before-conflict-resolution` | Lightning can report success with two record rows but one unique-index entry when checksum and analyze are disabled. | [draft](../bug-drafts/ai-native-lightning-conflict-postprocess-skip-index-corruption-draft.md) | [case](../method-cases/ai-native-id3390003-optional-sibling-early-return-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 14:10:35 +0800
+Generated at: 2026-07-25 14:28:47 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -77,3 +77,4 @@ Generated at: 2026-07-25 14:10:35 +0800
 | 3300003 | known-duplicate | high | data-loss | DELETE | coprocessor expression pushdown | `tikv-max-allowed-packet-context-not-pushed` | TiKV MaxAllowedPacket omission can make pushed DELETE succeed where root evaluation aborts | [https://github.com/tikv/tikv/issues/3736](https://github.com/tikv/tikv/issues/3736) |
 | 3330003 | confirmed | high | data-loss | DELETE/UPDATE | coprocessor expression pushdown | `tikv-float-to-uint-half-tie-rounding-semantic-drift` | TiKV DOUBLE-to-UNSIGNED half-tie rounding drift can silently delete rows |  |
 | 3360003 | confirmed | high | data-integrity | ADD FOREIGN KEY | existing-row foreign-key validation | `add-fk-validator-not-in-null-poisoning` | ADD FOREIGN KEY can publish historical orphan rows when the referenced key contains NULL |  |
+| 3390003 | confirmed | high | data-corruption | TiDB Lightning local import | conflict strategy replace / post-restore | `lightning-postprocess-off-returns-before-conflict-resolution` | TiDB Lightning can report success with a corrupted unique index when checksum and analyze are disabled |  |

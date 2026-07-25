@@ -2372,3 +2372,32 @@ Method improvement: store hidden inputs independently and transfer them through 
 persistence, recovery, and cleanup consumers. At each owner, raise the oracle to the strongest
 irreversible operation. Deduplicate by owner-level repair closure: a stronger sibling upgrades the
 root and its assets when one fix closes both witnesses.
+
+## Optional-stage closure tick: Lightning success with corrupted unique index, EXECUTED (2026-07-25)
+
+The module scope remained open. A Lightning source pass found an early return controlled by two
+optional post-restore stages, while a separately configured safety action lived after the return.
+
+```text
+P:             checksum=off and analyze=off.
+Q:             no post-processing remains; mark AnalyzeSkipped and return success.
+F:             conflict.strategy=replace still requires duplicate collection and resolution.
+INPUT:         clustered rows (1,7) and (2,7), UNIQUE(u).
+RED:           Lightning success; records 1:7,2:7; unique index 1:7; ADMIN 8223.
+GREEN:         change only checksum to required; two conflicts resolved; parity and ADMIN pass.
+COUNTERFACTUAL:keep the RED config; narrow only the early return; conflict work runs and state passes.
+REPEAT:        self-contained official-nightly real-TiKV matrix reproduced 3/3.
+DEDUP:         no exact internal root or upstream issue/PR after RED.
+INTEGRATE:     id3390003 high / critical consequence / confirmed; 152 surfaces, 129 roots,
+               74 high, 134 confirmed.
+```
+
+Method improvement: add `OPTIONAL_SIBLING_EARLY_RETURN_CLOSURE`. For every early return controlled
+by disabled feature or stage toggles, enumerate all later actions in the same lifecycle. Classify
+them as optional reporting, required safety, or backend-specific. Execute only the cross cell where
+all optional stages are off but a required sibling is configured. The terminal oracle must combine
+public success with the highest persistent state; branch reachability alone is insufficient.
+
+This selector is independent of Lightning. The next horizontal scan should prioritize restore,
+DDL, ingestion, statistics, and cleanup paths where checksum, analyze, reporting, dry-run, or
+metrics toggles share a phase with reconciliation, repair, fencing, or deduplication.

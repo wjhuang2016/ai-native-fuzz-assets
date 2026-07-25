@@ -3215,3 +3215,41 @@ transfer：隐藏输入脱离首个 bug 单独入资产，横向迁移 cache/rem
 `scaffolds/top-level/ai_native_virtual_generated_week_format_index_corruption_repro.sh`、
 `assets/store/logs/virtual-generated-week-format-index-corruption-20260725.log`、
 `assets/store/virtual-generated-week-format-index-corruption-results-20260725.jsonl`。
+
+### 2026-07-25: 跨模块 Lightning 命中 id3390003 - 成功导入后唯一索引物理损坏
+
+范围保持开放，不限事务模块。Lightning `postProcess` 在 checksum 和 analyze 同时关闭时直接记录
+`AnalyzeSkipped` 并返回；但 local backend 的 duplicate collection 和
+`ResolveDuplicateRows` 位于这个 return 之后。这里代码检查了“两个可选阶段都关闭”，却把它当成
+“整个 postprocess 已没有必需动作”。
+
+真实 TiKV 最小 RED 只需两行 `(id,u)=(1,7),(2,7)` 和 `UNIQUE(u)`。配置使用常见的
+`backend=local`、`conflict.strategy=replace`，为缩短导入时间或另行校验而设置
+`post-restore.checksum=off`、`analyze=off`。Lightning 报告 whole procedure completed 并成功退出，
+但 `IGNORE INDEX(uu)` 返回 `1:7,2:7`，覆盖唯一索引只返回 `1:7`，`ADMIN CHECK TABLE` 对 handle 2
+报 8223。日志没有进入 duplicate detection。
+
+matched GREEN 只把 checksum 改为 required，duplicate path 捕获 2 条冲突并 resolve，行与索引都只
+保留同一个 owner，ADMIN 通过。当前 master counterfactual 保留原 RED 配置，仅把早退条件收窄为
+“还必须没有 local conflict work”，同样完成 resolve 后跳过 checksum/analyze 并恢复物理一致性。
+临时源码改动已移除，TiDB worktree 干净。自包含脚手架 3/3 复现。
+
+生产触发不需要并发、retry、failpoint、多 TiDB、MDL 关闭、特殊 SQL 变量或基础设施故障。运营者已经
+用 `replace` 表明输入可能有重复业务键；恰好再关闭两个 post-restore 阶段即可。post-RED 的 GitHub
+issue/PR 和内部 root 搜索均无 exact root。
+
+方法新增 `OPTIONAL_SIBLING_EARLY_RETURN_CLOSURE`：看到由可选开关控制的提前返回时，先枚举同一生命
+周期中所有后续 sibling action，分别标记 optional reporting、required safety 和 backend-specific；
+只执行“全部可选阶段关闭 + 独立必需动作已配置”的小矩阵，并把 oracle 放在 public success 与最高
+持久化 owner 上。这个 selector 下一轮横向扫描 restore、DDL、ingestion、statistics、GC/cleanup，
+不继续枚举 Lightning 的索引类型、重复位置和冲突值。
+
+`id3390003/high/confirmed` 已入远端库；当前为 152 surfaces、129 roots、74 high、134 confirmed。
+资产图为 609 revisions、RED 129、GREEN 130、validated targets 68。
+
+入口：
+`docs/bug-drafts/ai-native-lightning-conflict-postprocess-skip-index-corruption-draft.md`、
+`docs/method-cases/ai-native-id3390003-optional-sibling-early-return-method-case.md`、
+`assets/store/lightning-conflict-postprocess-skip-results-20260725.jsonl`、
+`assets/store/logs/lightning-conflict-postprocess-skip-red-green-20260725.log`、
+`scaffolds/top-level/ai_native_lightning_conflict_postprocess_skip_repro.sh`。

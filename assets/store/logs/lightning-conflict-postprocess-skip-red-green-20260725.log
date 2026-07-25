@@ -1,0 +1,88 @@
+TiDB Lightning conflict postprocess skip RED/GREEN evidence
+Date: 2026-07-25
+
+Environment
+-----------
+TiDB nightly: ed2376acc6e0feeff9f3e2c38db489727933aa80
+TiKV nightly: 730be34f959185c934b7d3db730ca1dbeb3949f8
+PD nightly:   f7db42521223b92fa30d68352b15e6962b699b7e
+Lightning:    a942e4684f4346e8f3b1b4985dfbba38ae6305e2
+TiDB master:  05b396fb6636f73b3bc06b09107cf43f2c725c35
+Topology:     one TiDB, one PD, one real TiKV
+MDL:          1
+sql_mode:     default strict mode
+
+Input
+-----
+CREATE TABLE t (
+  id INT PRIMARY KEY CLUSTERED,
+  u INT NOT NULL,
+  UNIQUE KEY uu(u)
+);
+
+id,u
+1,7
+2,7
+
+Common Lightning settings
+-------------------------
+backend = "local"
+add-index-by-sql = false
+conflict.strategy = "replace"
+checkpoint.enable = false
+post-restore.analyze = "off"
+
+RED: post-restore.checksum = "off"
+----------------------------------
+Lightning terminal: tidb lightning exit successfully
+Lightning stage log: skip checksum & analyze
+Duplicate-stage log: absent
+
+record scan, IGNORE INDEX(uu): 1:7,2:7
+covering index scan, FORCE INDEX(uu): 1:7
+ADMIN CHECK TABLE t:
+ERROR 8223 (HY000): data inconsistency in table: t, index: uu, handle: 2,
+index-values:"" != record-values:"handle: 2, values: [KindInt64 7]"
+
+GREEN: change only post-restore.checksum to "required"
+-------------------------------------------------------
+Lightning terminal: tidb lightning exit successfully
+Observed stages:
+  local checksum
+  collect local duplicate keys
+  collect remote duplicate keys
+  resolve duplicate rows
+Conflict records: 2
+
+record scan: one of 1:7 or 2:7
+covering index scan: same single row
+ADMIN CHECK TABLE t: pass
+
+Current-master counterfactual GREEN
+-----------------------------------
+The original RED config was rerun against a temporary current-master build after changing only the
+line-1035 early-return condition so local conflict work still runs when strategy != NoneOnDup.
+
+Observed stages:
+  local checksum
+  collect local duplicate keys
+  collect remote duplicate keys
+  resolve duplicate rows
+  skip checksum because checksum option is off
+  skip analyze
+Conflict records: 2
+record scan equals covering index scan
+ADMIN CHECK TABLE t: pass
+
+The temporary source change and focused binary were not retained in the TiDB worktree.
+
+Repeatability
+-------------
+The self-contained scaffold produced the RED and matched GREEN three consecutive times:
+  red_base=1:7,2:7
+  red_index=1:7
+  red_admin=ERROR 8223
+  green_base=1:7
+  green_index=1:7
+  green_conflicts=2
+  matrix=CRITICAL_RED_CONFIRMED

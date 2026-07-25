@@ -3916,3 +3916,46 @@ Count roots by owner and repair closure. This witness upgrades `id3240003` becau
 generated-column/index admission owner and generic fix as the earlier time-zone case. The new
 scenario and physical-parity oracle remain reusable assets even though the bug count does not
 increase.
+
+## Close early returns over required sibling actions
+
+An early return controlled by optional features creates proof debt when the same lifecycle phase
+owns other work:
+
+```text
+optional stages A and B are disabled
+  -> code concludes the phase is empty
+  -> return success
+  -> required sibling action C is skipped
+```
+
+Before testing, compile a stage-ownership table:
+
+| Field | Required question |
+| --- | --- |
+| return predicate | Which exact features or stages are summarized? |
+| later siblings | Which actions become unreachable after the return? |
+| action class | Is each sibling optional reporting, required safety, or backend-specific? |
+| independent config | Can a later action be required while the return predicate is true? |
+| publication | What terminal state is allowed after the return? |
+| strongest oracle | Which durable or external owner proves the skipped action mattered? |
+
+The minimum matrix is:
+
+```text
+GREEN: optional stages off + no required sibling
+GREEN: one optional stage on + required sibling + witness
+RED:   all optional stages off + required sibling + same witness
+```
+
+`id3390003` is the calibration. TiDB Lightning returned when checksum and analyze were both off,
+although `conflict.strategy=replace` still required duplicate detection and resolution. A two-row
+unique-key collision produced successful completion with two records, one unique-index entry, and
+`ADMIN CHECK TABLE` error 8223. Enabling only checksum made the existing conflict path run and
+restored parity. A current-master counterfactual kept both optional stages off and narrowed only the
+return predicate; it also restored parity.
+
+Store this as `OPTIONAL_SIBLING_EARLY_RETURN_CLOSURE`. Source shape alone is insufficient: retire a
+candidate when an outer owner necessarily executes the action before success, when the same option
+explicitly disables it, or when no production-reachable configuration can make the optional and
+required predicates disagree.
