@@ -2789,3 +2789,23 @@ terminal，复用原 bug 的最高 consumer，再用 one-error RED / exact no-er
 `scaffolds/tidb-tests/ai_native_pitr_autoid_rebase_failopen_test.go`。资产图已导入 7 个资产、
 8 条关系、RED/GREEN 各 1 次和 1 个 validated target；按 `br/pitr + S70` 生成的复用包
 `open_gaps=[]`。
+
+### 2026-07-25: NextGen IMPORT INTO + 普通 DML 的 RED 属于已知 root
+
+S65 从 BR 迁移到 NextGen `IMPORT INTO` 后得到两次真实 CSE/TiKV RED 和一次 matched GREEN。
+探针在 `ImportEngine` 前暂停，普通 SQL 提交 `(id=1,u=900)`，再让导入按更早 TS 写入
+`(id=1,u=100)`。导入最终因 checksum mismatch 失败，但表扫描只见导入值，`u=900` 的唯一索引仍
+存在并返回该行，`ADMIN CHECK TABLE` 报 8223；两次 MVCC 证据均证明 application commit TS 更晚。
+无并发 DML 的同路径对照 job finished，索引与记录一致。
+
+post-RED 去重命中开放的 `pingcap/tidb#69182`：它已经明确要求 NextGen 导入进入
+`TableModeImport`，目的就是阻止长导入期间的用户写入和 DDL。该问题的症状和严重性此前没有被实锤，
+但 root 与修复边界相同，因此记为 `DUPLICATE_KNOWN_ROOT / NOT_ADMITTED`，不分配新 ID、不增加
+root 计数。资产保留执行证据，用于严重性校准和后续 fix validation。
+
+方法增量：去重要比较 root/fix boundary，不只比较症状；checksum failure 只是事后探测器，必须继续
+检查失败后的持久化 owner；定时 hook 必须有“实际进入”证据，直接 `go test` 未做 failpoint rewrite
+时 marker-style hook 会静默失效。入口：
+`docs/method-cases/ai-native-nextgen-import-write-fence-known-gap.md`、
+`assets/store/nextgen-import-concurrent-dml-known-gap-results-20260725.jsonl`。资产图已导入完整的
+module/obligation/oracle/scenario/schedule/fault 复用包和 RED/RED/GREEN 三次运行，`open_gaps=[]`。
