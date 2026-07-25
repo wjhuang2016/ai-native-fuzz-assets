@@ -3069,3 +3069,10 @@ validated targets 65。
 `assets/store/logs/virtual-generated-timestamp-index-timezone-red-control-20260725.log`、
 `scaffolds/top-level/ai_native_virtual_generated_timestamp_index_timezone_repro.sh`。脚手架已从空库
 独立复跑并自动清理；本 root 暂停枚举函数、offset、storage mode 和 DML 变体。
+
+同一 selector 随后筛了 TTL/FK/clustered-PK 组合，当前全部 fail closed：直接
+TTL+clustered FLOAT/DOUBLE PK 报 8153；先建 TTL 再 ADD CLUSTERED PK 报 8200；先建 integer
+clustered PK 再改 DOUBLE 报 8200；直接 TTL+self-FK 报 8152；同一 ALTER 组合 ADD FK+TTL 因 TTL
+不支持 multi-schema change 报 8200。负资产为
+`assets/store/ddl-composable-safety-gate-negative-20260725.jsonl`。没有新的可达入口前不重复这些
+值、interval、名称变体。导入后资产图为 579 revisions、RED 121、GREEN 123、retired targets 38。
