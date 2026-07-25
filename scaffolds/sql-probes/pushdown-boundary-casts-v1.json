@@ -1,0 +1,102 @@
+[
+  {
+    "name": "string-signed-positive-overflow",
+    "predicate": "CAST(s AS SIGNED) = 9223372036854775807"
+  },
+  {
+    "name": "string-signed-negative-overflow",
+    "predicate": "CAST(s AS SIGNED) = -9223372036854775808"
+  },
+  {
+    "name": "string-unsigned-overflow",
+    "predicate": "CAST(s AS UNSIGNED) = 18446744073709551615"
+  },
+  {
+    "name": "string-scientific-to-signed",
+    "predicate": "CAST(s AS SIGNED) = 100000000000000000000"
+  },
+  {
+    "name": "binary-signed-positive-overflow",
+    "predicate": "CAST(b AS SIGNED) = 9223372036854775807"
+  },
+  {
+    "name": "binary-unsigned-overflow",
+    "predicate": "CAST(b AS UNSIGNED) = 18446744073709551615"
+  },
+  {
+    "name": "decimal-signed-positive-half",
+    "predicate": "CAST(d AS SIGNED) = 3"
+  },
+  {
+    "name": "decimal-signed-negative-half",
+    "predicate": "CAST(d AS SIGNED) = -3"
+  },
+  {
+    "name": "decimal-signed-positive-overflow",
+    "predicate": "CAST(d AS SIGNED) = 9223372036854775807"
+  },
+  {
+    "name": "decimal-unsigned-positive-overflow",
+    "predicate": "CAST(d AS UNSIGNED) = 18446744073709551615"
+  },
+  {
+    "name": "decimal-unsigned-negative-half",
+    "predicate": "CAST(d AS UNSIGNED) = 18446744073709551613"
+  },
+  {
+    "name": "real-signed-positive-half",
+    "predicate": "CAST(f AS SIGNED) = 3"
+  },
+  {
+    "name": "real-signed-negative-half",
+    "predicate": "CAST(f AS SIGNED) = -3"
+  },
+  {
+    "name": "datetime-signed-half-second",
+    "predicate": "CAST(dt AS SIGNED) = 20000101121315"
+  },
+  {
+    "name": "datetime-signed-day-carry",
+    "predicate": "CAST(dt AS SIGNED) = 20000102000000"
+  },
+  {
+    "name": "datetime-signed-year-carry",
+    "predicate": "CAST(dt AS SIGNED) = 20010101000000"
+  },
+  {
+    "name": "duration-signed-positive-half",
+    "predicate": "CAST(tm AS SIGNED) = 175105"
+  },
+  {
+    "name": "duration-signed-negative-half",
+    "predicate": "CAST(tm AS SIGNED) = -175105"
+  },
+  {
+    "name": "duration-signed-upper-carry",
+    "predicate": "CAST(tm AS SIGNED) = 8385959"
+  },
+  {
+    "name": "json-signed-positive-half",
+    "predicate": "CAST(j AS SIGNED) = 3"
+  },
+  {
+    "name": "json-signed-negative-half",
+    "predicate": "CAST(j AS SIGNED) = -3"
+  },
+  {
+    "name": "json-signed-string-positive-overflow",
+    "predicate": "CAST(j AS SIGNED) = 9223372036854775807"
+  },
+  {
+    "name": "json-unsigned-string-overflow",
+    "predicate": "CAST(j AS UNSIGNED) = 18446744073709551615"
+  },
+  {
+    "name": "signed-unsigned-max-equality",
+    "predicate": "CAST(i AS UNSIGNED) = u"
+  },
+  {
+    "name": "decimal-real-boundary-equality",
+    "predicate": "CAST(d AS DOUBLE) = f"
+  }
+]

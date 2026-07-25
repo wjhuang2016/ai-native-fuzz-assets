@@ -2438,3 +2438,30 @@ all old references and forces the future recovery consumer.
 The severity gate now records impact and reachability separately. This root has critical recovery
 impact but a short abrupt-exit window, so the next transfer should seek the same owner shape behind
 common retries, timeouts, or configuration-only paths in any non-partition module.
+
+## Exact-domain tick: JSON large IDs become wrong DELETE preimages, EXECUTED (2026-07-25)
+
+The scope remained open across modules. A TiDB/TiKV cast source diff compared branch partitions
+before generating data:
+
+```text
+TiDB:          literal | I64 | U64 | Float64 | String | non-scalar
+TiKV:          String | everything else through f64
+BOUNDARY:      2^53-1, 2^53, 2^53+1, 2^53+2, 2^53+3
+PRODUCTION:    CAST(payload->'$.entity_id' AS DECIMAL(65,0)) <> entity_id
+PUSHED RED:    ids 2,3,4 selected and deleted
+ROOT GREEN:    no ids selected; zero rows deleted
+MASTER RED:    9007199254740993 became 9007199254740992
+COUNTERFACTUAL:direct JsonType I64/U64 to Decimal conversion passed
+DEDUP:         no exact internal or upstream root
+INTEGRATE:     id3480003 high / direct data loss / confirmed
+```
+
+Method improvement: S76 now proves exact-domain closure for every intermediate representation.
+When several exact source variants collapse into one narrower type, derive the representation
+cliff from source instead of fuzzing arbitrary values. O72 joins exact values, remote/root row sets,
+and persistent preimages.
+
+This tick also exposed a workflow waste: id3120003 was rediscovered before the known-root lookup.
+Future matrix admission loads validated roots, known duplicates, and negative persistent-lift
+assets first. Known cells remain oracle calibration only.

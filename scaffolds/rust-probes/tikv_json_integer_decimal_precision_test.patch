@@ -1,0 +1,22 @@
+diff --git a/components/tidb_query_datatype/src/codec/mysql/decimal.rs b/components/tidb_query_datatype/src/codec/mysql/decimal.rs
+index 695c927bc..1bf5acaf5 100644
+--- a/components/tidb_query_datatype/src/codec/mysql/decimal.rs
++++ b/components/tidb_query_datatype/src/codec/mysql/decimal.rs
+@@ -2481,6 +2481,17 @@ mod tests {
+         }
+     }
+ 
++    #[test]
++    fn test_json_integer_to_decimal_preserves_precision() {
++        let mut ctx = EvalContext::default();
++        for value in ["9007199254740993", "9223372036854775807", "18446744073709551615"] {
++            let json: Json = value.parse().unwrap();
++            let actual: Decimal = json.convert(&mut ctx).unwrap();
++            let expected = Decimal::from_bytes(value.as_bytes()).unwrap().unwrap();
++            assert_eq!(actual, expected, "JSON integer {value}");
++        }
++    }
++
+     #[test]
+     fn test_from_f64() {
+         let cs = vec![

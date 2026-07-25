@@ -1,0 +1,32 @@
+environment:
+  tidb=ed2376acc6e0feeff9f3e2c38db489727933aa80
+  tikv=730be34f959185c934b7d3db730ca1dbeb3949f8
+  topology=one TiDB, one PD, one real TiKV
+  mdl=ON
+  sql_mode=default strict
+
+production_shape:
+  predicate=CAST(payload->'$.entity_id' AS DECIMAL(65,0)) <> entity_id
+  values=9007199254740991,9007199254740993,9223372036854775807,18446744073709551615
+
+plans:
+  pushed=Selection in cop[tikv]
+  reference=Selection in root via IF(SLEEP(0)=0,predicate,NULL)
+
+read_oracle:
+  pushed_ids=2,3,4
+  root_ids=NULL
+
+delete_oracle:
+  pushed_affected=3
+  root_affected=0
+  pushed_remaining=1
+  root_remaining=1,2,3,4
+  warnings=none
+  admin_check=green, as expected for semantically wrong but structurally valid deletion
+
+current_master:
+  tikv=91ccfb212677a43fd5255183ccf2afa4e3cec23e
+  red=9007199254740993 converted to 9007199254740992
+  green=direct JsonType::I64/U64 to Decimal conversion passes focused test
+  cleanup=temporary source changes removed; worktree clean

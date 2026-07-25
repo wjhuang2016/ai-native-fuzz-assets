@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 16:01:29 +0800
+Generated at: 2026-07-25 16:29:40 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -80,3 +80,4 @@ Generated at: 2026-07-25 16:01:29 +0800
 | 3390003 | confirmed | high | data-corruption | TiDB Lightning local import | conflict strategy replace / post-restore | `lightning-postprocess-off-returns-before-conflict-resolution` | TiDB Lightning can report success with a corrupted unique index when checksum and analyze are disabled |  |
 | 3420003 | confirmed | high | wrong-result | NULL | coprocessor-hash-aggregation | `tidb-pb-binary-cast-collation-overwrite` | TiKV HashAgg ignores BINARY cast collation and silently merges distinct groups |  |
 | 3450003 | confirmed | high | disaster_recovery | BR snapshot restore | snapshot restore while log backup is enabled | `br-pitr-migration-reference-before-extbackupmeta` | BR retry can leave a missing metadata reference that blocks later PiTR |  |
+| 3480003 | confirmed | high | data-loss | DELETE/UPDATE | JSON cast coprocessor pushdown | `tikv-json-integer-to-decimal-f64-precision-loss` | TiKV JSON-to-DECIMAL precision loss can silently delete matching large-ID rows |  |

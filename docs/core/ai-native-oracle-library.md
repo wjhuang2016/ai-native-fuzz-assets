@@ -1919,3 +1919,47 @@ INVALID:
 Sensitivity: **EXECUTION-CONFIRMED** by id3450003. Current BR publication order left a missing old
 `extbackupmeta` that blocked `LoadIngestedSSTs`; target-before-reference ordering preserved consumer
 closure under the identical storage fault.
+
+## O72 remote_exact_domain_rowset_delete_preimage
+
+```text
+Use for:
+  a local and remote evaluator that convert the same exact source value through different
+  intermediate representations
+
+Candidate:
+  prove the expression and row-admission operator execute in cop[tikv]
+
+Reference:
+  keep the same expression in TiDB root with a zero-delay volatile wrapper
+
+Boundary:
+  derive the largest consecutive exact value of the narrower intermediate domain
+  test below, at, first outside, and one parity-matched value above
+
+Observe:
+  both physical plans
+  ordered primary-key sets
+  root-projected source value, target value, cast result, and predicate
+  warnings and errors
+  affected and surviving IDs on matched persistent consumers
+
+RED:
+  exact source and target values are equal at TiDB root
+  AND the remote evaluator admits or rejects a different row
+  AND ordinary UPDATE or DELETE persists that difference
+
+GREEN:
+  all boundary cells preserve exact value and row membership
+  OR a change at the exact conversion owner removes the mismatch while execution altitude stays
+  unchanged
+
+INVALID:
+  the wrapper changes type, scale, collation, warning policy, or multiplicity
+  OR strict DML fails before mutation
+  OR the candidate operator is not remote
+```
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3480003. TiKV narrowed JSON `I64/U64` through `f64`;
+`2^53+1` changed by one, and a pushed reconciliation DELETE removed matching rows. Direct integer
+to Decimal conversion made the current-master focused test GREEN.

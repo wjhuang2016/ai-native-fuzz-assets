@@ -1,0 +1,162 @@
+[
+  {
+    "name": "decimal-add-zero",
+    "predicate": "d + 0 = d"
+  },
+  {
+    "name": "decimal-sub-zero",
+    "predicate": "d - 0 = d"
+  },
+  {
+    "name": "decimal-mul-one",
+    "predicate": "d * 1 = d"
+  },
+  {
+    "name": "decimal-div-one",
+    "predicate": "d / 1 = d"
+  },
+  {
+    "name": "decimal-div-three-roundtrip",
+    "predicate": "(d / 3) * 3 = d"
+  },
+  {
+    "name": "decimal-int-div-two",
+    "predicate": "d DIV 2 = CAST(d / 2 AS SIGNED)"
+  },
+  {
+    "name": "decimal-mod-two-negative",
+    "predicate": "MOD(d, 2) < 0"
+  },
+  {
+    "name": "decimal-round-zero",
+    "predicate": "ROUND(d, 0) = CAST(d AS SIGNED)"
+  },
+  {
+    "name": "decimal-truncate-zero",
+    "predicate": "TRUNCATE(d, 0) = CAST(d AS SIGNED)"
+  },
+  {
+    "name": "decimal-floor-negative",
+    "predicate": "FLOOR(d) < CAST(d AS SIGNED)"
+  },
+  {
+    "name": "decimal-ceil-positive",
+    "predicate": "CEIL(d) > CAST(d AS SIGNED)"
+  },
+  {
+    "name": "decimal-abs-sign",
+    "predicate": "ABS(d) < 0"
+  },
+  {
+    "name": "real-round-zero",
+    "predicate": "ROUND(f, 0) = CAST(f AS SIGNED)"
+  },
+  {
+    "name": "real-truncate-zero",
+    "predicate": "TRUNCATE(f, 0) = CAST(f AS SIGNED)"
+  },
+  {
+    "name": "real-floor-negative",
+    "predicate": "FLOOR(f) < CAST(f AS SIGNED)"
+  },
+  {
+    "name": "real-ceil-positive",
+    "predicate": "CEIL(f) > CAST(f AS SIGNED)"
+  },
+  {
+    "name": "real-div-three-roundtrip",
+    "predicate": "(f / 3) * 3 = f"
+  },
+  {
+    "name": "signed-div-minus-one",
+    "predicate": "i DIV -1 > 0"
+  },
+  {
+    "name": "unsigned-div-minus-one",
+    "predicate": "u DIV -1 > 0"
+  },
+  {
+    "name": "signed-mod-minus-three",
+    "predicate": "MOD(i, -3) < 0"
+  },
+  {
+    "name": "unsigned-mod-minus-three",
+    "predicate": "MOD(u, -3) < 0"
+  },
+  {
+    "name": "signed-left-shift",
+    "predicate": "i << 63 <> 0"
+  },
+  {
+    "name": "unsigned-right-shift",
+    "predicate": "u >> 63 <> 0"
+  },
+  {
+    "name": "time-to-sec-negative-half",
+    "predicate": "TIME_TO_SEC(tm) = -64264.500000"
+  },
+  {
+    "name": "time-to-sec-upper",
+    "predicate": "TIME_TO_SEC(tm) > 3020398"
+  },
+  {
+    "name": "time-format-negative",
+    "predicate": "TIME_FORMAT(tm, '%H:%i:%s.%f') LIKE '-%'"
+  },
+  {
+    "name": "hour-negative",
+    "predicate": "HOUR(tm) < 0"
+  },
+  {
+    "name": "minute-negative",
+    "predicate": "MINUTE(tm) < 0"
+  },
+  {
+    "name": "second-negative",
+    "predicate": "SECOND(tm) < 0"
+  },
+  {
+    "name": "microsecond-negative-half",
+    "predicate": "MICROSECOND(tm) = 500000"
+  },
+  {
+    "name": "datediff-year-carry",
+    "predicate": "DATEDIFF(dt, '2000-01-01') = 366"
+  },
+  {
+    "name": "timestampdiff-microsecond",
+    "predicate": "TIMESTAMPDIFF(MICROSECOND, dt, '2001-01-01') < 1"
+  },
+  {
+    "name": "date-add-microsecond-carry",
+    "predicate": "DATE_ADD(dt, INTERVAL 1 MICROSECOND) < dt"
+  },
+  {
+    "name": "date-sub-microsecond",
+    "predicate": "DATE_SUB(dt, INTERVAL 1 MICROSECOND) > dt"
+  },
+  {
+    "name": "last-day-leap",
+    "predicate": "LAST_DAY(dt) = DATE('2000-02-29')"
+  },
+  {
+    "name": "unix-timestamp-fraction",
+    "predicate": "UNIX_TIMESTAMP(dt) <> FLOOR(UNIX_TIMESTAMP(dt))"
+  },
+  {
+    "name": "to-seconds-fraction",
+    "predicate": "TO_SECONDS(dt) <> FLOOR(TO_SECONDS(dt))"
+  },
+  {
+    "name": "json-number-vs-decimal",
+    "predicate": "CAST(j AS DECIMAL(65,20)) = d"
+  },
+  {
+    "name": "json-number-vs-real",
+    "predicate": "CAST(j AS DOUBLE) = f"
+  },
+  {
+    "name": "json-scalar-type-number",
+    "predicate": "JSON_TYPE(j) IN ('INTEGER', 'UNSIGNED INTEGER', 'DOUBLE')"
+  }
+]

@@ -2582,6 +2582,36 @@ numeric generation. At `0.5`, TiKV selected the row for cast=1 while TiDB projec
 predicate false. Pushed DELETE removed the row; the root twin preserved it. A parity-matched
 `1.5 -> 2` cell was GREEN.
 
+### S76 refinement: intermediate representations must preserve the exact source domain
+
+id3480003 compared semantic branch partitions before generating values. TiDB kept separate JSON
+`I64`, `U64`, `Float64`, and `String` to decimal branches. TiKV kept only `String` separate and
+sent every other JSON value through `f64`. That many-to-one intermediate immediately yielded the
+`2^53` exact-integer cliff.
+
+The refined source procedure is:
+
+```text
+source type variants
+  -> implementation branch partition
+  -> intermediate representation
+  -> target type
+
+require:
+  intermediate conversion is injective over every admitted exact source variant
+  OR the implementation preserves those variants on separate exact paths
+```
+
+Test only the exactness cliff and adjacent controls. For `f64`, use `2^53-1`, `2^53`, `2^53+1`,
+`2^53+2`, and `2^53+3`; then repeat only the signed/unsigned endpoint needed to prove the branch
+scope. In id3480003, a production-shaped JSON ID reconciliation DELETE removed three matching rows
+in TiKV and zero in TiDB.
+
+Before executing the matrix, load validated root fingerprints, known-duplicate packs, and negative
+persistent-lift assets. A matching known cell calibrates the oracle but cannot enter reproduction,
+counting, or issue work. This gate prevents the id3120003 rediscovery that occurred earlier in the
+same pass.
+
 Refinement to S74: a missing remote context field remains a productive selector even when the root
 is old. `max_allowed_packet` generated a default-config wrong DELETE before post-RED dedup matched
 TiKV #3736. Store such runs as consequence amplification and method calibration, then stop all
@@ -2590,9 +2620,9 @@ same-field function variants.
 Cross-module targets: integer/decimal/real casts, time conversion, collation key production,
 JSON/vector conversion, and storage-side evaluators implemented in another language.
 
-Status: **VALIDATED** by official-nightly real-TiKV rowset/self-predicate/DELETE RED, matched parity
-GREEN, and a current TiKV master focused compatibility failure. Default strict mode and MDL were
-enabled; no injection or configuration change was used.
+Status: **VALIDATED TWICE** by id3330003 and id3480003. Both have official-nightly real-TiKV
+rowset/DELETE REDs, adjacent GREEN controls, and current TiKV master focused RED/counterfactual
+GREEN. Default strict mode and MDL were enabled; no injection or configuration change was used.
 
 ## S77: NULL-safe absence-proof closure
 

@@ -3320,3 +3320,35 @@ queue 等模块，优先找常见 retry/timeout/config 即可触发的 critical 
 `docs/method-cases/ai-native-id3450003-persisted-reference-publication-atomicity.md`、
 `assets/store/pitr-migration-reference-atomicity-results-20260725.jsonl`、
 `scaffolds/go-probes/pitr_migration_reference_atomicity_test.patch`。
+
+### 2026-07-25: S76 exact-domain closure 命中 id3480003
+
+范围不限事务。对照 TiDB/TiKV 的 JSON-to-DECIMAL 实现时，先比较 semantic branch partition：
+TiDB 对 JSON `I64/U64` 直接构造 decimal，TiKV 除 String 外全部先转 `f64`。因此无需随机 fuzz，
+直接取 `2^53` 精确整数边界。
+
+真实 TiKV、默认 strict、MDL ON、无注入下，生产形状
+`CAST(payload->'$.entity_id' AS DECIMAL(65,0)) <> entity_id` 稳定 RED。JSON 和 DECIMAL 镜像值
+完全相等，但 pushed Selection 选中 ids 2,3,4，TiDB root 选中 0 行。普通 pushed DELETE 静默删
+3 行，root DELETE 影响 0 行；无 warning/error，`ADMIN CHECK` 也无法发现语义误删。
+
+当前 TiKV master `91ccfb2126` 的 focused test 证明 `9007199254740993` 被转成
+`9007199254740992`。只让 `JsonType::I64/U64` 直接 `Decimal::from` 后测试转绿；临时改动已移除。
+post-RED 未找到 exact issue/PR/internal root。`id3480003/high/confirmed` 已入库，当前
+155 surfaces、132 roots、77 high、137 confirmed。影响是直接静默数据丢失；正式 critical 与否取决
+于显式 JSON 镜像清理谓词的使用面。
+
+方法上复用并强化 S76：任何 exact source type 经 intermediate representation 时，先证明转换在准入
+域上 injective；否则直接从 `2^24/2^53`、整数端点、decimal precision/scale、half tie 生成最小
+边界矩阵。新增 O72 exact-domain rowset + DML preimage oracle。
+
+同轮先重复命中已有 id3120003，暴露 pre-dedup 太晚。后续矩阵 admission 前必须加载 validated
+root fingerprints、known-duplicate packs、negative persistent-lift assets；已知格只校准 oracle，
+不进入复现升级和计数。
+
+入口：
+`docs/bug-drafts/ai-native-tikv-json-integer-decimal-precision-wrong-delete-draft.md`、
+`docs/method-cases/ai-native-id3480003-json-decimal-exact-domain.md`、
+`assets/store/tikv-json-integer-decimal-precision-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_tikv_json_decimal_precision_wrong_delete_repro.sh`、
+`scaffolds/rust-probes/tikv_json_integer_decimal_precision_test.patch`。
