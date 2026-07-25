@@ -2277,3 +2277,27 @@ semantic graph, then rebuild that graph from lower-level accepted features. Reva
 admission predicate at every composition boundary. The rejection reason selects the first matrix
 dimension, while the derived structure's highest irreversible consumer selects the oracle. This
 turns product guards into candidate generators and avoids broad syntax fuzzing.
+
+## Persisted-ID cleanup-owner tick: BR success then GC data loss, EXECUTED / KNOWN ROOT (2026-07-25)
+
+This tick deliberately moved beyond transaction code into BR, DDL, and TiKV GC. Target selection
+used only current source and stored selectors; issue search stayed closed until the RED was complete.
+
+```text
+PERSIST:       interrupted BR has one durable completed-range checkpoint.
+RETIRE:        DROP partial target schedules delete range for TableID 1648.
+RESUME:        checkpoint preallocation recreates the target as TableID 1648.
+PUBLICATION:   BR success; 59,788 KV skipped; 128,000 rows initially visible.
+CLEANUP:       ordinary GC sends UnsafeDestroyRange for t1648.
+RED:           fresh primary/index rowsets both become zero; ADMIN CHECK remains green.
+GREEN:         discard checkpoint; fresh restore allocates 1669; old cleanup cannot intersect.
+DEDUP:         exact root is TiDB #68709, already severity/critical.
+INTEGRATE:     id3270003 high / known-duplicate / confirmed=0; do not increment new-root count.
+```
+
+Method improvement: add `PERSISTED_ID_CLEANUP_OWNER_CLOSURE`. For each persisted identity, enumerate
+older lifecycle owners as well as future consumers. The terminal oracle belongs after the latest
+delayed cleanup horizon, not merely after public success. This blind rediscovery is useful evidence
+that the LOOP can reach known critical bugs without PR review seeds. The next round should transfer
+the selector to non-BR checkpoint, lease, tombstone, temporary-engine, and orphan-cleanup owners
+instead of enumerating more BR DROP/GC variants.

@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 12:05:38 +0800
+Generated at: 2026-07-25 12:43:29 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -73,3 +73,4 @@ Generated at: 2026-07-25 12:05:38 +0800
 | 3180003 | confirmed | high | data-loss | DELETE/UPDATE | WEEK(date) coprocessor pushdown | `tikv-week-without-mode-default-week-format-context-omission` | TiKV ignores default_week_format for pushed WEEK(date) and DELETE can remove the wrong dates |  |
 | 3210003 | confirmed | high | data-corruption | CREATE INDEX/INSERT/DELETE | partial index over TIMESTAMP | `partial-index-timestamp-membership-writer-timezone-dependent` | TIMESTAMP partial index membership depends on writer time zone and causes wrong DELETE |  |
 | 3240003 | confirmed | high | data-loss | CREATE TABLE/INSERT/DELETE | indexed virtual generated column | `virtual-generated-timestamp-index-writer-timezone-dependent` | Indexed virtual DATE(TIMESTAMP) can delete rows that fail the predicate after a time-zone change |  |
+| 3270003 | known-duplicate | high | data-loss | BR restore table | snapshot restore checkpoint resume | `br-checkpoint-reuses-table-id-with-pending-delete-range` | BR checkpoint resume can reuse a dropped TableID and let GC erase a successful restore | [https://github.com/pingcap/tidb/issues/68709](https://github.com/pingcap/tidb/issues/68709) |

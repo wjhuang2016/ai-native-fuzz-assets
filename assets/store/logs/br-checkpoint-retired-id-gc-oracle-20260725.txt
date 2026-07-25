@@ -1,0 +1,59 @@
+BR checkpoint retired-ID / GC oracle, 2026-07-25
+
+Runtime:
+  BR a942e4684f4346e8f3b1b4985dfbba38ae6305e2
+  TiDB current master source 05b396fb6636f73b3bc06b09107cf43f2c725c35
+  TiKV 730be34f959185c934b7d3db730ca1dbeb3949f8
+  one TiDB, one PD, one real TiKV, MDL ON
+
+Interrupted restore:
+  target TableID: 1648 (0x670)
+  checkpoint cpt_data rows: 1
+  partial visible record rows: 0
+
+After DROP DATABASE and checkpoint resume:
+  target TableID: 1648
+  BR terminal: Table Restore success
+  skipped by checkpoint: 59,788 KV / 32.7 MB
+  immediate primary rows: 128,000, sum(id): 8,192,064,000
+  immediate unique-index rows: 128,000, sum(id): 8,192,064,000
+  immediate ADMIN CHECK TABLE: success
+
+Retired cleanup owner:
+  mysql.gc_delete_range job: 1660
+  start_key: 748000000000000670
+  end_key:   748000000000000671
+  current target prefix: TableID 1648 / 0x670
+
+TiKV GC terminal at 12:31:13:
+  unsafe destroy range started
+  start_key=7480000000000006FF7000000000000000F8
+  end_key=7480000000000006FF7100000000000000F8
+  unsafe destroy range finished cleaning up all
+
+Post-GC cache-resistant oracle:
+  SELECT COUNT(id+0), SUM(id+0) FROM brgenbig.t WHERE id >= 0
+  => 0, NULL
+  primary fresh count/sum => 0 / 0
+  unique-index fresh count/sum => 0 / 0
+  point gets for 1, 32000, 64000, 96000, 128000 => empty
+  ADMIN CHECK TABLE => success, because both records and indexes were removed
+
+Cache note:
+  Repeating the exact pre-GC COUNT(*) shape briefly returned 128,000 after
+  UnsafeDestroyRange. A changed aggregate expression and point gets returned
+  the durable state, zero rows. Delayed physical-cleanup oracles must vary the
+  query shape or bypass result caches.
+
+Fresh-checkpoint control:
+  retired ID: 1648
+  fresh target ID: 1669
+  fresh primary rows/sum: 128,000 / 8,192,064,000
+  pending delete ranges for current ID: 0
+  old cleanup remains scoped to prefix 1648
+  ADMIN CHECK TABLE: success
+
+Post-RED dedup:
+  exact root matched https://github.com/pingcap/tidb/issues/68709
+  upstream label: severity/critical
+  result is a blind rediscovery and current-master validation, not a new root.

@@ -3076,3 +3076,38 @@ clustered PK 再改 DOUBLE 报 8200；直接 TTL+self-FK 报 8152；同一 ALTER
 不支持 multi-schema change 报 8200。负资产为
 `assets/store/ddl-composable-safety-gate-negative-20260725.jsonl`。没有新的可达入口前不重复这些
 值、interval、名称变体。导入后资产图为 579 revisions、RED 121、GREEN 123、retired targets 38。
+
+### 2026-07-25: id3270003 - 盲测命中已知 BR critical，补出 success 后延迟全表丢失
+
+跨出事务模块后，沿 `PERSISTED_STATE_MUST_BIND_LINEAGE` 检查 BR snapshot checkpoint。源码显示
+checkpoint 绑定 backup source、命令 hash 和预分配 ID 映射，却不绑定当前下游 target generation；
+resume 复用固定 TableID，建表使用 `OnExistIgnore`，完成 range 又按下游 physical ID 索引。
+
+真实 TiKV RED：把 74.62 MB 备份拆成 4 个物理组，中断到 `cpt_data` 已持久化一个 segment；保留
+checkpoint，`DROP DATABASE` partial target，再 resume 同一 BR 命令。被删表和恢复后表都拿到
+TableID 1648，BR 跳过 59,788 KV / 32.7 MB 并报告 `Table Restore success`，当时 128,000 行及
+唯一索引都完整、`ADMIN CHECK` 通过。但旧 DROP job 1660 仍持有
+`748000000000000670..671` 的 `gc_delete_range`。普通 GC 最终向 TiKV 发出同一范围的
+`UnsafeDestroyRange`；改变 aggregate 形状并做 point get 后，primary 与 unique-index rowset 都从
+128,000 变成 0，`ADMIN CHECK` 仍通过，因为两个 owner 一起消失。测试只把已证明匹配的 queue
+等待加速；生产默认 10 分钟 GC lifetime 会自然到达同一 consumer。
+
+fresh-checkpoint control 使用同一备份得到新 TableID 1669，旧 cleanup 仍只指向 1648，当前 ID 没有
+pending cleanup，128,000 行完整。由此新增
+`PERSISTED_ID_CLEANUP_OWNER_CLOSURE`：持久化 identity 的证明义务必须枚举旧 generation 仍可执行的
+异步 cleanup owner，并把 oracle 推迟到 cleanup horizon 之后；只在 public success 时检查会漏掉
+最严重终态。延迟 physical cleanup 后重复完全相同的 aggregate 可能短暂命中旧 coprocessor cache，
+oracle 要改变表达式形状或加 point get。
+
+post-RED 去重命中 TiDB
+[#68709](https://github.com/pingcap/tidb/issues/68709)，官方已标 `severity/critical`，因此
+`id3270003/high/known-duplicate/confirmed=0` 已入远端库，不增加 new-root 计数。我们的增量是 current
+master 独立盲测验证，以及把原 issue 的 checksum mismatch 提升为“BR success 后延迟全表丢失”终态。
+
+入口：
+`docs/bug-drafts/ai-native-br-checkpoint-retired-id-gc-data-loss-known.md`、
+`docs/method-cases/ai-native-id3270003-persisted-id-cleanup-owner-closure.md`、
+`assets/store/br-checkpoint-retired-id-gc-results-20260725.jsonl`、
+`assets/store/logs/br-checkpoint-retired-id-gc-oracle-20260725.txt`、
+`scaffolds/top-level/ai_native_br_checkpoint_retired_id_gc_repro.sh`。下一轮沿同一 selector 扫描非 BR
+模块的 checkpoint/lease/tombstone/orphan cleanup owner，避免继续枚举 BR DROP/GC 变体。

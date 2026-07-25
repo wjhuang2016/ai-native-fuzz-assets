@@ -1,0 +1,37 @@
+INSERT INTO found_bug (
+  id, title, severity, category, ddl_op, feature, symptom, repro,
+  expected, actual, root_cause, fix_hint, oracle, method,
+  root_cause_id, affects, confirmed, status, issue_url, notes
+) VALUES (
+  3270003,
+  'BR checkpoint resume can reuse a dropped TableID and let GC erase a successful restore',
+  'high',
+  'data-loss',
+  'BR restore table',
+  'snapshot restore checkpoint resume',
+  'BR reports success and initially exposes all rows, then the earlier DROP delete-range asynchronously removes the entire restored table.',
+  'Interrupt checkpoint restore after cpt_data is nonempty; keep the checkpoint; DROP the partial target; resume the identical BR command; verify the same TableID and skipped KV; wait until the normal GC safe point consumes the DROP range; run a fresh primary and index rowset oracle.',
+  'Resume fails closed or allocates a target ID that has no retired cleanup owner.',
+  'BR reused TableID 1648, reported success with 59,788 skipped KV, and later TiKV UnsafeDestroyRange changed fresh primary and unique-index rowsets from 128,000 to zero.',
+  'Checkpoint admission validates source and command lineage but not downstream target generation or cleanup ownership. Fixed-ID recreation reconnects the live table to the DROP generation gc_delete_range.',
+  'Bind checkpoint IDs to current target generations and reject absent, retired, or cleanup-covered IDs; invalidate completed ranges and allocate fresh IDs.',
+  'BR-success-then-fresh-rowset',
+  'persisted-lineage-plus-cleanup-owner',
+  'br-checkpoint-reuses-table-id-with-pending-delete-range',
+  'current master 05b396fb66; BR nightly a942e4684f',
+  0,
+  'known-duplicate',
+  'https://github.com/pingcap/tidb/issues/68709',
+  'Blind current-master execution proof. Post-RED dedup matched upstream severity/critical issue 68709. Do not increment the new-root count.'
+) ON DUPLICATE KEY UPDATE
+  title = VALUES(title),
+  severity = VALUES(severity),
+  symptom = VALUES(symptom),
+  actual = VALUES(actual),
+  root_cause = VALUES(root_cause),
+  fix_hint = VALUES(fix_hint),
+  affects = VALUES(affects),
+  confirmed = VALUES(confirmed),
+  status = VALUES(status),
+  issue_url = VALUES(issue_url),
+  notes = VALUES(notes);

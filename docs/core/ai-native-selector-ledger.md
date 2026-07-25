@@ -2529,3 +2529,33 @@ whose TiDB-projected predicate was false. Ordinary `DELETE WHERE WEEK(d)=52` rem
 the matched root evaluator removed only id 5. The official nightly used default strict mode and
 MDL ON, with no concurrency or injection. Current TiDB/TiKV master source retains the local getter
 versus remote literal split.
+
+## S75: persisted identity cleanup-owner closure
+
+```text
+shape:      a checkpoint, retry token, or manifest persists a reusable physical identity
+            + a supported lifecycle action retires the current target
+            + retirement creates a delayed cleanup owner for that identity
+            + resume republishes the identity before cleanup runs
+proof gap:  "checkpoint identity matches its producer" is treated as
+            "no older owner can still mutate or destroy that identity"
+test:       persist progress; retire target; resume fixed identity; prove cleanup-range/lease/token
+            intersection; move the durable oracle after cleanup consumption
+consumer:   GC delete range, tombstone compaction, orphan cleanup, temporary-engine deletion,
+            lease expiry, or background reconciliation
+exclude:    fresh identity allocation, atomic cleanup cancellation, generation-bound admission,
+            or cleanup proven unable to reach the republished object
+```
+
+Born from: id3270003, a blind rediscovery of TiDB #68709. Interrupted BR persisted one range,
+`DROP DATABASE` retired TableID 1648, and resume recreated the target with the same checkpoint ID.
+BR reported success with 59,788 skipped KV. The old `gc_delete_range` still covered `t1648`; after
+TiKV `UnsafeDestroyRange`, a cache-resistant scan changed from 128,000 rows to zero. A fresh
+checkpoint allocated 1669 and had no cleanup intersection.
+
+Cross-module targets: restore/import checkpoints, local-engine manifests, temporary physical
+objects, tombstones, leases, orphan registries, and cleanup/reconciliation queues.
+
+Status: **VALIDATED AS A SELECTOR** by current-master real-TiKV RED/GREEN. The bug root is a
+`known-duplicate` and must not be counted or filed again. Post-cleanup oracles must vary the query
+shape or use point gets when physical deletion can leave a short-lived cached aggregate.

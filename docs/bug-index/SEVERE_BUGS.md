@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=3240003`, `COUNT(*)=147`, `COUNT(DISTINCT root_cause_id)=124`
-- High-severity entries: 69 total
+- Remote `found_bug`: `MAX(id)=3270003`, `COUNT(*)=148`, `COUNT(DISTINCT root_cause_id)=125`
+- High-severity entries: 70 total, including 2 `known-duplicate` calibration rows
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -96,6 +96,7 @@ These rows are severe behaviors reproduced by the AI harness, but they match an 
 | ID | Status | Existing root | Reusable asset |
 | --- | --- | --- | --- |
 | 1530002 | known-duplicate | [TiDB #65958](https://github.com/pingcap/tidb/issues/65958) | [draft](../bug-drafts/ai-native-dist-addindex-local-engine-loss-crash-draft.md), [method case](../method-cases/ai-native-id1530002-method-case.md) |
+| 3270003 | known-duplicate | [TiDB #68709](https://github.com/pingcap/tidb/issues/68709) | [draft](../bug-drafts/ai-native-br-checkpoint-retired-id-gc-data-loss-known.md), [method case](../method-cases/ai-native-id3270003-persisted-id-cleanup-owner-closure.md) |
 
 ## Reusable Lessons
 
