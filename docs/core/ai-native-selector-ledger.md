@@ -2477,3 +2477,30 @@ expressions, index keys, constraints, and session-context-sensitive evaluators.
 Status: **VALIDATED** by official-nightly real-TiKV row-set/DML RED, adjacent boundary and
 root-evaluation GREEN controls, and a current TiKV master focused compatibility failure. Default
 strict mode and MDL were enabled; no fault injection was used.
+
+## S74: remote evaluator semantic-context closure
+
+```text
+shape:      local and remote evaluators expose the same scalar-function signature
+            + local evaluation consumes return type or session context
+            + the remote protobuf/function capture list omits one of those inputs
+            + the missing input changes value, warning/error, or row membership
+proof gap:  "same function name and input value" is treated as "same complete SQL semantics"
+test:       diff local semantic inputs against remote captures; vary one missing dimension across
+            below/equal/above boundaries; compare value, error, row set, then strict DML
+consumer:   UPDATE, DELETE, index/constraint generation, or any remote row-set owner
+exclude:    context inputs proven irrelevant, faithfully serialized context, or equal terminal
+            value/error/row behavior
+```
+
+Born from: id3150003. TiDB's JSON-to-string cast applies `ProduceStrWithSpecifiedTp` using return
+`FieldType`; TiKV `cast_json_as_bytes` captures only `ctx` and returns full JSON text. For
+`CAST(1234.5 AS CHAR(4))`, TiKV selected a row while TiDB projected `1234` and predicate false.
+Pushed DELETE removed the row; root strict DELETE returned 1406 and preserved all rows.
+
+Cross-module targets: string length and padding, decimal precision/scale, collation, timezone,
+sql_mode, statement warning policy, unsigned/UNION flags, and JSON/vector return metadata.
+
+Status: **VALIDATED** by official-nightly real-TiKV row/error/DELETE RED, under/exact-length GREEN
+controls, and a current TiKV master focused compatibility failure. Default strict mode and MDL were
+enabled; no product injection was used.

@@ -1,0 +1,36 @@
+environment:
+  TiDB nightly ed2376acc6e0feeff9f3e2c38db489727933aa80
+  TiKV nightly 730be34f959185c934b7d3db730ca1dbeb3949f8
+  one TiDB, one PD, one real TiKV
+  default strict sql_mode
+  tidb_enable_metadata_lock=1
+
+script:
+  scaffolds/top-level/ai_native_tikv_json_char_wrong_delete_repro.sh
+
+output:
+  push_ids=1,3
+  root_ids=3
+  self-contradictory pushed result:
+  1  1234.5  1234  0
+  3  12      12    1
+  DELETE plan:
+  Delete root
+  +-TableReader root data:Projection
+    +-Projection cop[tikv] id
+      +-Selection cop[tikv] ne(cast(j, var_string(4)), "1234")
+        +-TableFullScan cop[tikv]
+  pushed_delete=2:2
+  root_delete_status=1
+  root_delete_error=ERROR 1406 (22001): Data Too Long, field len 4, data len 6
+  root_after=3:1,2,3
+  matrix=RED_CONFIRMED
+
+current-master focused confirmation:
+  repo: tikv/tikv
+  commit: 91ccfb212677a43fd5255183ccf2afa4e3cec23e
+  command: cargo test -p tidb_query_expr test_json_as_string --lib
+  temporary compatibility expectation: JSON 1234.5 as bounded CHAR(4) -> 1234
+  actual bytes: 1234.5
+  expected bytes: 1234
+  cleanup: temporary assertion removed; worktree clean

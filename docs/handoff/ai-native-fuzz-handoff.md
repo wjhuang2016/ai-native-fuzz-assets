@@ -2906,3 +2906,34 @@ cast，因此记为 high，不拔高为 critical。
 远端 `found_bug id3120003/high/confirmed` 已入库，当前为 143 surfaces、120 roots、65 high、
 127 `confirmed=1`。资产图已导入 7 个资产、6 条关系、3 次运行和 1 个 validated target；
 复用包 `open_gaps=[]`。
+
+### 2026-07-25: id3150003 - TiKV JSON-to-CHAR 漏传返回长度，默认 strict DELETE 静默删错行
+
+S73 的下一轮没有继续随机扩表达式，而是比较 TiDB evaluator 使用的语义输入与 TiKV RPN capture
+列表。TiDB `builtinCastJSONAsStringSig` 会把 JSON 文本交给
+`ProduceStrWithSpecifiedTp(..., b.tp, ...)`；TiKV `cast_json_as_bytes` 只 capture `ctx`，
+`JsonRef ConvertTo<String>` 也明确留下“TiDB 还有 ProduceStrWithSpecifiedTp”这一 FIXME。
+
+小矩阵固定 JSON 值，只改变 `CHAR(n)` 边界。`12/CHAR(4)` 与 `1234/CHAR(4)` 两边一致；
+`1234.5/CHAR(4)` 命中 RED。下推查询返回 ids 1,3，root 查询只返回 id=3；id=1 在同一结果中显示
+`cast_value=1234,predicate_holds=0`。默认 strict mode 下，下推 DELETE 成功删除 ids 1,3，只留
+id=2；相同 root-owned DELETE 报 1406，三行 preimage 全部保留。
+
+环境仍是一 TiDB/PD/真实 TiKV、MDL ON，无并发、retry、failpoint、source patch 或节点故障。TiKV
+current master `91ccfb2126` 的 focused assertion 也失败，实际返回六字节 `1234.5`，不是
+`CHAR(4)` 的 `1234`；探针已撤销。post-RED TiDB、TiKV issue 与远端 bug 库没有同根问题。
+
+新增 S74 `REMOTE_EVALUATOR_CONTEXT_CLOSURE`：候选生成从“函数实现不同”提升到“语义参数集合不闭合”。
+先枚举 local 使用的 return flen/scale、charset/collation、padding、sql_mode/error policy、timezone
+等输入，再与 protobuf 字段和 remote `capture=[...]` 做集合差；每次只改变一个缺失维度，分别比较
+value、warning/error、row set，最后提升到 strict DML。该 bug 有直接静默数据删除后果，但仍要求
+显式 undersized JSON cast，因此保持 high，不标 critical。
+
+入口：
+`docs/bug-drafts/ai-native-tikv-json-char-flen-wrong-delete-draft.md`、
+`docs/method-cases/ai-native-id3150003-remote-evaluator-context-closure.md`、
+`assets/store/tikv-json-char-flen-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_tikv_json_char_wrong_delete_repro.sh`。脚手架独立复跑并自动清理；
+远端 `found_bug id3150003/high/confirmed` 已入库，当前为 144 surfaces、121 roots、66 high、
+128 `confirmed=1`。资产图已导入 7 个资产、6 条关系、3 次运行和 1 个 validated target；
+复用包 `open_gaps=[]`。
