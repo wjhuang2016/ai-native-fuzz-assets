@@ -2301,3 +2301,25 @@ delayed cleanup horizon, not merely after public success. This blind rediscovery
 that the LOOP can reach known critical bugs without PR review seeds. The next round should transfer
 the selector to non-BR checkpoint, lease, tombstone, temporary-engine, and orphan-cleanup owners
 instead of enumerating more BR DROP/GC variants.
+
+## Primitive-differential tick: DOUBLE-to-UNSIGNED wrong DELETE, EXECUTED (2026-07-25)
+
+This tick broadened target selection beyond transaction code while retaining the same consequence
+gate. Source comparison happened before value generation; issue search stayed closed until RED.
+
+```text
+LOCAL PRIMITIVE:  TiDB ConvertFloatToUint -> math.RoundToEven.
+REMOTE PRIMITIVE: TiKV f64::to_uint -> f64::round.
+BOUNDARY:         0.4 green, 0.5 red, 1.4 green, 1.5 green, 2.5 red.
+RED ROWSET:       pushed ids 1,3; root id 3; id 1 projects predicate_holds=0.
+DML LIFT:         pushed DELETE removes ids 1,3; root twin removes only id 3.
+GREEN:            1.5/1.4/1.6 with cast=2 gives identical rowsets and deletes.
+DEDUP:            no exact TiDB, TiKV, or asset-database root.
+INTEGRATE:        id3330003 high / confirmed; default config, MDL ON, real TiKV.
+```
+
+Method improvement: add primitive-level comparison to `PUSHDOWN_ROWSET_SEMANTIC_CLOSURE`. Map each
+evaluator to its final conversion primitive, classify the semantic difference, and derive the
+smallest boundary partition from that class. Only a rowset RED proceeds to self-predicate and DML
+oracles. This tick also reproduced the known MaxAllowedPacket transport gap as a default-config
+wrong DELETE; post-RED dedup mapped it to TiKV #3736 and stored it as id3300003 known-duplicate.

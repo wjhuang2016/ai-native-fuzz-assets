@@ -2559,3 +2559,37 @@ objects, tombstones, leases, orphan registries, and cleanup/reconciliation queue
 Status: **VALIDATED AS A SELECTOR** by current-master real-TiKV RED/GREEN. The bug root is a
 `known-duplicate` and must not be counted or filed again. Post-cleanup oracles must vary the query
 shape or use point gets when physical deletion can leave a short-lived cached aggregate.
+
+## S76: primitive-level evaluator differential
+
+```text
+shape:      local and remote evaluators expose the same cast/function signature
+            + each side delegates to an independent conversion primitive
+            + the primitives differ in tie rule, saturation, sign, precision, or error policy
+            + the expression is admitted into a remote row-set owner
+proof gap:  "same SQL signature" is treated as "same boundary semantics"
+test:       classify the primitive difference first; derive only the minimal distinguishing
+            boundary partition; compare exact rowsets; project the predicate on remote rows;
+            lift a proven mismatch into ordinary persistent DML
+consumer:   UPDATE, DELETE, index/constraint generation, routing, or uniqueness admission
+exclude:    expression not pushed, equal rowsets, warning-only drift, or a boundary unreachable
+            for the SQL source type
+```
+
+Born from: id3330003. TiDB `ConvertFloatToUint` uses `math.RoundToEven`; TiKV's `f64::to_uint`
+uses Rust `round()`. The source pair immediately yields `0.4/0.5/1.4/1.5/2.5`, with no random
+numeric generation. At `0.5`, TiKV selected the row for cast=1 while TiDB projected cast=0 and
+predicate false. Pushed DELETE removed the row; the root twin preserved it. A parity-matched
+`1.5 -> 2` cell was GREEN.
+
+Refinement to S74: a missing remote context field remains a productive selector even when the root
+is old. `max_allowed_packet` generated a default-config wrong DELETE before post-RED dedup matched
+TiKV #3736. Store such runs as consequence amplification and method calibration, then stop all
+same-field function variants.
+
+Cross-module targets: integer/decimal/real casts, time conversion, collation key production,
+JSON/vector conversion, and storage-side evaluators implemented in another language.
+
+Status: **VALIDATED** by official-nightly real-TiKV rowset/self-predicate/DELETE RED, matched parity
+GREEN, and a current TiKV master focused compatibility failure. Default strict mode and MDL were
+enabled; no injection or configuration change was used.

@@ -1,0 +1,15 @@
+SETTINGS max_allowed_packet=67108864
+RED_PLAN
+Delete	N/A	root		N/A
+└─TableReader	8000.00	root		data:Projection
+  └─Projection	8000.00	cop[tikv]		ai_max_packet_pushdown.push_red.id
+    └─Selection	8000.00	cop[tikv]		not(isnull(concat(space(ai_max_packet_pushdown.push_red.n), space(ai_max_packet_pushdown.push_red.n), space(ai_max_packet_pushdown.push_red.n), space(ai_max_packet_pushdown.push_red.n), "x")))
+      └─TableFullScan	10000.00	cop[tikv]	table:push_red	keep order:false, stats:pseudo
+RED_ROWSET push=1,2 root=2
+RED_SELF_ORACLE
+1:0
+2:1
+RED_DELETE push_affected=2 push_remaining=0
+ROOT_DELETE status=1 error=ERROR 1301 (HY000) at line 1: Result of concat() was larger than max_allowed_packet (67108864) - truncated root_remaining=2
+GREEN_ROWSET push=1,2 root=1,2
+matrix=KNOWN_ROOT_RED_CONFIRMED

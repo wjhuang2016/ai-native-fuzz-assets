@@ -1,0 +1,37 @@
+INSERT INTO found_bug (
+  id, title, severity, category, ddl_op, feature, symptom, repro,
+  expected, actual, root_cause, fix_hint, oracle, method,
+  root_cause_id, affects, confirmed, status, issue_url, notes
+) VALUES (
+  3300003,
+  'TiKV MaxAllowedPacket omission can make pushed DELETE succeed where root evaluation aborts',
+  'high',
+  'data-loss',
+  'DELETE',
+  'coprocessor expression pushdown',
+  'A pushed CONCAT predicate can select and delete a row even though TiDB evaluates the same predicate as false or returns error 1301.',
+  'Under the default 64 MB max_allowed_packet, store n=16777216 and filter with CONCAT(SPACE(n),SPACE(n),SPACE(n),SPACE(n),''x'') IS NOT NULL. Compare the pushed predicate and DELETE with an IF(SLEEP(0)=0,...,NULL) root barrier.',
+  'TiDB and TiKV must apply the same max_allowed_packet boundary before a pushed predicate supplies row handles to DML.',
+  'TiKV selected ids 1,2 and DELETE removed both. TiDB selected only id 2; root-controlled DELETE returned error 1301 and preserved both rows. Three SPACE terms were GREEN.',
+  'max_allowed_packet is a local TiDB evaluator input but is absent from the TiKV DAG evaluation context. TiKV issue 3736 already records this exact missing transport and consumption root.',
+  'Transport and enforce max_allowed_packet in TiKV, or do not push functions whose result semantics depend on it.',
+  'pushdown-root-rowset-self-predicate-dml',
+  'remote-evaluator-context-closure',
+  'tikv-max-allowed-packet-context-not-pushed',
+  'TiDB nightly ed2376acc6; TiKV nightly 730be34f95',
+  0,
+  'known-duplicate',
+  'https://github.com/tikv/tikv/issues/3736',
+  'Blind source-to-execution validation produced a default-config silent data-loss terminal, but post-RED dedup matched the exact root in TiKV 3736. Do not increment the new-root count.'
+) ON DUPLICATE KEY UPDATE
+  title = VALUES(title),
+  severity = VALUES(severity),
+  symptom = VALUES(symptom),
+  actual = VALUES(actual),
+  root_cause = VALUES(root_cause),
+  fix_hint = VALUES(fix_hint),
+  affects = VALUES(affects),
+  confirmed = VALUES(confirmed),
+  status = VALUES(status),
+  issue_url = VALUES(issue_url),
+  notes = VALUES(notes);

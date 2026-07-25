@@ -3823,3 +3823,41 @@ the row. Store the selector as `SAFETY_REPAIR_ERROR_DOWNGRADED_TO_BEST_EFFORT`.
 Grade consequence and trigger probability separately. This sample has a silent data-loss consumer
 but remains high/major because PiTR, `AUTO_ID_CACHE=1`, a final-repair error, and destructive upsert
 must coincide.
+
+## Compare the final conversion primitive
+
+For independently implemented local and remote evaluators, function-name parity is only the first
+gate. Trace both sides to the final primitive that decides the value:
+
+```text
+SQL signature
+  -> source and target field types
+  -> local conversion primitive
+  -> serialized context and metadata
+  -> remote conversion primitive
+  -> row-set consumer
+```
+
+Classify any primitive mismatch before generating test data:
+
+| Difference | Minimal boundary |
+| --- | --- |
+| tie rule | below half, exact half with even lower integer, exact half with odd lower integer |
+| saturation | just below, at, and just above each bound |
+| signedness | negative zero neighborhood, `-1`, signed max, unsigned max |
+| precision/scale | exact fit, first discarded digit below/at/above half |
+| error policy | valid, warning, strict error |
+
+Then run one owner-axis matrix: pushed row set, root-controlled row set, self-predicate projection,
+and only after a mismatch, persistent DML.
+
+`id3330003` is the calibration. TiDB uses `math.RoundToEven` for
+`CAST(DOUBLE AS UNSIGNED)`; TiKV uses Rust `round()`. The source difference directly selected
+`0.4,0.5,1.4,1.5,2.5`. At `0.5`, the pushed predicate selected a row that TiDB evaluated as false,
+and ordinary DELETE permanently removed it. This required five values rather than an open-ended
+numeric fuzzer.
+
+Keep post-RED dedup separate from target selection. The same field-level context workflow first
+reproduced a default-config MaxAllowedPacket wrong DELETE, then matched TiKV #3736. That run remains
+valuable as consequence amplification and selector calibration, while the new-root count stays
+unchanged.

@@ -3111,3 +3111,44 @@ master 独立盲测验证，以及把原 issue 的 checksum mismatch 提升为�
 `assets/store/logs/br-checkpoint-retired-id-gc-oracle-20260725.txt`、
 `scaffolds/top-level/ai_native_br_checkpoint_retired_id_gc_repro.sh`。下一轮沿同一 selector 扫描非 BR
 模块的 checkpoint/lease/tombstone/orphan cleanup owner，避免继续枚举 BR DROP/GC 变体。
+
+### 2026-07-25: 跨模块 evaluator 原语差分命中 id3330003，并盲测复现已知 id3300003
+
+按“后果优先”从事务模块扩到 TiDB/TiKV 表达式边界。先沿
+`REMOTE_EVALUATOR_CONTEXT_CLOSURE` 比较本地语义输入与远端请求字段，发现
+`max_allowed_packet` 不在 TiKV `EvalContext`。默认 64 MB 下，用四个合法的
+`SPACE(16777216)` 再 `CONCAT` 一个字节，TiKV 下推谓词选择 ids 1,2，TiDB root 只选择 id 2；
+返回的 id 1 自己投影 `predicate_holds=0`。pushed DELETE 成功删 2 行，root DELETE 报 1301 并保留
+2 行，三段 SPACE 控制为 GREEN。post-RED 去重命中 TiKV
+[#3736](https://github.com/tikv/tikv/issues/3736)，其正文明确写明 MaxAllowedPacket 没有下推且
+TiKV 不使用，因此 `id3300003/high/known-duplicate/confirmed=0` 入库，不增加新根计数。价值在于
+把旧 enhancement 根提升为默认配置静默删数终态。
+
+随后从 TiKV cast 源码里的独立转换原语继续筛选。TiDB `ConvertFloatToUint` 调
+`RoundFloat -> math.RoundToEven`；TiKV `f64::to_uint` 调 Rust `round()`。最小矩阵无需 fuzz：
+`0.4` 两边为 0，`0.5` 是 TiDB 0/TiKV 1，`1.4` 两边为 1，`1.5` 两边为 2，`2.5` 再次
+TiDB 2/TiKV 3。真实 TiKV RED 使用 `(0.5,0.4,1.4)` 和
+`CAST(x AS UNSIGNED)=1`：pushed rowset 为 ids 1,3，root 为 id 3；id 1 投影
+`cast_value=0,predicate_holds=0`。普通 pushed DELETE 删除 ids 1,3，root twin 只删除 id 3，
+永久保留 id 1。`(1.5,1.4,1.6)` 与 cast=2 的 parity control 两边完全一致。
+
+环境是一 TiDB/PD/真实 TiKV、默认 strict sql_mode、MDL ON，无配置改动、并发、retry、failpoint、
+source patch 或基础设施故障。当前 TiKV master `91ccfb2126` 的临时兼容断言要求 `0.5 -> 0`，
+实际返回 1；探针随后移除，worktree 恢复干净。GitHub open/closed issue/PR 与远端库都没有 exact
+DOUBLE-to-UNSIGNED half-tie root。`id3330003/high/confirmed` 已入库。远端当前为
+150 surfaces、127 roots、72 high、132 confirmed、3 known-duplicate。
+
+方法新增 primitive-level differential：先把 local/remote signature 映射到最终 rounding/cast
+primitive，再按 tie rule、saturation、sign、precision、error policy 直接生成最小边界分区；只有
+exact rowset RED 才提升到 DML。这样把数值空间压缩为 4-5 个由源码决定的格子。停止枚举同根 `.5`
+数值、比较符和 UPDATE/DELETE 变体，下一轮迁移到另一 source/target type 或不同 conversion
+primitive。
+
+入口：
+`docs/bug-drafts/ai-native-tikv-float-uint-half-tie-wrong-delete-draft.md`、
+`docs/method-cases/ai-native-id3330003-rounding-parity-method-case.md`、
+`assets/store/tikv-float-uint-half-tie-results-20260725.jsonl`、
+`assets/store/logs/tikv-float-uint-half-tie-repro-20260725.log`、
+`scaffolds/top-level/ai_native_tikv_float_uint_half_tie_wrong_delete_repro.sh`。已知根入口为
+`docs/bug-drafts/ai-native-tikv-max-packet-wrong-delete-known.md` 与
+`assets/store/tikv-max-packet-pushdown-known-results-20260725.jsonl`。
