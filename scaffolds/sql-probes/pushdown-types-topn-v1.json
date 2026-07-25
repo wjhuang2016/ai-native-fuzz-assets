@@ -1,0 +1,104 @@
+[
+  {
+    "name": "topn-text",
+    "kind": "topn",
+    "expression": "txt",
+    "limit": 7
+  },
+  {
+    "name": "topn-text-binary",
+    "kind": "topn",
+    "expression": "BINARY txt",
+    "limit": 7
+  },
+  {
+    "name": "topn-text-trim",
+    "kind": "topn",
+    "expression": "TRIM(txt)",
+    "limit": 7
+  },
+  {
+    "name": "topn-varbinary",
+    "kind": "topn",
+    "expression": "vb",
+    "limit": 7
+  },
+  {
+    "name": "topn-varchar-bin",
+    "kind": "topn",
+    "expression": "cbin",
+    "limit": 7
+  },
+  {
+    "name": "topn-varchar-ci",
+    "kind": "topn",
+    "expression": "cci",
+    "limit": 7
+  },
+  {
+    "name": "topn-char",
+    "kind": "topn",
+    "expression": "ch",
+    "limit": 7
+  },
+  {
+    "name": "topn-bit8-signed",
+    "kind": "topn",
+    "expression": "CAST(bit8 AS SIGNED)",
+    "limit": 7
+  },
+  {
+    "name": "topn-enum",
+    "kind": "topn",
+    "expression": "en",
+    "limit": 7
+  },
+  {
+    "name": "topn-enum-signed",
+    "kind": "topn",
+    "expression": "CAST(en AS SIGNED)",
+    "limit": 7
+  },
+  {
+    "name": "topn-set",
+    "kind": "topn",
+    "expression": "st",
+    "limit": 7
+  },
+  {
+    "name": "topn-set-signed",
+    "kind": "topn",
+    "expression": "CAST(st AS SIGNED)",
+    "limit": 7
+  },
+  {
+    "name": "topn-float",
+    "kind": "topn",
+    "expression": "f",
+    "limit": 7
+  },
+  {
+    "name": "topn-float-signed",
+    "kind": "topn",
+    "expression": "CAST(f AS SIGNED)",
+    "limit": 7
+  },
+  {
+    "name": "topn-double",
+    "kind": "topn",
+    "expression": "db",
+    "limit": 7
+  },
+  {
+    "name": "topn-double-signed",
+    "kind": "topn",
+    "expression": "CAST(db AS SIGNED)",
+    "limit": 7
+  },
+  {
+    "name": "topn-year",
+    "kind": "topn",
+    "expression": "yr",
+    "limit": 7
+  }
+]

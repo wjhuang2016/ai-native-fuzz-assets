@@ -1,0 +1,96 @@
+{
+  "database": "ai_binary_group_repro",
+  "oracle": "pushed operator versus type-preserving derived-table root barrier",
+  "results": [
+    {
+      "expression": "BINARY v",
+      "kind": "groupby",
+      "name": "group-by-binary-string",
+      "push_is_cop": true,
+      "push_plan": [
+        "Sort\t4.00\troot\t\tColumn#5, Column#4",
+        "\u2514\u2500Projection\t4.00\troot\t\tcast(ai_binary_group_repro.t.v, binary(1))->Column#5, Column#4",
+        "  \u2514\u2500HashAgg\t4.00\troot\t\tgroup by:Column#7, funcs:count(Column#8)->Column#4, funcs:firstrow(Column#9)->ai_binary_group_repro.t.v",
+        "    \u2514\u2500TableReader\t4.00\troot\t\tdata:HashAgg",
+        "      \u2514\u2500HashAgg\t4.00\tcop[tikv]\t\tgroup by:cast(ai_binary_group_repro.t.v, binary(1)), funcs:count(1)->Column#8, funcs:firstrow(ai_binary_group_repro.t.v)->Column#9",
+        "        \u2514\u2500TableFullScan\t5.00\tcop[tikv]\ttable:t\tkeep order:false, stats:pseudo"
+      ],
+      "push_rows": [
+        "\t1",
+        " \t1",
+        "A\t1",
+        "a\t1",
+        "a \t1"
+      ],
+      "returncode": 0,
+      "root_is_root": true,
+      "root_plan": [
+        "Sort\t4.00\troot\t\tColumn#4, Column#5",
+        "\u2514\u2500Projection\t4.00\troot\t\tColumn#4, Column#5",
+        "  \u2514\u2500HashAgg\t4.00\troot\t\tgroup by:Column#4, funcs:count(1)->Column#5, funcs:firstrow(Column#4)->Column#4",
+        "    \u2514\u2500Projection\t5.00\troot\t\tcast(ai_binary_group_repro.t.v, binary(1))->Column#4",
+        "      \u2514\u2500Limit\t5.00\troot\t\toffset:0, count:18446744073709551615",
+        "        \u2514\u2500TableReader\t5.00\troot\t\tdata:Limit",
+        "          \u2514\u2500Limit\t5.00\tcop[tikv]\t\toffset:0, count:18446744073709551615",
+        "            \u2514\u2500TableFullScan\t5.00\tcop[tikv]\ttable:t\tkeep order:false, stats:pseudo"
+      ],
+      "root_rows": [
+        "\t1",
+        " \t1",
+        "A\t1",
+        "a\t1",
+        "a \t1"
+      ],
+      "status": "MATCH",
+      "stderr": ""
+    },
+    {
+      "expression": "CAST(v AS BINARY(64))",
+      "kind": "groupby",
+      "name": "group-by-cast-binary-64",
+      "push_is_cop": true,
+      "push_plan": [
+        "Sort\t4.00\troot\t\tColumn#5, Column#4",
+        "\u2514\u2500Projection\t4.00\troot\t\tcast(ai_binary_group_repro.t.v, binary(64))->Column#5, Column#4",
+        "  \u2514\u2500HashAgg\t4.00\troot\t\tgroup by:Column#7, funcs:count(Column#8)->Column#4, funcs:firstrow(Column#9)->ai_binary_group_repro.t.v",
+        "    \u2514\u2500TableReader\t4.00\troot\t\tdata:HashAgg",
+        "      \u2514\u2500HashAgg\t4.00\tcop[tikv]\t\tgroup by:cast(ai_binary_group_repro.t.v, binary(64)), funcs:count(1)->Column#8, funcs:firstrow(ai_binary_group_repro.t.v)->Column#9",
+        "        \u2514\u2500TableFullScan\t5.00\tcop[tikv]\ttable:t\tkeep order:false, stats:pseudo"
+      ],
+      "push_rows": [
+        "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        " \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        "A\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        "a\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        "a \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1"
+      ],
+      "returncode": 0,
+      "root_is_root": true,
+      "root_plan": [
+        "Sort\t4.00\troot\t\tColumn#4, Column#5",
+        "\u2514\u2500Projection\t4.00\troot\t\tColumn#4, Column#5",
+        "  \u2514\u2500HashAgg\t4.00\troot\t\tgroup by:Column#4, funcs:count(1)->Column#5, funcs:firstrow(Column#4)->Column#4",
+        "    \u2514\u2500Projection\t5.00\troot\t\tcast(ai_binary_group_repro.t.v, binary(64))->Column#4",
+        "      \u2514\u2500Limit\t5.00\troot\t\toffset:0, count:18446744073709551615",
+        "        \u2514\u2500TableReader\t5.00\troot\t\tdata:Limit",
+        "          \u2514\u2500Limit\t5.00\tcop[tikv]\t\toffset:0, count:18446744073709551615",
+        "            \u2514\u2500TableFullScan\t5.00\tcop[tikv]\ttable:t\tkeep order:false, stats:pseudo"
+      ],
+      "root_rows": [
+        "\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        " \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        "A\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        "a\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1",
+        "a \u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\u0000\t1"
+      ],
+      "status": "MATCH",
+      "stderr": ""
+    }
+  ],
+  "summary": {
+    "INVALID": 0,
+    "MATCH": 2,
+    "MISMATCH": 0
+  },
+  "table": "t"
+}

@@ -3959,3 +3959,43 @@ Store this as `OPTIONAL_SIBLING_EARLY_RETURN_CLOSURE`. Source shape alone is ins
 candidate when an outer owner necessarily executes the action before success, when the same option
 explicitly disables it, or when no production-reachable configuration can make the optional and
 required predicates disagree.
+
+## Close pushdown semantics over operator contexts
+
+Remote expression equivalence is a family of obligations, not one predicate check:
+
+```text
+Selection(E) == root Selection(E)
+TopN(E)      == root TopN(E)
+Aggregate(E) == root Aggregate(E)
+GroupBy(E)   == root GroupBy(E)
+```
+
+Keep `E`, input rows, and return type fixed. Change only the relational consumer's execution
+altitude. Predicate controls can use a false volatile disjunct. TopN, Aggregate, and GroupBy should
+project `E` through a non-mergeable derived table before applying the operator at root.
+
+Every run must prove both plans. A result comparison is invalid when the candidate operator did not
+reach TiKV or the reference operator was still pushed.
+
+The root barrier itself is an oracle obligation. Wrappers such as `IF`, arithmetic identities, or
+casts can change FieldType, collation, precision, scale, warnings, or NULL behavior. Compare the
+inferred type and plan before accepting a red cell. The first aggregate matrix created a repeatable
+FLOAT mismatch by changing the reference type; repairing the barrier removed it.
+
+This closure produced two useful outcomes. It independently rediscovered the known critical
+invalid-date cast root from TiDB #69292, proving held-out recall. It then found id3420003: TiKV
+partial HashAgg grouped a binary cast using connection collation and persisted two summary groups
+where the type-preserving root execution persisted five.
+
+After a hit, back-solve the operator-sensitive dimension:
+
+```text
+collation/equality -> GroupBy, DISTINCT, hash join, uniqueness
+ordering/NULL order -> TopN, window, merge
+precision/error    -> Aggregate, generated values, DML
+hidden context     -> all consumers plus persisted derived state
+```
+
+Stop same-owner value expansion after an exact source counterfactual. Transfer the operator closure
+to another semantic dimension or transport boundary.

@@ -2675,3 +2675,35 @@ over validation, fencing, reconciliation, or deduplication.
 Status: **VALIDATED** by official-nightly real-TiKV RED/GREEN reproduced 3/3 and current-master
 counterfactual GREEN. MDL was enabled and strict mode was default; no concurrency, injection, source
 patch in RED, or infrastructure fault was used.
+
+## S80: pushdown operator-context closure
+
+```text
+shape:      one expression is admitted across the TiDB/TiKV boundary
+            + the expression carries type, collation, precision, error, or context semantics
+            + multiple relational operators can consume it remotely
+proof gap:  correct evaluation under one consumer is treated as proof under every consumer
+test:       hold expression and data fixed; move Selection, TopN, Aggregate, and GroupBy between
+            cop[tikv] and root; compare exact typed results
+consumer:   persistent DML, materialized summaries, uniqueness, join keys, or user-visible queries
+exclude:    reference wrapper changes FieldType/collation, target operator does not move, or both
+            arms use the same remote implementation
+```
+
+Born from: id3420003. `BINARY v` was correct enough to project at TiDB, but pushed partial HashAgg
+received the connection collation and collapsed five byte-distinct strings into two groups. The
+type-preserving root HashAgg produced five. An ordinary `INSERT ... SELECT` made the wrong group
+partition durable.
+
+The matrix also independently rediscovered the known invalid-date cast root from TiDB #69292. That
+held-out result validates recall but does not increase new-root count.
+
+Oracle discipline is part of the selector. A first `IF`-based root wrapper changed numeric type and
+created a false FLOAT mismatch. The accepted root barrier projects the exact expression through a
+non-mergeable derived table and checks both physical plans before comparing results.
+
+Cross-module targets: expression protobufs, coprocessor aggregation, distributed exchange, MPP,
+storage-side generated values, join/hash keys, statistics sketches, and import/restore transforms.
+
+Status: **VALIDATED** by current-master real-TiKV two-versus-five RED, durable summary RED, and an
+exact-owner current-master GREEN that preserved pushdown.

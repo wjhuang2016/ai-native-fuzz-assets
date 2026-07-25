@@ -1,0 +1,12 @@
+[
+  {
+    "name": "group-by-binary-string",
+    "kind": "groupby",
+    "expression": "BINARY v"
+  },
+  {
+    "name": "group-by-cast-binary-64",
+    "kind": "groupby",
+    "expression": "CAST(v AS BINARY(64))"
+  }
+]

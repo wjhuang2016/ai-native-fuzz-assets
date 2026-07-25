@@ -1,0 +1,147 @@
+[
+  {
+    "name": "agg-text",
+    "kind": "aggregate",
+    "expression": "txt"
+  },
+  {
+    "name": "agg-text-binary",
+    "kind": "aggregate",
+    "expression": "BINARY txt"
+  },
+  {
+    "name": "agg-text-trim",
+    "kind": "aggregate",
+    "expression": "TRIM(txt)"
+  },
+  {
+    "name": "agg-text-lower",
+    "kind": "aggregate",
+    "expression": "LOWER(txt)"
+  },
+  {
+    "name": "agg-text-upper",
+    "kind": "aggregate",
+    "expression": "UPPER(txt)"
+  },
+  {
+    "name": "agg-text-length",
+    "kind": "aggregate",
+    "expression": "LENGTH(txt)"
+  },
+  {
+    "name": "agg-text-bit-length",
+    "kind": "aggregate",
+    "expression": "BIT_LENGTH(txt)"
+  },
+  {
+    "name": "agg-varbinary",
+    "kind": "aggregate",
+    "expression": "vb"
+  },
+  {
+    "name": "agg-varbinary-char",
+    "kind": "aggregate",
+    "expression": "CAST(vb AS CHAR)"
+  },
+  {
+    "name": "agg-varchar-bin",
+    "kind": "aggregate",
+    "expression": "cbin"
+  },
+  {
+    "name": "agg-varchar-ci",
+    "kind": "aggregate",
+    "expression": "cci"
+  },
+  {
+    "name": "agg-char",
+    "kind": "aggregate",
+    "expression": "ch"
+  },
+  {
+    "name": "agg-bit1-signed",
+    "kind": "aggregate",
+    "expression": "CAST(bit1 AS SIGNED)"
+  },
+  {
+    "name": "agg-bit8-signed",
+    "kind": "aggregate",
+    "expression": "CAST(bit8 AS SIGNED)"
+  },
+  {
+    "name": "agg-bit8-char",
+    "kind": "aggregate",
+    "expression": "CAST(bit8 AS CHAR)"
+  },
+  {
+    "name": "agg-enum",
+    "kind": "aggregate",
+    "expression": "en"
+  },
+  {
+    "name": "agg-enum-signed",
+    "kind": "aggregate",
+    "expression": "CAST(en AS SIGNED)"
+  },
+  {
+    "name": "agg-set",
+    "kind": "aggregate",
+    "expression": "st"
+  },
+  {
+    "name": "agg-set-signed",
+    "kind": "aggregate",
+    "expression": "CAST(st AS SIGNED)"
+  },
+  {
+    "name": "agg-float",
+    "kind": "aggregate",
+    "expression": "f"
+  },
+  {
+    "name": "agg-float-signed",
+    "kind": "aggregate",
+    "expression": "CAST(f AS SIGNED)"
+  },
+  {
+    "name": "agg-float-decimal",
+    "kind": "aggregate",
+    "expression": "CAST(f AS DECIMAL(30, 10))"
+  },
+  {
+    "name": "agg-double",
+    "kind": "aggregate",
+    "expression": "db"
+  },
+  {
+    "name": "agg-double-signed",
+    "kind": "aggregate",
+    "expression": "CAST(db AS SIGNED)"
+  },
+  {
+    "name": "agg-double-decimal",
+    "kind": "aggregate",
+    "expression": "CAST(db AS DECIMAL(30, 10))"
+  },
+  {
+    "name": "agg-float-round",
+    "kind": "aggregate",
+    "expression": "ROUND(f, 3)"
+  },
+  {
+    "name": "agg-double-round",
+    "kind": "aggregate",
+    "expression": "ROUND(db, 3)"
+  },
+  {
+    "name": "agg-year",
+    "kind": "aggregate",
+    "expression": "yr"
+  },
+  {
+    "name": "agg-year-char",
+    "kind": "aggregate",
+    "expression": "CAST(yr AS CHAR)"
+  }
+]

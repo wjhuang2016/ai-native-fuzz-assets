@@ -1,0 +1,72 @@
+[
+  {
+    "name": "agg-string-signed",
+    "kind": "aggregate",
+    "expression": "CAST(s AS SIGNED)"
+  },
+  {
+    "name": "agg-string-unsigned",
+    "kind": "aggregate",
+    "expression": "CAST(s AS UNSIGNED)"
+  },
+  {
+    "name": "agg-string-double",
+    "kind": "aggregate",
+    "expression": "CAST(s AS DOUBLE)"
+  },
+  {
+    "name": "agg-string-decimal",
+    "kind": "aggregate",
+    "expression": "CAST(s AS DECIMAL(30, 10))"
+  },
+  {
+    "name": "agg-binary-signed",
+    "kind": "aggregate",
+    "expression": "CAST(b AS SIGNED)"
+  },
+  {
+    "name": "agg-binary-char",
+    "kind": "aggregate",
+    "expression": "CAST(b AS CHAR)"
+  },
+  {
+    "name": "agg-datetime-date",
+    "kind": "aggregate",
+    "expression": "CAST(dt AS DATE)"
+  },
+  {
+    "name": "agg-datetime-time",
+    "kind": "aggregate",
+    "expression": "CAST(dt AS TIME)"
+  },
+  {
+    "name": "agg-datetime-char",
+    "kind": "aggregate",
+    "expression": "CAST(dt AS CHAR)"
+  },
+  {
+    "name": "agg-datetime-format",
+    "kind": "aggregate",
+    "expression": "DATE_FORMAT(dt, '%Y-%m-%d')"
+  },
+  {
+    "name": "agg-time-signed",
+    "kind": "aggregate",
+    "expression": "CAST(tm AS SIGNED)"
+  },
+  {
+    "name": "agg-time-char",
+    "kind": "aggregate",
+    "expression": "CAST(tm AS CHAR)"
+  },
+  {
+    "name": "agg-decimal-double",
+    "kind": "aggregate",
+    "expression": "CAST(d AS DOUBLE)"
+  },
+  {
+    "name": "agg-json-unquote",
+    "kind": "aggregate",
+    "expression": "JSON_UNQUOTE(JSON_EXTRACT(j, '$.x'))"
+  }
+]

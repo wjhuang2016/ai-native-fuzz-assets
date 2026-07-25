@@ -2088,6 +2088,323 @@ def source_targets_terminal_action_error(path: Path, repo: Path, limit: int, jso
     }
 
 
+OPTIONAL_SIBLING_KNOWN_FUNCTIONS = {
+    (
+        "lightning/pkg/importer/table_import.go",
+        "postProcess",
+    ): "covered by id3390003 lightning conflict-resolution corruption",
+}
+
+
+def source_targets_optional_sibling_early_return(
+    path: Path,
+    repo: Path,
+    limit: int,
+    jsonl_output: Path | None,
+) -> dict[str, Any]:
+    init_db(path)
+    repo = repo.resolve()
+    if not repo.exists():
+        raise SystemExit(f"repo does not exist: {repo}")
+
+    with connect(path) as conn:
+        target_status = {
+            row["target_key"]: row["status"]
+            for row in conn.execute("SELECT target_key, status FROM target_queue").fetchall()
+        }
+
+    toggle_pattern = re.compile(
+        r"(?i)(?:enable|disable|skip|dry.?run|checksum|analy[sz]e|verify|validate|"
+        r"post.?process|requirement|optional|usecheckpoint|checkpoint\.enable|"
+        r"enablecheckpoint|checkpointenabled)"
+    )
+    action_pattern = re.compile(
+        r"(?P<call>(?:[A-Za-z_][A-Za-z0-9_]*\.)*"
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*))\s*\("
+    )
+    required_action_fragments = (
+        "resolve",
+        "repair",
+        "reconcile",
+        "validate",
+        "verify",
+        "check",
+        "flush",
+        "commit",
+        "publish",
+        "create",
+        "delete",
+        "cleanup",
+        "finalize",
+        "import",
+        "ingest",
+        "register",
+        "update",
+        "save",
+        "restore",
+        "rebase",
+        "dedup",
+        "collect",
+        "close",
+        "remove",
+        "swap",
+        "fence",
+        "apply",
+        "write",
+        "persist",
+        "recover",
+        "gc",
+    )
+    reporting_action_fragments = (
+        "log",
+        "metric",
+        "summary",
+        "progress",
+        "trace",
+        "debug",
+        "warn",
+        "report",
+        "observe",
+    )
+    high_signal_paths = (
+        "br/",
+        "backup",
+        "restore",
+        "ddl/",
+        "dxf/",
+        "import",
+        "ingest",
+        "lightning/",
+        "storage",
+        "gc",
+        "checkpoint",
+    )
+
+    def is_success_return(line: str) -> bool:
+        stripped = line.strip().rstrip(";")
+        if not stripped.startswith("return"):
+            return False
+        values = stripped.removeprefix("return").strip()
+        if not values:
+            return True
+        allowed = {"nil", "false", "true", "0", "-1", '""'}
+        return all(value.strip() in allowed for value in values.split(","))
+
+    candidates_scored: list[tuple[int, dict[str, Any]]] = []
+    skipped: list[dict[str, Any]] = []
+    screened: list[dict[str, Any]] = []
+
+    for fn in iter_go_functions(repo):
+        rel = fn["path"]
+        known_reason = OPTIONAL_SIBLING_KNOWN_FUNCTIONS.get((rel, fn["name"]))
+        if known_reason is not None:
+            skipped.append({"path": rel, "function": fn["name"], "reason": known_reason})
+            continue
+        if "partition" in rel.lower():
+            continue
+        if rel.startswith(TERMINAL_ACTION_SCREENED_PREFIXES) or any(
+            fragment in rel for fragment in TERMINAL_ACTION_SCREENED_FRAGMENTS
+        ):
+            continue
+
+        function_gaps: list[dict[str, Any]] = []
+        lines = fn["lines"]
+        parent_depths: list[int] = []
+        function_depth = 0
+        for line in lines:
+            parent_depths.append(function_depth)
+            function_depth += line.count("{") - line.count("}")
+        index = 0
+        while index < len(lines):
+            stripped = lines[index].strip()
+            if not stripped.startswith("if ") and stripped != "if":
+                index += 1
+                continue
+            if parent_depths[index] != 1:
+                index += 1
+                continue
+
+            header_end = index
+            while header_end < min(index + 8, len(lines)) and "{" not in lines[header_end]:
+                header_end += 1
+            if header_end >= len(lines) or "{" not in lines[header_end]:
+                index += 1
+                continue
+            condition_text = " ".join(line.strip() for line in lines[index : header_end + 1])
+            if not toggle_pattern.search(condition_text):
+                index += 1
+                continue
+
+            depth = 0
+            seen_open = False
+            block_end = header_end
+            for cursor in range(header_end, len(lines)):
+                depth += lines[cursor].count("{") - lines[cursor].count("}")
+                seen_open = seen_open or "{" in lines[cursor]
+                if seen_open and depth <= 0:
+                    block_end = cursor
+                    break
+            return_lines: list[dict[str, Any]] = []
+            local_depth = lines[header_end].count("{") - lines[header_end].count("}")
+            for offset in range(header_end + 1, block_end + 1):
+                if local_depth == 1 and is_success_return(lines[offset]):
+                    return_lines.append(
+                        {
+                            "line": fn["start_line"] + offset,
+                            "text": lines[offset].strip(),
+                        }
+                    )
+                local_depth += lines[offset].count("{") - lines[offset].count("}")
+            if not return_lines:
+                index = max(block_end + 1, index + 1)
+                continue
+
+            later_actions: list[dict[str, Any]] = []
+            for offset in range(block_end + 1, len(lines)):
+                line = lines[offset]
+                if line.strip().startswith("//"):
+                    continue
+                for match in action_pattern.finditer(line):
+                    name = match.group("name")
+                    lowered = name.lower()
+                    if lowered.startswith(("is", "has", "get", "can", "should", "need", "new")):
+                        continue
+                    if not any(fragment in lowered for fragment in required_action_fragments):
+                        continue
+                    if any(fragment in lowered for fragment in reporting_action_fragments):
+                        continue
+                    later_actions.append(
+                        {
+                            "line": fn["start_line"] + offset,
+                            "call": match.group("call"),
+                            "text": line.strip(),
+                        }
+                    )
+            if not later_actions:
+                screened.append(
+                    {
+                        "path": rel,
+                        "function": fn["name"],
+                        "condition": condition_text,
+                        "reason": "no_later_safety_or_persistence_action",
+                    }
+                )
+                index = max(block_end + 1, index + 1)
+                continue
+
+            function_gaps.append(
+                {
+                    "condition": condition_text,
+                    "condition_line": fn["start_line"] + index,
+                    "successful_returns": return_lines,
+                    "later_actions": later_actions[:12],
+                }
+            )
+            index = max(block_end + 1, index + 1)
+
+        if not function_gaps:
+            continue
+
+        path_slug = slug(rel.removesuffix(".go"), 52)
+        fn_slug = slug(fn["name"], 24)
+        target_key = f"target.source.optional-sibling-early-return.{path_slug}.{fn_slug}.v1"
+        if target_key in target_status:
+            skipped.append(
+                {
+                    "path": rel,
+                    "function": fn["name"],
+                    "reason": "target_exists",
+                    "status": target_status[target_key],
+                    "target_key": target_key,
+                }
+            )
+            continue
+
+        score = 42 + min(len(function_gaps), 4) * 12
+        if any(fragment in rel for fragment in high_signal_paths):
+            score += 24
+        action_names = {
+            action["call"].split(".")[-1].lower()
+            for gap in function_gaps
+            for action in gap["later_actions"]
+        }
+        if any(
+            any(fragment in name for fragment in ("commit", "publish", "delete", "restore", "repair", "resolve"))
+            for name in action_names
+        ):
+            score += 12
+
+        module = rel.removesuffix(".go")
+        candidate = {
+            "record_type": "target",
+            "target_key": target_key,
+            "title": (
+                f"SOURCE_TARGETS: {module}.{fn['name']} optional-stage return must preserve "
+                "required sibling actions"
+            ),
+            "module": module,
+            "selector": "OPTIONAL_SIBLING_EARLY_RETURN_CLOSURE",
+            "status": "candidate",
+            "discoverability": "SOURCE_ONLY",
+            "obligation_class": "S-SOURCE-OPTIONAL-STAGE-REQUIRED-SIBLING",
+            "priority": min(score, 96),
+            "consequence": 3 if any(fragment in rel for fragment in high_signal_paths) else 2,
+            "effort": 4,
+            "uncertainty": 6,
+            "payload": {
+                "source_rule": "optional-stage successful return before later safety action",
+                "source_paths": [rel],
+                "function": fn["name"],
+                "function_range": {
+                    "start_line": fn["start_line"],
+                    "end_line": fn["end_line"],
+                },
+                "gaps": function_gaps[:4],
+                "expected_next_step": (
+                    "classify every later action as optional, required, or outer-owned; derive a "
+                    "configuration where the return predicate is true while one required action "
+                    "remains configured"
+                ),
+                "first_oracle_to_try": (
+                    "public success plus the highest persistent or external state owned by the "
+                    "skipped sibling action"
+                ),
+                "stop_rule": (
+                    "retire before execution if the same option disables the later action, an outer "
+                    "owner necessarily performs it before success, or no product configuration can "
+                    "make the predicates disagree"
+                ),
+            },
+            "provenance": {
+                "source_kind": "source_target_candidate",
+                "source": "store.py source-targets optional-sibling-early-return",
+                "introduced_for": "id3390003-selector-transfer",
+            },
+        }
+        candidates_scored.append((score, candidate))
+
+    candidates_scored.sort(
+        key=lambda item: (
+            -item[0],
+            item[1]["module"],
+            item[1]["payload"]["function"],
+        )
+    )
+    candidates = [candidate for _, candidate in candidates_scored[:limit]]
+    if jsonl_output is not None:
+        jsonl_output.parent.mkdir(parents=True, exist_ok=True)
+        jsonl_output.write_text("".join(canonical(candidate) + "\n" for candidate in candidates))
+
+    return {
+        "rule": "optional-sibling-early-return",
+        "repo": str(repo),
+        "candidates": candidates,
+        "skipped": skipped[:80],
+        "raw_hits": {"screened_out_sample": screened[:80]},
+        "jsonl_output": str(jsonl_output) if jsonl_output else None,
+    }
+
+
 def stats(path: Path) -> dict[str, Any]:
     init_db(path)
     with connect(path) as conn:
@@ -2169,6 +2486,7 @@ def main() -> None:
             "pooled-session-state",
             "user-session-state-restore",
             "terminal-action-error",
+            "optional-sibling-early-return",
         ],
     )
     source_targets_parser.add_argument("--repo", type=Path, required=True)
@@ -2200,6 +2518,13 @@ def main() -> None:
             output = source_targets_user_session_state_restore(args.db, args.repo, args.limit, args.jsonl_output)
         elif args.rule == "terminal-action-error":
             output = source_targets_terminal_action_error(args.db, args.repo, args.limit, args.jsonl_output)
+        elif args.rule == "optional-sibling-early-return":
+            output = source_targets_optional_sibling_early_return(
+                args.db,
+                args.repo,
+                args.limit,
+                args.jsonl_output,
+            )
         else:
             raise SystemExit(f"unsupported source-targets rule: {args.rule}")
     elif args.command == "next":

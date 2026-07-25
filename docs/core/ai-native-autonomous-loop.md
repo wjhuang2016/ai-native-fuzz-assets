@@ -200,6 +200,18 @@ This gate is especially important for DDL row-rewrite bugs: a local decoder fix 
 mechanism while saying nothing about the production coprocessor, and a live error can be real while
 still belonging to an existing family rather than a new root.
 
+For expression and transform boundaries, the same gate must close over relational consumers:
+
+```text
+Selection -> TopN -> Aggregate -> GroupBy
+```
+
+A GREEN predicate differential does not retire ordering, aggregation, or group-partition risk.
+The controller should enumerate operator contexts before adding more values of the same expression.
+Each reference arm must preserve the original type and prove the consuming operator moved to root.
+If a wrapper changes type, collation, precision, warnings, or multiplicity, classify the result as
+`REFUTED(oracle)` and repair the oracle before continuing P4.
+
 ## Health / drift metrics (machine-computable each tick)
 
 ```text

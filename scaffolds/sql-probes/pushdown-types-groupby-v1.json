@@ -1,0 +1,107 @@
+[
+  {
+    "name": "group-text",
+    "kind": "groupby",
+    "expression": "txt"
+  },
+  {
+    "name": "group-text-binary",
+    "kind": "groupby",
+    "expression": "BINARY txt"
+  },
+  {
+    "name": "group-text-trim",
+    "kind": "groupby",
+    "expression": "TRIM(txt)"
+  },
+  {
+    "name": "group-text-lower",
+    "kind": "groupby",
+    "expression": "LOWER(txt)"
+  },
+  {
+    "name": "group-varbinary",
+    "kind": "groupby",
+    "expression": "vb"
+  },
+  {
+    "name": "group-varbinary-char",
+    "kind": "groupby",
+    "expression": "CAST(vb AS CHAR)"
+  },
+  {
+    "name": "group-varchar-bin",
+    "kind": "groupby",
+    "expression": "cbin"
+  },
+  {
+    "name": "group-varchar-ci",
+    "kind": "groupby",
+    "expression": "cci"
+  },
+  {
+    "name": "group-char",
+    "kind": "groupby",
+    "expression": "ch"
+  },
+  {
+    "name": "group-bit1-signed",
+    "kind": "groupby",
+    "expression": "CAST(bit1 AS SIGNED)"
+  },
+  {
+    "name": "group-bit8-signed",
+    "kind": "groupby",
+    "expression": "CAST(bit8 AS SIGNED)"
+  },
+  {
+    "name": "group-bit8-char",
+    "kind": "groupby",
+    "expression": "CAST(bit8 AS CHAR)"
+  },
+  {
+    "name": "group-enum",
+    "kind": "groupby",
+    "expression": "en"
+  },
+  {
+    "name": "group-enum-signed",
+    "kind": "groupby",
+    "expression": "CAST(en AS SIGNED)"
+  },
+  {
+    "name": "group-set",
+    "kind": "groupby",
+    "expression": "st"
+  },
+  {
+    "name": "group-set-signed",
+    "kind": "groupby",
+    "expression": "CAST(st AS SIGNED)"
+  },
+  {
+    "name": "group-float",
+    "kind": "groupby",
+    "expression": "f"
+  },
+  {
+    "name": "group-float-signed",
+    "kind": "groupby",
+    "expression": "CAST(f AS SIGNED)"
+  },
+  {
+    "name": "group-double",
+    "kind": "groupby",
+    "expression": "db"
+  },
+  {
+    "name": "group-double-signed",
+    "kind": "groupby",
+    "expression": "CAST(db AS SIGNED)"
+  },
+  {
+    "name": "group-year",
+    "kind": "groupby",
+    "expression": "yr"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "name": "string-to-signed",
+    "predicate": "CAST(s AS SIGNED) <> 0"
+  },
+  {
+    "name": "string-to-unsigned",
+    "predicate": "CAST(s AS UNSIGNED) > 1"
+  },
+  {
+    "name": "string-to-decimal",
+    "predicate": "CAST(s AS DECIMAL(30, 10)) <> d"
+  },
+  {
+    "name": "binary-to-signed",
+    "predicate": "CAST(b AS SIGNED) <> i"
+  },
+  {
+    "name": "datetime-to-date",
+    "predicate": "CAST(dt AS DATE) <> DATE('2000-02-29')"
+  },
+  {
+    "name": "datetime-to-time",
+    "predicate": "CAST(dt AS TIME) > TIME('12:00:00')"
+  },
+  {
+    "name": "time-to-signed",
+    "predicate": "CAST(tm AS SIGNED) < 0"
+  },
+  {
+    "name": "date-format",
+    "predicate": "DATE_FORMAT(dt, '%Y-%m-%d %H:%i:%s.%f') LIKE '2000%'"
+  },
+  {
+    "name": "decimal-to-double",
+    "predicate": "CAST(d AS DOUBLE) = CAST(i AS DOUBLE)"
+  },
+  {
+    "name": "signed-unsigned-compare",
+    "predicate": "i < u"
+  },
+  {
+    "name": "json-type",
+    "predicate": "JSON_TYPE(j) IN ('OBJECT', 'ARRAY')"
+  },
+  {
+    "name": "json-extract-string",
+    "predicate": "JSON_UNQUOTE(JSON_EXTRACT(j, '$.x')) = s"
+  }
+]

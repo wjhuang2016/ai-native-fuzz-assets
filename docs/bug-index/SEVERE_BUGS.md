@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=3390003`, `COUNT(*)=152`, `COUNT(DISTINCT root_cause_id)=129`
-- High-severity entries: 74 total, including 3 `known-duplicate` calibration rows
+- Remote `found_bug`: `MAX(id)=3420003`, `COUNT(*)=153`, `COUNT(DISTINCT root_cause_id)=130`
+- High-severity entries: 75 total, including 3 `known-duplicate` calibration rows
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -82,6 +82,7 @@ Last verified: 2026-07-25
 | 3330003 | confirmed | data loss | `tikv-float-to-uint-half-tie-rounding-semantic-drift` | TiKV can round `CAST(DOUBLE AS UNSIGNED)` half ties differently and make ordinary DELETE silently remove a row that fails the TiDB predicate. | [draft](../bug-drafts/ai-native-tikv-float-uint-half-tie-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3330003-rounding-parity-method-case.md) |
 | 3360003 | confirmed | data integrity | `add-fk-validator-not-in-null-poisoning` | `ADD FOREIGN KEY` can publish a constraint over historical orphan rows when the referenced nullable key contains `NULL`. | [draft](../bug-drafts/ai-native-add-fk-nullable-parent-notin-draft.md) | [case](../method-cases/ai-native-id3360003-null-safe-absence-proof-method-case.md) |
 | 3390003 | confirmed | data corruption | `lightning-postprocess-off-returns-before-conflict-resolution` | Lightning can report success with two record rows but one unique-index entry when checksum and analyze are disabled. | [draft](../bug-drafts/ai-native-lightning-conflict-postprocess-skip-index-corruption-draft.md) | [case](../method-cases/ai-native-id3390003-optional-sibling-early-return-method-case.md) |
+| 3420003 | confirmed | wrong result | `tidb-pb-binary-cast-collation-overwrite` | TiKV partial HashAgg can merge byte-distinct `BINARY` keys and persist wrong summaries through `INSERT ... SELECT`. | [draft](../bug-drafts/ai-native-tikv-hashagg-binary-cast-collation-wrong-group-draft.md) | [case](../method-cases/ai-native-id3420003-pushdown-root-closure-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 
@@ -105,6 +106,7 @@ These rows are severe behaviors reproduced by the AI harness, but they match an 
 ## Reusable Lessons
 
 - Wrong-result and published-inconsistent-index bugs are the highest-value validation targets because the oracle can be hard: `ADMIN CHECK TABLE`, table/index differential, exact witness row.
+- Pushdown semantic probes must close over operator contexts. Selection equivalence does not prove TopN, Aggregate, or GroupBy equivalence; root controls must preserve the expression's exact type and collation.
 - DDL liveness bugs need a terminal oracle, not just a red error: distinguish `finite rollback`, `self-heal`, `unbounded running`, and `publish bad state`.
 - Runtime-control actions such as `THREAD` downscale, owner handoff, pause/resume, and persistent retryable faults are first-class matrix dimensions.
 - After a hit, immediately back-solve the selector and add a sibling/negative-boundary row so the next round does not overgeneralize.

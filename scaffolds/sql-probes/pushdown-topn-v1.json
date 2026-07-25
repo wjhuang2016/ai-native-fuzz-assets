@@ -1,0 +1,80 @@
+[
+  {
+    "name": "topn-string-signed",
+    "kind": "topn",
+    "expression": "CAST(s AS SIGNED)",
+    "limit": 8
+  },
+  {
+    "name": "topn-string-unsigned",
+    "kind": "topn",
+    "expression": "CAST(s AS UNSIGNED)",
+    "limit": 8
+  },
+  {
+    "name": "topn-string-double",
+    "kind": "topn",
+    "expression": "CAST(s AS DOUBLE)",
+    "limit": 8
+  },
+  {
+    "name": "topn-string-decimal",
+    "kind": "topn",
+    "expression": "CAST(s AS DECIMAL(30, 10))",
+    "limit": 8
+  },
+  {
+    "name": "topn-binary-signed",
+    "kind": "topn",
+    "expression": "CAST(b AS SIGNED)",
+    "limit": 8
+  },
+  {
+    "name": "topn-binary-char",
+    "kind": "topn",
+    "expression": "CAST(b AS CHAR)",
+    "limit": 8
+  },
+  {
+    "name": "topn-datetime-date",
+    "kind": "topn",
+    "expression": "CAST(dt AS DATE)",
+    "limit": 8
+  },
+  {
+    "name": "topn-datetime-time",
+    "kind": "topn",
+    "expression": "CAST(dt AS TIME)",
+    "limit": 8
+  },
+  {
+    "name": "topn-datetime-char",
+    "kind": "topn",
+    "expression": "CAST(dt AS CHAR)",
+    "limit": 8
+  },
+  {
+    "name": "topn-time-signed",
+    "kind": "topn",
+    "expression": "CAST(tm AS SIGNED)",
+    "limit": 8
+  },
+  {
+    "name": "topn-time-char",
+    "kind": "topn",
+    "expression": "CAST(tm AS CHAR)",
+    "limit": 8
+  },
+  {
+    "name": "topn-decimal-double",
+    "kind": "topn",
+    "expression": "CAST(d AS DOUBLE)",
+    "limit": 8
+  },
+  {
+    "name": "topn-json-unquote",
+    "kind": "topn",
+    "expression": "JSON_UNQUOTE(JSON_EXTRACT(j, '$.x'))",
+    "limit": 8
+  }
+]

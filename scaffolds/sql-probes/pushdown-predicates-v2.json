@@ -1,0 +1,182 @@
+[
+  {
+    "name": "implicit-string-datetime-ne",
+    "predicate": "s <> dt"
+  },
+  {
+    "name": "implicit-datetime-string-ne",
+    "predicate": "dt <> s"
+  },
+  {
+    "name": "explicit-string-datetime-ne",
+    "predicate": "CAST(s AS DATETIME(6)) <> dt"
+  },
+  {
+    "name": "datetime-char-eq",
+    "predicate": "CAST(dt AS CHAR) = s"
+  },
+  {
+    "name": "datetime-date-null",
+    "predicate": "DATE(dt) IS NULL"
+  },
+  {
+    "name": "datetime-year-zero",
+    "predicate": "YEAR(dt) = 0"
+  },
+  {
+    "name": "datetime-month-zero",
+    "predicate": "MONTH(dt) = 0"
+  },
+  {
+    "name": "datetime-day-zero",
+    "predicate": "DAYOFMONTH(dt) = 0"
+  },
+  {
+    "name": "datetime-to-days",
+    "predicate": "TO_DAYS(dt) < 1"
+  },
+  {
+    "name": "datetime-to-seconds",
+    "predicate": "TO_SECONDS(dt) < 1"
+  },
+  {
+    "name": "datetime-unix-timestamp",
+    "predicate": "UNIX_TIMESTAMP(dt) < 0"
+  },
+  {
+    "name": "datetime-last-day-null",
+    "predicate": "LAST_DAY(dt) IS NULL"
+  },
+  {
+    "name": "datetime-date-add-null",
+    "predicate": "DATE_ADD(dt, INTERVAL 1 DAY) IS NULL"
+  },
+  {
+    "name": "datetime-date-sub-null",
+    "predicate": "DATE_SUB(dt, INTERVAL 1 MONTH) IS NULL"
+  },
+  {
+    "name": "datetime-diff-day",
+    "predicate": "TIMESTAMPDIFF(DAY, dt, '2025-01-01') > 10000"
+  },
+  {
+    "name": "datetime-extract-day",
+    "predicate": "EXTRACT(DAY FROM dt) = 0"
+  },
+  {
+    "name": "datetime-format-zero",
+    "predicate": "DATE_FORMAT(dt, '%Y-%m-%d') = '0000-00-00'"
+  },
+  {
+    "name": "datetime-format-week",
+    "predicate": "DATE_FORMAT(dt, '%x-%v') IS NULL"
+  },
+  {
+    "name": "string-str-to-date-null",
+    "predicate": "STR_TO_DATE(s, '%Y-%m-%d') IS NULL"
+  },
+  {
+    "name": "string-str-to-date-year",
+    "predicate": "YEAR(STR_TO_DATE(s, '%Y-%m-%d')) = 0"
+  },
+  {
+    "name": "time-signed-negative",
+    "predicate": "CAST(tm AS SIGNED) < 0"
+  },
+  {
+    "name": "time-decimal-negative",
+    "predicate": "CAST(tm AS DECIMAL(20, 6)) < 0"
+  },
+  {
+    "name": "time-char-prefix",
+    "predicate": "CAST(tm AS CHAR) LIKE '-%'"
+  },
+  {
+    "name": "time-hour-large",
+    "predicate": "HOUR(tm) > 100"
+  },
+  {
+    "name": "time-to-seconds-negative",
+    "predicate": "TIME_TO_SEC(tm) < 0"
+  },
+  {
+    "name": "time-format-microseconds",
+    "predicate": "TIME_FORMAT(tm, '%H:%i:%s.%f') LIKE '-%'"
+  },
+  {
+    "name": "bool-time-datetime-null",
+    "predicate": "CAST(CAST(i <> 0 AS TIME) AS DATETIME) IS NULL"
+  },
+  {
+    "name": "bool-time-signed",
+    "predicate": "CAST(CAST(i <> 0 AS TIME) AS SIGNED) <> i"
+  },
+  {
+    "name": "string-signed-eq",
+    "predicate": "CAST(s AS SIGNED) = i"
+  },
+  {
+    "name": "string-unsigned-eq",
+    "predicate": "CAST(s AS UNSIGNED) = u"
+  },
+  {
+    "name": "string-double-eq",
+    "predicate": "CAST(s AS DOUBLE) = CAST(d AS DOUBLE)"
+  },
+  {
+    "name": "string-decimal-eq",
+    "predicate": "CAST(s AS DECIMAL(30, 10)) = d"
+  },
+  {
+    "name": "binary-signed-eq",
+    "predicate": "CAST(b AS SIGNED) = i"
+  },
+  {
+    "name": "binary-double-eq",
+    "predicate": "CAST(b AS DOUBLE) = CAST(d AS DOUBLE)"
+  },
+  {
+    "name": "signed-unsigned-lt",
+    "predicate": "i < u"
+  },
+  {
+    "name": "signed-plus-unsigned-overflow",
+    "predicate": "i + u < u"
+  },
+  {
+    "name": "decimal-double-roundtrip",
+    "predicate": "CAST(CAST(d AS DOUBLE) AS DECIMAL(30, 10)) <> d"
+  },
+  {
+    "name": "decimal-string-roundtrip",
+    "predicate": "CAST(CAST(d AS CHAR) AS DECIMAL(30, 10)) <> d"
+  },
+  {
+    "name": "json-number-double",
+    "predicate": "CAST(JSON_EXTRACT(j, '$.x') AS DOUBLE) = CAST(d AS DOUBLE)"
+  },
+  {
+    "name": "json-number-decimal",
+    "predicate": "CAST(JSON_EXTRACT(j, '$.x') AS DECIMAL(30, 10)) = d"
+  },
+  {
+    "name": "json-unquote-binary",
+    "predicate": "BINARY JSON_UNQUOTE(JSON_EXTRACT(j, '$.x')) = b"
+  },
+  {
+    "name": "json-length-zero",
+    "predicate": "JSON_LENGTH(j) = 0"
+  },
+  {
+    "name": "json-type-null",
+    "predicate": "JSON_TYPE(j) = 'NULL'"
+  },
+  {
+    "name": "binary-char-roundtrip",
+    "predicate": "CAST(CAST(b AS CHAR) AS BINARY) <> b"
+  },
+  {
+    "name": "binary-length-char-length",
+    "predicate": "LENGTH(b) <> CHAR_LENGTH(CAST(b AS CHAR))"
+  }
+]

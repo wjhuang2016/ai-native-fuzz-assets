@@ -1840,3 +1840,45 @@ another legitimate destructive consumer only after the stale-ID witness is estab
 
 Sensitivity: **EXECUTION-CONFIRMED** by id3030003 on current master with the existing internal
 transaction failpoint and real SQL DML.
+
+## O70 pushed_operator_vs_type_preserving_root
+
+```text
+Use for:
+  an expression or transform that can feed Selection, TopN, Aggregate, or GroupBy in TiKV
+
+Candidate:
+  prove the target relational operator executes in cop[tikv]
+
+Reference:
+  project the same expression through a non-mergeable derived table
+  using LIMIT 18446744073709551615
+  then execute the target relational operator at TiDB root
+
+Observe:
+  both physical plans
+  exact output values and key bytes
+  warnings/errors when relevant
+  a persistent consumer such as INSERT SELECT when available
+
+RED:
+  candidate and reference preserve input rows and expression type
+  AND exact typed results differ
+
+INVALID:
+  the wrapper changes FieldType, collation, precision, scale, warning policy, or multiplicity
+  OR the candidate operator is not remote
+  OR the reference operator remains remote
+
+GREEN:
+  exact results match with the intended execution-altitude split
+  OR an exact-owner source counterfactual preserves the split and removes the mismatch
+```
+
+Do not compare only total counts for grouping. Compare the exact group partition. In id3420003,
+both paths consumed five rows and returned a total count of five, while TiKV produced two durable
+groups and TiDB root produced five.
+
+Sensitivity: **ADVERSARIALLY REPAIRED AND EXECUTION-CONFIRMED** by id3420003. An `IF` wrapper was
+rejected after it changed numeric type and generated a false precision mismatch; the derived-table
+barrier then found the real binary-collation HashAgg bug and passed an exact-owner GREEN.

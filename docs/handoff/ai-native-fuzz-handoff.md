@@ -3253,3 +3253,38 @@ issue/PR 和内部 root 搜索均无 exact root。
 `assets/store/lightning-conflict-postprocess-skip-results-20260725.jsonl`、
 `assets/store/logs/lightning-conflict-postprocess-skip-red-green-20260725.log`、
 `scaffolds/top-level/ai_native_lightning_conflict_postprocess_skip_repro.sh`。
+
+### 2026-07-25: 跨模块 operator closure 命中 id3420003
+
+范围保持开放，不限事务。把已有 TiDB/TiKV predicate 差分扩成
+`Selection / TopN / Aggregate / GroupBy` 算子闭包：同一表达式与数据固定，只改变消费算子的执行层。
+TopN/Agg/GroupBy 使用 `LIMIT max` derived table 作为保类型 root barrier，并同时检查两边 plan。
+
+这轮先独立复现 TiDB #69292 的 invalid-date cast 已知 critical root，证明 held-out recall；不计新 bug。
+随后 GroupBy 命中新根：`GROUP BY BINARY v` 的 partial HashAgg 在 TiKV 把
+`'', ' ', 'a', 'A', 'a '` 五个 byte-distinct key 合成两组，root HashAgg 是五组。
+`CAST(v AS BINARY(64))` 同样 RED。
+
+普通 `INSERT ... SELECT` 会把两组错误汇总持久化；两边 `SUM(count)=5`，因此总数 oracle 看不见，
+必须比较完整 group partition。当前 master `05b396fb66` + 真实 TiKV 上稳定 RED。临时修改 string
+cast constructor，让 binary target 保留自身 charset/collation 后，计划仍下推且两格都恢复五组；
+改动已移除，worktree 干净。
+
+根因链：BINARY target FieldType 是 binary，但 cast builtin 走 non-explicit path，
+`deriveCollation(ast.Cast)` 赋 connection collation，`ExprToPB` 又用 expression collation 覆盖
+protobuf RetType，TiKV HashAgg 因而按错误等价关系分组。
+
+第一版 Agg root oracle 用 `IF` 阻止下推，改变了数值类型并制造 FLOAT precision 假阳性。
+这轮新增的关键方法约束是：reference wrapper 的 FieldType/collation/precision/warnings/multiplicity
+任一改变，立即记为 `REFUTED(oracle)`，修好后才能继续判产品。
+
+`id3420003/high/confirmed` 已入远端库；当前为 153 surfaces、130 roots、75 high、135 confirmed。
+下一轮不继续枚举 binary 的字符串类型和大小写变体，迁移 operator closure 到另一 semantic
+dimension 或 transport boundary。
+
+入口：
+`docs/bug-drafts/ai-native-tikv-hashagg-binary-cast-collation-wrong-group-draft.md`、
+`docs/method-cases/ai-native-id3420003-pushdown-root-closure-method-case.md`、
+`assets/store/pushdown-binary-groupby-results-20260725.jsonl`、
+`tools/pushdown_diff.py`、
+`scaffolds/sql-probes/binary-groupby-repro.json`。
