@@ -1,0 +1,44 @@
+== versions and defaults ==
+Release Version: v9.0.0-beta.2.pre-2019-ga942e4684f
+Git Commit Hash: a942e4684f4346e8f3b1b4985dfbba38ae6305e2
+Git Branch: HEAD
+Go Version: go1.25.10
+UTC Build Time: 2026-07-24 03:50:15
+Race Enabled: false
+Kernel Type: Classic
+TIDB_VERSION()
+Release Version: v9.0.0-beta.2.pre-2017-ged2376acc6\nEdition: Community\nGit Commit Hash: ed2376acc6e0feeff9f3e2c38db489727933aa80\nGit Branch: HEAD\nUTC Build Time: 2026-07-23 03:36:19\nGoVersion: go1.25.10\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\nKernel Type: Classic
+@@tidb_enable_metadata_lock
+1
+== prepare backup schema uk(a) ==
+Detail BR log in /tmp/ai-br-schema-race-backup.log
+[2026/07/25 10:20:16.967 +08:00] [INFO] [collector.go:77] ["Database Backup success summary"] [total-ranges=2] [ranges-succeed=2] [ranges-failed=0] [backup-checksum=3.260833ms] [write-CF-files=2] [backup-total-ranges=2] [backup-total-regions=2] [total-take=3.677032708s] [BackupTS=467912887754293249] [total-kv=4] [total-kv-size=139B] [average-speed=37.8B/s] [backup-data-size(after-compressed)=3.929kB] [Size=3929]
+== RED: create incompatible uk(b) after precheck ==
+Detail BR log in /tmp/ai-br-schema-race-restore-red.log
+[2026/07/25 10:20:19.737 +08:00] [INFO] [collector.go:77] ["Table Restore success summary"] [total-ranges=2] [ranges-succeed=2] [ranges-failed=0] [restore-files=76.014625ms] [restore-pipeline=11.299708ms] [merge-ranges=338.625µs] [split-regions=9.097417ms] [default-CF-files=0] [write-CF-files=2] [split-keys=1] [total-take=2.610392666s] [restore-data-size(after-compressed)=3.929kB] [Size=3929] [BackupTS=467912887754293249] [RestoreTS=467912888750178306] [total-kv=4] [total-kv-size=139B] [average-speed=53.25B/s]
+Table	Create Table
+t	CREATE TABLE `t` (\n  `id` int NOT NULL,\n  `a` int NOT NULL,\n  `b` int NOT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  UNIQUE KEY `uk` (`b`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+id	a	b
+1	10	100
+2	20	200
+id	estRows	task	access object	operator info
+Point_Get_1	1.00	root	table:t, index:uk(b)
+id	a	b	predicate_holds
+1	10	100	0
+red_wrong_update_affected=1
+id	a	b
+1	999	100
+2	20	200
+ERROR 8223 (HY000) at line 1: data inconsistency in table: t, index: uk, handle: 1, index-values:"handle: 1, values: [KindInt64 10]" != record-values:"handle: 1, values: [KindInt64 100]"
+expected: corrupted target failed ADMIN CHECK
+== GREEN 1: target exists before precheck ==
+Detail BR log in /tmp/ai-br-schema-race-preexisting-green.log
+[2026/07/25 10:20:22.356 +08:00] [INFO] [collector.go:77] ["Table Restore failed summary"] [total-ranges=0] [ranges-succeed=0] [ranges-failed=0]
+Error: table already exists: ai_br_schema_race_repro.t : [BR:Restore:ErrTablesAlreadyExisted]tables already existed in restored cluster
+expected: preexisting target rejected before ingest
+== GREEN 2: no competing CREATE ==
+Detail BR log in /tmp/ai-br-schema-race-no-race-green.log
+[2026/07/25 10:20:25.602 +08:00] [INFO] [collector.go:77] ["Table Restore success summary"] [total-ranges=2] [ranges-succeed=2] [ranges-failed=0] [merge-ranges=499.292µs] [split-regions=10.586ms] [restore-files=65.000375ms] [restore-pipeline=8.524208ms] [split-keys=1] [default-CF-files=0] [write-CF-files=2] [total-take=3.040749042s] [restore-data-size(after-compressed)=3.929kB] [Size=3929] [BackupTS=467912887754293249] [RestoreTS=467912890165755971] [total-kv=4] [total-kv-size=139B] [average-speed=45.71B/s]
+green_index_column=a
+green_update_affected=0
+RED/GREEN matrix completed; main transcript: /tmp/ai-br-schema-race-repro.log

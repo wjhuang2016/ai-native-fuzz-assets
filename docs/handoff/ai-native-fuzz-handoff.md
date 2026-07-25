@@ -2839,3 +2839,38 @@ terminal/checksum 降为次级 oracle。入口：
 远端 `found_bug id3060003/high/confirmed` 已入库，当前为 141 surfaces、118 roots、63 high、125
 confirmed。资产图已导入 7 个本轮资产、5 条关系、RED/RED/GREEN 三次运行和 1 个 validated
 target；复用包合计 8 个相关资产，`open_gaps=[]`。
+
+### 2026-07-25: id3090003 - BR 的 absence precheck 没有绑定后续创建出的对象
+
+继续跨模块扫描时，资产队列只剩低严重性 terminal-close 候选，因此回到 source proof
+obligation。BR 已有 `checkTableExistence` 防止恢复进现存表，但后续批量建表固定使用
+`OnExistIgnore`，再按表名读取当前对象；进入物理 ingest 前只检查 `IsCommonHandle`，索引 ID 则仅按
+索引名映射。代码检查了“刚才不存在”，系统因此相信“现在同名的一定是 BR 创建的兼容对象”。
+
+最小矩阵备份 `t(id PK,a,b,UNIQUE uk(a))`。默认 checkpoint 初始化期间，普通 DDL 在 precheck 后创建
+同名 `t(... UNIQUE uk(b))`。两次官方 BR 都退出 0、checksum 成功并报告 `Table Restore success`；
+目标 schema 保留 `uk(b)`，但物理 index key 是备份列 a 的 10/20。强制点查 `b=10` 返回
+`b=100/predicate=false`，`b=100` 查不到，`ADMIN CHECK` 报 8223；普通
+`UPDATE ... WHERE b=10` 还成功修改了实际 `b=100` 的行。
+
+matched controls 闭合了时间维度：同名不兼容表在 BR 开始前存在时，precheck 以
+`ErrTablesAlreadyExisted` 在 0 ranges 前拒绝；没有并发 CREATE 时，BR 恢复原 `uk(a)`，
+`ADMIN CHECK` 通过，同一 UPDATE 影响 0 行。环境为一 TiDB、一 PD、一真实 TiKV，MDL ON、默认
+checkpoint；无 source patch、failpoint、进程暂停、节点、网络或磁盘故障。验证 BR revision
+`a942e4684f` 与当前 master `05b396fb6636` 相关路径无 diff。
+
+post-RED 去重命中 #35215/#42893/#55087 和修复 PR #55044，它们建立了“恢复进已有表不安全”并加入
+当前 precheck，但只覆盖检查时已经存在；没有发现 check-to-create 并发替换或不兼容 schema 仍成功的
+同根问题，因此记为新的 TOCTOU root。
+
+新增 S72 `CHECK_CREATE_USE_IDENTITY_CLOSURE`：审计所有 check-then-create 时，必须找到 create 返回并
+传给最高 consumer 的稳定 identity token；若使用 `IF NOT EXISTS`/ignore 后又按 name/path 重查，就在
+gap 中放入不同 fingerprint 的对象，用 preexisting GREEN、gap RED、no-competitor GREEN 验证。入口：
+`docs/bug-drafts/ai-native-br-target-create-toctou-schema-corruption-draft.md`、
+`docs/method-cases/ai-native-id3090003-absence-proof-idempotent-create.md`、
+`assets/store/br-target-create-toctou-schema-corruption-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_br_target_create_race_repro.sh`。脚手架已从空目标端到端复跑，
+自动完成 RED、preexisting GREEN、no-competitor GREEN 并清理临时对象。远端
+`found_bug id3090003/high/confirmed` 已入库，当前为 142 surfaces、119 roots、64 high、126
+confirmed。资产图已导入 7 个新资产、5 条关系、4 次运行和 1 个 validated target；按
+`br/snapshot-restore + S72` 生成的复用包包含 9 个相关资产，`open_gaps=[]`。

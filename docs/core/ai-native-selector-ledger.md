@@ -2423,3 +2423,31 @@ restore/import manifests, cached-table side rows, and multi-object cleanup.
 
 Status: **VALIDATED** by two official-BR/real-TiKV REDs, ordinary DDL rejection, and a same-backup
 full-restore GREEN. MDL and FK enforcement were ON; no concurrency or fault injection was used.
+
+## S72: check-create-use identity closure
+
+```text
+shape:      a safety precheck proves a name or path is absent or compatible
+            + the later create is non-atomic with that check
+            + duplicate creation is ignored or treated as idempotent success
+            + the consumer reacquires the resource by weak name or path
+            + only a partial fingerprint is checked before irreversible use
+proof gap:  "create returned success" is treated as "the resource now found by name is ours"
+test:       publish a semantically different same-name object after the precheck; compare an object
+            present before the check and a no-competitor run
+consumer:   follow the substituted identity into physical mapping, write, cleanup, routing, or
+            success publication; project predicates back onto returned or mutated rows
+exclude:    atomic claim, create-returned stable identity token, duplicate-fatal create, or complete
+            semantic fingerprint validation before use
+```
+
+Born from: id3090003. BR checks that target `t` is absent, but later uses `OnExistIgnore`, reacquires
+`t` by name, checks only `IsCommonHandle`, and maps indexes by name. A concurrent ordinary CREATE
+changed `uk(a)` to `uk(b)`; BR and checksum reported success, point lookup `b=10` returned `b=100`,
+`ADMIN CHECK` failed, and ordinary UPDATE modified the wrong row.
+
+Cross-module targets: restore/import targets, metadata bootstrap, job registration, cache
+population, object-store manifests, and cleanup queues.
+
+Status: **VALIDATED** by two official-BR/real-TiKV REDs, a preexisting-target rejection, and a
+no-concurrent-DDL GREEN. Default checkpoint and MDL were enabled; no product injection was used.
