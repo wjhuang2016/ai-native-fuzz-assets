@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-26 01:55:29 +0800
+Generated at: 2026-07-26 02:35:34 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -83,3 +83,4 @@ Generated at: 2026-07-26 01:55:29 +0800
 | 3480003 | confirmed | high | data-loss | DELETE/UPDATE | JSON cast coprocessor pushdown | `tikv-json-integer-to-decimal-f64-precision-loss` | TiKV JSON-to-DECIMAL precision loss can silently delete matching large-ID rows |  |
 | 3510003 | confirmed | high | data corruption | IMPORT INTO / ADD UNIQUE INDEX | Classic TableMode and required checksum | `classic-import-tablemode-stale-schema-claim` | Classic IMPORT INTO can report success with an empty unique index after concurrent ADD INDEX |  |
 | 3540003 | confirmed | high | data-loss | SET GLOBAL tidb_gc_enable=OFF / GC prepare / FLASHBACK DATABASE | GC enable fence and DDL delete-range revocation | `gc-prepare-transaction-session-mode-split` | FLASHBACK DATABASE can report success after an in-flight GC deletes the recovered table ranges |  |
+| 3570003 | confirmed | high | data-loss | ALTER TABLE multi-schema change | AUTO_INCREMENT to AUTO_RANDOM rollback | `multi-schema-autorandom-migration-before-parent-commit` | Failed multi-schema AUTO_RANDOM conversion can make a cold TiDB overwrite existing rows |  |

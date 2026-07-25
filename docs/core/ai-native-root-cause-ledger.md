@@ -2,11 +2,11 @@
 > Started 2026-07-03. The headline metric for this method is **distinct root causes**, not
 > `COUNT(found_bug)`. This ledger is the corrected scoreboard and the counting convention.
 
-## Current remote snapshot (2026-07-25)
+## Current remote snapshot (2026-07-26)
 
-`found_bug`: 140 surfaces, 117 distinct recorded root IDs, 62 high-severity rows, and 124 confirmed
-rows. The newest entry is `id3030003`: PiTR can report success after a required AUTO_ID repair fails,
-allowing a later generated `REPLACE` to overwrite a restored row.
+`found_bug`: 158 surfaces, 135 distinct recorded root IDs, 80 high-severity rows, and 140 confirmed
+rows. The newest entry is `id3570003`: a failed multi-schema AUTO_RANDOM conversion can leave a
+hybrid allocator identity, allowing a cold TiDB's generated `REPLACE` to overwrite an existing row.
 
 ## Counting convention
 
@@ -1018,3 +1018,26 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   The official DR workflow treats value 0 as confirmation that history is retained.
 - Counting rule: safe-point distances, GC intervals, PD latency, and recovery consumers are blast
   radius. Reopen only for another transaction identity, mode, or external publication owner.
+
+## id3570003 - failed composite AUTO_RANDOM migration leaves a split allocator identity
+
+- Root cause ID: `multi-schema-autorandom-migration-before-parent-commit`.
+- Module: multi-schema DDL, modify column, and auto-ID allocator reconstruction.
+- Proof gap: the parent and proxy subjob remain revertible while
+  `checkAndApplyAutoRandomBits` has already set `AutoRandomBits`, rebased AutoRandom, and deleted
+  the RowID owner.
+- RED: the composite ALTER returns 1062 and history says `rollback done`, but `SHOW CREATE` combines
+  `AUTO_INCREMENT` and `AUTO_RANDOM`. A cold TiDB's generated INSERT collides at ID 1; generated
+  `REPLACE` succeeds at ID 2 with `affected_rows=2` and removes the old payload.
+- GREEN: failing unique-index rollback alone keeps RowID at 30001; successful conversion alone uses
+  a sharded ID; rejecting conversion before destructive apply preserves the pure old schema and
+  cold ID 30001.
+- Settings: default auto-ID cache, MDL ON, current master and packaged nightly, one real TiKV, no
+  failpoint or DDL race. The guarded supported conversion and a later cold TiDB are required.
+- Severity: high in the catalog, with critical-class successful persistent data loss.
+- Distinctness: id2970003 selects the wrong old owner during a successful
+  `AUTO_ID_CACHE=1` conversion. This root performs an irreversible owner migration before a
+  composite parent commits and cannot restore it after a sibling failure.
+- Counting rule: shard bits, duplicate values, row counts, index names, and cold-node startup form
+  are blast radius. Reopen only for another irreversible child effect, rollback owner, or more
+  common production trigger.

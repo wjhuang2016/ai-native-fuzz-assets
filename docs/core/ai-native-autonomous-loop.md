@@ -2545,3 +2545,34 @@ validate the frontier once and later revoke cleanup work, then place the irrever
 validation and revocation. Rank candidates by user terminal: successful recovery with missing data
 outranks an internal safe-point mismatch. Preserve both runs because the lower oracle detects the
 root cheaply while the higher consumer establishes severity.
+
+## Irreversible-subjob tick: failed DDL leaves a cold allocator at existing keys, EXECUTED (2026-07-26)
+
+This tick did not restart from a broad DDL matrix. It joined the explicit multi-schema rollback TODO
+with the existing allocator type-migration asset from id2970003:
+
+```text
+PARENT CLAIM:   all subjobs are still revertible
+EARLY EFFECT:   AUTO_RANDOM preparation sets bits, rebases its owner, deletes RowID
+LATER FAILURE:  ADD UNIQUE INDEX deterministically returns 1062 on existing duplicates
+ROLLBACK:       parent reports rollback done and restores only TableInfo/subjob state
+WARM MASK:      original TiDB continues from cached allocator high water
+COLD RED:       new TiDB INSERT reuses ID 1
+CONSUMER LIFT:  REPLACE succeeds at ID 2, affected_rows=2, and removes the old payload
+CONTROLS:       index failure alone and successful conversion alone are GREEN
+COUNTERFACTUAL: reject conversion before apply; schema, RowID 30001, and preimages stay GREEN
+INTEGRATE:      id3570003 high / critical-class data loss / confirmed;
+                158 surfaces, 135 roots, 80 high, 140 confirmed
+```
+
+Method improvement: add `IRREVERSIBLE_SUBJOB_ROLLBACK_CLOSURE`. A parent's `Revertible` flag is only
+evidence after every child side effect has been mapped to the same transaction or an exact
+compensator. For child preparation that migrates identity, deletes an owner, publishes a reference,
+or consumes a range, place a natural failure in a later sibling and force reconstruction from a cold
+consumer.
+
+This also corrects an earlier negative result. A natural `AUTO_INCREMENT=100` rollback probe was
+GREEN because its terminal oracle was weak and the side effect did not expose a destructive
+consumer. The source TODO was useful negative evidence for that exact rebase shape, not a reason to
+retire multi-schema rollback as a family. Asset joins should reopen a screened family only when a
+new child side effect, owner, and C3 consumer are all named.

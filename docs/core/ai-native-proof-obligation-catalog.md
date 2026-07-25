@@ -3750,3 +3750,27 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   Current-master RED/GREEN uses an existing repository failpoint and no product-code probe.
 - Pause gate: errors, table counts, ID values, and upsert spellings are blast radius. Reopen only for
   another repair owner, public terminal, invariant, or materially higher-probability trigger.
+
+## id3570003 - failed multi-schema DDL cannot roll back allocator migration
+
+- Target: `target.id3570003.multi-schema-autorandom-rollback.v1`.
+- Selector: `IRREVERSIBLE_SUBJOB_ROLLBACK_CLOSURE`.
+- **P**: every subjob is at a revertible point and the parent has a saved TableInfo snapshot.
+- **Q**: if a later sibling fails, restoring that snapshot and subjob state restores the complete
+  pre-DDL schema and generated-ID owner.
+- **F**: modify-column preparation has already set `AutoRandomBits`, rebased AutoRandom, and deleted
+  RowID before it marks the proxy non-revertible. The saved snapshot combines table AutoRandom bits
+  with the old column's AUTO_INCREMENT flag.
+- C3 oracle: cold generated INSERT returns duplicate primary key 1; generated `REPLACE` returns
+  success with `LAST_INSERT_ID=2`, `ROW_COUNT=2`; a fresh session proves the old ID 2 payload is
+  absent while `ADMIN CHECK TABLE` passes.
+- Production trigger: a default-cache populated clustered AUTO_INCREMENT table; one composite
+  migration converts it to AUTO_RANDOM and adds a unique business index; existing duplicate values
+  make the later subjob fail; restart, scale-out, or failover supplies a cold TiDB.
+- Matched controls: failing index alone allocates 30001; successful conversion alone allocates a
+  sharded ID; a pre-apply rejection guard keeps the old schema and cold allocation at 30001.
+- Status: **CONFIRMED**, remote `found_bug id3570003`, high severity / critical persistent-data-loss
+  consequence. Current master and packaged nightly RED; post-RED issue and internal-root dedup
+  found no exact match.
+- Pause gate: values, row counts, shard bits, index names, and cold-start mechanics are blast radius.
+  Reopen only for another irreversible subjob effect, rollback mechanism, or highest consumer.

@@ -2837,3 +2837,28 @@ RED, and same-session pessimistic GREEN. The bug uses default GC behavior and MD
 callbacks only select the exact overlap and historical frontier. The direct-consumer RED/GREEN adds
 one rule: once a frontier violation is proven, rank irreversible consumers by terminal severity and
 continue until the highest feasible consumer closes or rejects the boundary.
+
+## S84: irreversible subjob rollback closure
+
+```text
+selector:   a composite parent still labels child work revertible, while child preparation has
+            already migrated, deleted, or published durable owner state outside the parent's
+            rollback snapshot
+born from:  id3570003 (AUTO_RANDOM migration before multi-schema parent commit)
+procedure:
+  1. list each child's last-revertible boundary
+  2. enumerate every side effect before that boundary
+  3. tag transaction owner and exact compensator
+  4. choose a destructive child and a deterministic later sibling failure
+  5. compare restored parent metadata with all external owners
+  6. reconstruct a cold consumer after rollback
+  7. lift identity reuse into a successful destructive terminal
+predictions:
+  - multi-schema AUTO_RANDOM conversion + failing unique index -> RED (id3570003)
+controls:
+  - failing unique index without conversion -> GREEN
+  - successful conversion without failing sibling -> GREEN
+  - reject conversion before destructive apply -> GREEN
+status:     active — 1/1 hit. Transfer to restore/import artifact batches, DDL delete-range and
+            placement effects, GC/TTL consumed ranges, and cache/sequence generation changes.
+```

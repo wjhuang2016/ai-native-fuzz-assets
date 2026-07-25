@@ -1,0 +1,90 @@
+id3570003 multi-schema AUTO_RANDOM rollback RED/GREEN evidence
+Date: 2026-07-26 Asia/Shanghai
+
+UNMODIFIED CURRENT MASTER RED
+TiDB commit: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+Topology: warm TiDB :4500, cold TiDB :4600, one PD, one real TiKV
+MDL: 1
+AUTO_ID_CACHE: default
+Fault injection: none
+
+Baseline:
+  rows_before=64 min_id=1 max_id=64
+  NEXT_GLOBAL_ROW_ID=30001 ID_TYPE=_TIDB_ROWID
+
+Statement:
+  SET SESSION tidb_allow_remove_auto_inc=1;
+  ALTER TABLE t
+    MODIFY COLUMN id BIGINT AUTO_RANDOM(1),
+    ADD UNIQUE INDEX ux_v(v);
+
+Terminal:
+  ERROR 1062 (23000): Duplicate entry '0' for key 't.ux_v'
+
+Post-error schema:
+  `id` bigint NOT NULL AUTO_INCREMENT /*T![auto_rand] AUTO_RANDOM(1) */
+  warm NEXT_GLOBAL_ROW_ID=1 ID_TYPE=_TIDB_ROWID
+
+DDL history:
+  parent alter table multi-schema change: rollback done
+  modify column subjob: cancelled
+  add index subjob: rollback done
+
+Cold TiDB reconstruction:
+  NEXT_GLOBAL_ROW_ID=1 ID_TYPE=_TIDB_ROWID
+  NEXT_GLOBAL_ROW_ID=30002 ID_TYPE=AUTO_RANDOM
+
+Cold INSERT:
+  INSERT INTO t(v,payload) VALUES (9001,'cold-insert')
+  ERROR 1062 (23000): Duplicate entry '1' for key 't.PRIMARY'
+
+Cold REPLACE preimage:
+  id=2 v=6 payload=original-14
+
+Cold REPLACE:
+  REPLACE INTO t(v,payload) VALUES (9002,'cold-replace')
+  LAST_INSERT_ID=2 ROW_COUNT=2
+
+Fresh read through warm TiDB:
+  id=2 v=9002 payload=cold-replace
+  total=64 overwritten_original_left=0 replacement_visible=1
+  ADMIN CHECK TABLE: success
+
+PACKAGED NIGHTLY CONFIRMATION
+TiDB commit: ed2376acc6e0feeff9f3e2c38db489727933aa80
+Same default-cache, MDL-ON, real-TiKV schedule:
+  cold INSERT -> Duplicate entry '1'
+  cold REPLACE -> allocated_id=2 affected=2
+  id=2 payload changed from original-07 to cold-node-replace
+  fresh original-07 count=0
+  ADMIN CHECK TABLE: success
+
+MATCHED CONTROLS ON CURRENT MASTER
+1. Failing ADD UNIQUE INDEX without conversion:
+   cold generated ID=30001 affected=1
+2. Successful AUTO_INCREMENT -> AUTO_RANDOM without failing sibling:
+   cold generated ID=4611686018427417907 affected=1
+
+COUNTERFACTUAL GREEN
+Temporary change:
+  reject NewShardBits > 0 when job.MultiSchemaInfo != nil before
+  checkAndApplyAutoRandomBits.
+
+DDL terminal:
+  ERROR 1105: AUTO_RANDOM conversion is not supported in multi-schema change
+
+Post-error state:
+  SHOW CREATE: pure AUTO_INCREMENT, AUTO_INCREMENT=30001
+  NEXT_GLOBAL_ROW_ID=30001 ID_TYPE=_TIDB_ROWID
+  original rows=8/8
+
+Cold patched TiDB:
+  generated_id=30001 affected=1
+  originals=8 total=9
+  ADMIN CHECK TABLE: success
+
+Cleanup:
+  temporary TiDB/PD/TiKV processes stopped
+  experimental source guard removed
+  TiDB worktree clean
+

@@ -3433,3 +3433,41 @@ RED 100.87 秒，GREEN 1.16 秒。
 方法新增 `CONSUMER_LIFT`：证明 frontier/owner 缺陷后，枚举会跨越它的不可逆消费者，优先寻找
 “用户命令成功但持久化数据缺失”的终端。低层 oracle 用于快速找 root，高层 consumer 用于证明
 严重性；两者都入资产库。
+
+### 2026-07-26: DDL/allocator 命中 id3570003 - 失败回滚后冷 TiDB 静默覆盖旧行
+
+范围继续不限事务模块。把 multi-schema rollback 的源码 TODO 与 id2970003 已积累的 allocator type
+migration 资产组合：默认 cache 的 clustered AUTO_INCREMENT 表有 64 行和重复业务值；同一条 ALTER
+先转 `AUTO_RANDOM(1)`，再加 UNIQUE index。后半段自然返回 1062，父 job 显示 `rollback done`，
+modify-column subjob 为 cancelled。
+
+失败后 `SHOW CREATE` 却同时包含 `AUTO_INCREMENT` 和 `AUTO_RANDOM`，RowID 持久化 next 变成 1。
+原 TiDB 的 allocator cache 会掩盖问题；全新同版本 TiDB 同时重建 RowID=1 和 AutoRandom=30002，
+generated INSERT 报 `Duplicate entry '1'`。紧接着普通 generated REPLACE 返回
+`LAST_INSERT_ID=2,ROW_COUNT=2`，把 id=2 的原 payload 替换；另一 TiDB fresh read 证明旧 payload
+为 0，ADMIN CHECK 仍绿。
+
+当前 master `05b396fb66` 和 nightly `ed2376acc6` 都 RED。两个 matched GREEN：只有失败 UNIQUE
+rollback 时冷节点分配 30001；只有成功 AUTO_RANDOM conversion 时分配 sharded ID。临时在
+`checkAndApplyAutoRandomBits` 前拒绝 multi-schema conversion 后，同形状保持纯 AUTO_INCREMENT、
+RowID=30001、冷写 affected=1、旧行全保留；实验改动已移除，TiDB worktree 干净。
+
+根因是 modify-column 在 proxy subjob 仍 revertible 时就设置 AutoRandomBits、rebase AutoRandom 并
+删除 RowID；父 job 保存/恢复 TableInfo 和 subjob state，却无法补偿独立 allocator migration，且保存
+的 TableInfo 已是 table bits 与 old column flag 的混合态。
+
+新增 S84 `IRREVERSIBLE_SUBJOB_ROLLBACK_CLOSURE`：复合操作不能只信 parent/subjob 的 revertible flag；
+必须枚举 child prepare 已执行的外部/不可逆 side effect、事务 owner 和 compensator，在后续 sibling
+放自然失败，再用 cold consumer 重建并提升到最高持久化后果。此前普通 rebase rollback GREEN 只关闭
+那个弱 side effect，不应退休整个 family；只有新 asset join 明确 child effect、owner 和 C3 consumer
+时才重开。
+
+`id3570003/high/confirmed` 已入远端库；当前 158 surfaces、135 roots、80 high、140 confirmed。
+资产图为 653 revisions、RED 141、GREEN 139、validated targets 75。
+
+入口：
+`docs/bug-drafts/ai-native-multi-schema-autorandom-rollback-data-loss-draft.md`、
+`docs/method-cases/ai-native-id3570003-irrevocable-subjob-rollback-closure.md`、
+`assets/store/multi-schema-autorandom-rollback-results-20260726.jsonl`、
+`assets/store/logs/multi-schema-autorandom-rollback-red-green-20260726.log`、
+`scaffolds/top-level/ai_native_multi_schema_autorandom_rollback_repro.sh`。
