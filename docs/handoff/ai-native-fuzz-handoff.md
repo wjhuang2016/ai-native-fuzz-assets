@@ -1,5 +1,5 @@
 # AI-Native Bug Discovery Framework — Session 交接文档
-> 最后更新:2026-07-17。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
+> 最后更新:2026-07-25。负责人 wjhuang2016。本文是项目单一事实源,给下一个 session 直接接手用。
 > 更详细的逐 session 流水账见项目记忆 `~/.claude/projects/-Users-bba-pc-tidb/memory/ai-native-test-framework.md`。
 
 ---
@@ -2989,3 +2989,40 @@ protobuf 参数或 remote context，并被函数消费。资产复用路径为
 脚手架已独立复跑并自动清理；远端 `found_bug id3180003/high/confirmed` 已入库，当前为 145
 surfaces、122 roots、67 high、129 `confirmed=1`。资产图导入 6 个资产、4 条关系、RED/GREEN
 两次运行和 1 个 validated target；总计 564 revisions，RED/GREEN 各 119。
+
+### 2026-07-25: id3210003 - partial TIMESTAMP index 把 writer 时区写进持久化成员资格
+
+用户明确要求范围不要限于事务模块后，先收尾 partial-index 持久化成员转换。源码初看
+`MeetPartialCondition` 使用 process-global `indexConditionECtx`，似乎已经隔离 session context；
+单 session 的 timezone 矩阵也全绿。把证明义务从“evaluator 读了什么”扩成“operand 进入 evaluator
+前由谁表示”后，得到稳定 RED。
+
+同一个 UTC 时刻 `2024-12-31 20:00:00`，在 `-08:00` session 写成
+`2024-12-31 12:00:00`，在 `+08:00` session 写成 `2025-01-01 04:00:00`；两行使用相同 `k=7`，
+表上定义 `UNIQUE INDEX uk(k) WHERE ts >= '2025-01-01 00:00:00'`。切回 `+08:00` 后，两行显示为
+相同 TIMESTAMP、谓词都为真，但 `IGNORE INDEX` 返回 1,2，`USE INDEX(uk)` 只返回 2，唯一约束已经
+逻辑失效，`ADMIN CHECK TABLE` 报 8223。普通
+`DELETE ... WHERE ts >= '2025-01-01 00:00:00' AND k=7` 走 `uk` Point_Get，成功返回
+`ROW_COUNT=1`，却留下仍满足 WHERE 的 id=1。相同时区 control 的第二次插入正常报 1062，
+`ADMIN CHECK` 通过。
+
+环境是一 TiDB/PD/真实 TiKV、默认 strict sql_mode、MDL ON、fast table check ON；无并发、retry、
+failpoint、source patch 或基础设施故障。测试 nightly `ed2376acc6` 与 current master
+`05b396fb66` 的相关 partial-index 文件无 diff。post-RED 的远端 bug 库和 GitHub issue 搜索没有
+exact root。
+
+新增 `PERSISTED_EVALUATOR_CONTEXT_CLOSURE`：持久化表达式审计必须同时枚举 evaluator context 和
+operand representation context；固定 evaluator 不能证明输入已经 canonical。最小矩阵固定
+`schema expression + canonical value`，只改变 writer representation，再用 source-of-truth row set、
+derived structure、唯一约束和 DML closure 做 oracle。远端 `found_bug id3210003/high/confirmed`
+已入库，当前为 146 surfaces、123 roots、68 high、130 confirmed。catalog 不标 critical，因为还要求
+TIMESTAMP partial index 与混合 session 时区。
+
+入口：
+`docs/bug-drafts/ai-native-partial-index-timestamp-session-timezone-draft.md`、
+`docs/method-cases/ai-native-id3210003-persisted-evaluator-context-closure.md`、
+`assets/store/partial-index-timestamp-timezone-results-20260725.jsonl`、
+`assets/store/logs/partial-index-timestamp-timezone-red-control-20260725.log`、
+`scaffolds/top-level/ai_native_partial_index_timestamp_timezone_repro.sh`。脚手架已从空库独立复跑并
+自动清理。下一轮把该 selector 横向迁移到 generated column、索引 backfill/check 和其他持久化
+derived state，不枚举更多 offset、timestamp 或同根 DML。

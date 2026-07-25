@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=2970003`, `COUNT(*)=138`, `COUNT(DISTINCT root_cause_id)=115`
-- High-severity entries: 60 total
+- Remote `found_bug`: `MAX(id)=3210003`, `COUNT(*)=146`, `COUNT(DISTINCT root_cause_id)=123`
+- High-severity entries: 68 total
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -70,6 +70,14 @@ Last verified: 2026-07-25
 | 2910003 | confirmed | data loss | `cross-schema-rename-autoid-owner-not-reloaded` | A cold TiDB can reuse a generated ID after cross-database rename; successful `REPLACE` silently overwrites the old row. | [draft](../bug-drafts/ai-native-autoid-cross-schema-rename-regression-draft.md) | [case](../method-cases/ai-native-autoid-owner-reload-regression.md) |
 | 2940003 | confirmed | data corruption | `import-target-active-owner-check-then-create-race` | Concurrent same-table `IMPORT INTO` jobs can leave one record generation and both unique-index generations. | [draft](../bug-drafts/ai-native-nextgen-concurrent-import-index-corruption-draft.md) | [case](../method-cases/ai-native-id2940003-atomic-admission-owner-claim.md) |
 | 2970003 | confirmed | data loss | `autoid-to-autorandom-migration-reads-wrong-allocator-owner` | Converting a populated `AUTO_ID_CACHE=1` table to `AUTO_RANDOM` can make successful generated `REPLACE` statements permanently remove old rows. | [draft](../bug-drafts/ai-native-autoid-cache1-autorandom-migration-draft.md) | [case](../method-cases/ai-native-id2970003-allocator-owner-transfer.md) |
+| 3000003 | confirmed | DDL / data integrity | `drop-table-fk-future-sibling-admission` | Parent-first batch `DROP TABLE` can leave persistent foreign-key orphans. | [draft](../bug-drafts/ai-native-drop-table-fk-future-sibling-draft.md) | [case](../method-cases/ai-native-id3000003-future-sibling-admission.md) |
+| 3030003 | confirmed | data loss | `pitr-autoid-required-repair-fail-open` | PiTR can report success after an AUTO_ID rebase failure and later overwrite restored rows. | [draft](../bug-drafts/ai-native-pitr-autoid-rebase-fail-open-draft.md) | [case](../method-cases/ai-native-id3030003-required-repair-fail-open.md) |
+| 3060003 | confirmed | data corruption | `br-filtered-batch-assumes-fk-dependency-closure` | Selective BR table restore can publish a foreign-key child without its parent and accept orphan rows. | [draft](../bug-drafts/ai-native-br-selective-restore-fk-dependency-draft.md) | [case](../method-cases/ai-native-id3060003-filtered-batch-dependency-closure.md) |
+| 3090003 | confirmed | data corruption | `br-target-absence-check-idempotent-create-identity-gap` | BR can restore into a concurrently created incompatible table and report success with a corrupted index. | [draft](../bug-drafts/ai-native-br-target-create-toctou-schema-corruption-draft.md) | [case](../method-cases/ai-native-id3090003-absence-proof-idempotent-create.md) |
+| 3120003 | confirmed | data corruption | `tikv-duration-cast-negative-half-tie-semantic-drift` | TiKV pushdown can make ordinary DML modify a negative half-second TIME row that fails the TiDB predicate. | [draft](../bug-drafts/ai-native-tikv-duration-cast-half-tie-wrong-dml-draft.md) | [case](../method-cases/ai-native-id3120003-pushdown-rowset-semantic-closure.md) |
+| 3150003 | confirmed | data loss | `tikv-json-cast-string-return-type-context-omission` | TiKV JSON-to-CHAR pushdown can silently delete rows after the matched TiDB evaluator would abort. | [draft](../bug-drafts/ai-native-tikv-json-char-flen-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3150003-remote-evaluator-context-closure.md) |
+| 3180003 | confirmed | data loss | `tikv-week-without-mode-default-week-format-context-omission` | TiKV can ignore `default_week_format` for pushed `WEEK(date)` and delete the wrong dates. | [draft](../bug-drafts/ai-native-tikv-week-default-format-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3180003-hidden-session-input-pushdown-closure.md) |
+| 3210003 | confirmed | data corruption | `partial-index-timestamp-membership-writer-timezone-dependent` | Mixed writer time zones can corrupt TIMESTAMP partial-index membership, violate logical uniqueness, and make indexed DELETE silently miss rows. | [draft](../bug-drafts/ai-native-partial-index-timestamp-session-timezone-draft.md) | [case](../method-cases/ai-native-id3210003-persisted-evaluator-context-closure.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

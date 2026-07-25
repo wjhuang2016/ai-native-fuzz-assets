@@ -2228,3 +2228,27 @@ errors, trace each to the public terminal, reuse the original highest consumer, 
 RED with an exact no-error GREEN. Keep consequence separate from production frequency; this finding
 is high rather than critical because its trigger conjunction is narrow. The asset graph imported
 7 assets, 8 relations, 2 runs, and 1 validated target; the `br/pitr + S70` pack has no open gaps.
+
+## Persisted evaluator context tick: partial TIMESTAMP index, EXECUTED (2026-07-25)
+
+This cross-module tick started from a process-global partial-index evaluator and initially produced a
+same-session GREEN. It became RED only after the input representation owner was added to the proof.
+
+```text
+P:             one process-global evaluator checks partial-index membership.
+Q:             one schema predicate therefore defines one stable persisted row set.
+F:             TIMESTAMP reaches it in the writer session's wall-clock representation.
+CANONICAL KEY: one UTC instant and one unique key, written under -08:00 and +08:00.
+RED:           full scan ids 1,2; partial index id 2; duplicate logical member; ADMIN 8223.
+DML LIFT:      DELETE uses unique-index Point_Get, reports 1, leaves one predicate-true row.
+GREEN:         same-time-zone second insert returns 1062 and ADMIN CHECK stays green.
+DEDUP:         no exact TiDB issue or remote root after RED.
+INTEGRATE:     id3210003 high; 146 surfaces, 123 roots, 68 high, 130 confirmed.
+```
+
+Method improvement: add `PERSISTED_EVALUATOR_CONTEXT_CLOSURE`. For every expression that controls
+an index key, generated value, routing decision, or other durable derived state, inventory both the
+evaluator context and the representation context of each operand. Hold the schema expression and
+canonical value fixed, vary one representation owner, then compare source-of-truth rows with the
+derived structure and its highest DML consumer. A fixed evaluator is not closure proof when its input
+has already been shaped by mutable session state.

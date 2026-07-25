@@ -1,0 +1,99 @@
+Environment
+===========
+TiDB runtime: ed2376acc6e0feeff9f3e2c38db489727933aa80
+TiKV runtime: 730be34f959185c934b7d3db730ca1dbeb3949f8
+Topology: one TiDB, one PD, one real TiKV
+Configuration: default strict sql_mode, MDL ON, fast table check ON, no failpoint
+Current TiDB master: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+Relevant files are unchanged between the runtime and current master.
+
+RED
+===
+DROP DATABASE IF EXISTS ai_partial_tz_red;
+CREATE DATABASE ai_partial_tz_red;
+USE ai_partial_tz_red;
+CREATE TABLE t(
+  id INT PRIMARY KEY,
+  k INT,
+  ts TIMESTAMP,
+  UNIQUE INDEX uk(k) WHERE ts >= '2025-01-01 00:00:00'
+);
+
+-- UTC instant 2024-12-31 20:00:00, rendered in a -08:00 session.
+SET time_zone='-08:00';
+INSERT INTO t VALUES (1,7,'2024-12-31 12:00:00');
+
+-- The same UTC instant, rendered in a +08:00 session.
+SET time_zone='+08:00';
+INSERT INTO t VALUES (2,7,'2025-01-01 04:00:00');
+
+SELECT 'oracle' src,id,k,ts
+FROM t IGNORE INDEX(uk)
+WHERE ts >= '2025-01-01 00:00:00' AND k=7
+ORDER BY id;
+
+src     id  k  ts
+oracle  1   7  2025-01-01 04:00:00
+oracle  2   7  2025-01-01 04:00:00
+
+SELECT 'index' src,id,k,ts
+FROM t USE INDEX(uk)
+WHERE ts >= '2025-01-01 00:00:00' AND k=7
+ORDER BY id;
+
+src    id  k  ts
+index  2   7  2025-01-01 04:00:00
+
+ADMIN CHECK TABLE t;
+
+ERROR 8223 (HY000): data inconsistency in table: t, index: uk,
+handle: 1, index-values:"" != record-values:"handle: 1, values: [KindInt64 7]"
+
+EXPLAIN FORMAT='brief'
+DELETE FROM t
+WHERE ts >= '2025-01-01 00:00:00' AND k=7;
+
+Delete
+└─Selection ge(t.ts, 2025-01-01 00:00:00.000000)
+  └─Point_Get table:t, index:uk(k)
+
+DELETE FROM t
+WHERE ts >= '2025-01-01 00:00:00' AND k=7;
+SELECT ROW_COUNT() AS deleted_rows;
+
+deleted_rows
+1
+
+SELECT id,k,ts,ts >= '2025-01-01 00:00:00' AS should_have_been_deleted
+FROM t;
+
+id  k  ts                   should_have_been_deleted
+1   7  2025-01-01 04:00:00 1
+
+GREEN CONTROL
+=============
+DROP DATABASE IF EXISTS ai_partial_tz_green;
+CREATE DATABASE ai_partial_tz_green;
+USE ai_partial_tz_green;
+CREATE TABLE t(
+  id INT PRIMARY KEY,
+  k INT,
+  ts TIMESTAMP,
+  UNIQUE INDEX uk(k) WHERE ts >= '2025-01-01 00:00:00'
+);
+SET time_zone='+08:00';
+INSERT INTO t VALUES (1,7,'2025-01-01 04:00:00');
+INSERT INTO t VALUES (2,7,'2025-01-01 04:00:00');
+
+ERROR 1062 (23000): Duplicate entry '7' for key 't.uk'
+
+SELECT id,k,ts
+FROM t USE INDEX(uk)
+WHERE ts >= '2025-01-01 00:00:00' AND k=7;
+
+id  k  ts
+1   7  2025-01-01 04:00:00
+
+ADMIN CHECK TABLE t;
+
+<no error>
