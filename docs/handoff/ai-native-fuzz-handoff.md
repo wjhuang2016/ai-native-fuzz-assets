@@ -2937,3 +2937,19 @@ value、warning/error、row set，最后提升到 strict DML。该 bug 有直接
 远端 `found_bug id3150003/high/confirmed` 已入库，当前为 144 surfaces、121 roots、66 high、
 128 `confirmed=1`。资产图已导入 7 个资产、6 条关系、3 次运行和 1 个 validated target；
 复用包 `open_gaps=[]`。
+
+### 2026-07-25: S73/S74 后续负证据
+
+为避免上下文压缩后重复，四个未过高危门槛的方向已标记 retired：
+
+- 合法 typed DATETIME/TIME 的 FSP、零点和上界矩阵 push/root 一致；之前的差异来自畸形 VARCHAR
+  fallback，不作为高质量输入。
+- 五种常见 utf8mb4 collation 对 sharp-s、土耳其 I、组合音标、全角字符、尾空格和 emoji 的
+  equality row set 全部一致。
+- JSON string 数字前缀在 SELECT 上确有 Decimal 差分，但默认 strict DELETE 会在 TiKV 报
+  truncation error，持久化 consumer fail-closed；没有计入高危 bug。
+- TiKV `index_lookup_executor::next_task` 的错误 TODO 不会丢 handles：
+  `advance_orders_index(..., false)` 把受影响行加入 `left_rows`，交回 TiDB lookup。
+
+入口：`assets/store/cross-evaluator-negative-controls-20260725.jsonl`。重开条件已经写入每个 target，
+下一轮只接受新的合法输入、不同 context、未闭合 handle owner 或默认/common 持久化 consumer。
