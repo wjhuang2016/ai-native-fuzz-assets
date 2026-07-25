@@ -1,0 +1,28 @@
+settings=3:1:ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+self-equivalence plan:
+TableReader	8000.00	root		data:Projection
+└─Projection	8000.00	cop[tikv]		ai_week_default_format_diff.push_t.id
+  └─Selection	8000.00	cop[tikv]		ne(week(ai_week_default_format_diff.push_t.d), week(ai_week_default_format_diff.push_t.d, 3))
+    └─TableFullScan	10000.00	cop[tikv]	table:push_t	keep order:false, stats:pseudo
+push_impossible_ids=1,2,3,6,7,9,10,11
+root_impossible_ids=NULL
+self-contradictory pushed result:
+1	2015-12-31	53	53	0
+2	2016-01-01	53	53	0
+3	2016-01-03	53	53	0
+6	2019-12-30	1	1	0
+7	2020-01-01	1	1	0
+9	2020-12-31	53	53	0
+10	2021-01-01	53	53	0
+11	2021-01-03	53	53	0
+push_week52_ids=1,5,6,9
+explicit_week52_ids=5
+DELETE plan:
+Delete	N/A	root		N/A
+└─TableReader	8000.00	root		data:Projection
+  └─Projection	8000.00	cop[tikv]		ai_week_default_format_diff.push_t.id
+    └─Selection	8000.00	cop[tikv]		eq(week(ai_week_default_format_diff.push_t.d), 52)
+      └─TableFullScan	10000.00	cop[tikv]	table:push_t	keep order:false, stats:pseudo
+pushed_delete=4:2,3,4,7,8,10,11,12
+root_delete=1:1,2,3,4,6,7,8,9,10,11,12
+matrix=RED_CONFIRMED

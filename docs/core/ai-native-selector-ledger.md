@@ -2504,3 +2504,28 @@ sql_mode, statement warning policy, unsigned/UNION flags, and JSON/vector return
 Status: **VALIDATED** by official-nightly real-TiKV row/error/DELETE RED, under/exact-length GREEN
 controls, and a current TiKV master focused compatibility failure. Default strict mode and MDL were
 enabled; no product injection was used.
+
+### S74 refinement: hidden getters need field-level transport proof
+
+id3180003 reused the hidden-input inventory from id30034 instead of generating a new expression
+family. TiDB's `WEEK(date)` evaluator reads `GetDefaultWeekFormatMode`; TiKV captures a generic
+`EvalContext` but that context has no `default_week_format` field and the function substitutes
+literal mode 0.
+
+The refined source gate is:
+
+```text
+local evaluator getter
+  -> explicit protobuf argument or named remote-context field
+  -> remote function consumes that field
+```
+
+A generic `capture=[ctx]` does not satisfy the gate. Missing fields should first be tested with an
+implicit-versus-explicit sibling identity, such as
+`WEEK(d) = WEEK(d, @@default_week_format)`, before building a value matrix.
+
+Status: **VALIDATED** by id3180003. With mode 3, a pushed impossible predicate returned eight rows
+whose TiDB-projected predicate was false. Ordinary `DELETE WHERE WEEK(d)=52` removed ids 1,5,6,9;
+the matched root evaluator removed only id 5. The official nightly used default strict mode and
+MDL ON, with no concurrency or injection. Current TiDB/TiKV master source retains the local getter
+versus remote literal split.

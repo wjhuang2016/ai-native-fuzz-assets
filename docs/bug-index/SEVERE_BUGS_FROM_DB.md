@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 11:07:34 +0800
+Generated at: 2026-07-25 11:27:20 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -70,3 +70,4 @@ Generated at: 2026-07-25 11:07:34 +0800
 | 3090003 | confirmed | high | data-corruption | br restore table | target existence admission and schema identity | `br-target-absence-check-idempotent-create-identity-gap` | BR can restore into a concurrently created incompatible table and report success with a corrupted index |  |
 | 3120003 | confirmed | high | data-corruption | UPDATE/DELETE | coprocessor expression pushdown | `tikv-duration-cast-negative-half-tie-semantic-drift` | TiKV pushdown rounds negative TIME half-seconds differently and DML can modify rows that fail its predicate |  |
 | 3150003 | confirmed | high | data-loss | UPDATE/DELETE | JSON cast coprocessor pushdown | `tikv-json-cast-string-return-type-context-omission` | TiKV JSON-to-CHAR pushdown ignores target length and DELETE can remove rows after TiDB would abort |  |
+| 3180003 | confirmed | high | data-loss | DELETE/UPDATE | WEEK(date) coprocessor pushdown | `tikv-week-without-mode-default-week-format-context-omission` | TiKV ignores default_week_format for pushed WEEK(date) and DELETE can remove the wrong dates |  |

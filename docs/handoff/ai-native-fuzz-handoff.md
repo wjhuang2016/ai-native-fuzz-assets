@@ -2953,3 +2953,39 @@ value、warning/error、row set，最后提升到 strict DML。该 bug 有直接
 
 入口：`assets/store/cross-evaluator-negative-controls-20260725.jsonl`。重开条件已经写入每个 target，
 下一轮只接受新的合法输入、不同 context、未闭合 handle owner 或默认/common 持久化 consumer。
+
+### 2026-07-25: id3180003 - TiKV 下推 `WEEK(date)` 丢失 `default_week_format`，普通 DELETE 删错日期
+
+S74 没有继续随机枚举函数，而是复用 id30034 已确认的 hidden input：
+TiDB `builtinWeekWithoutModeSig` 会读 `GetDefaultWeekFormatMode`。沿新的 representation boundary
+检查后发现，TiKV `week_without_mode` 虽然 capture `EvalContext`，context schema 里没有该字段，函数
+直接固定 `WeekMode(0)`。
+
+强 oracle 使用恒等式 `WEEK(d)=WEEK(d,@@default_week_format)`，不需要人工计算周数。设置常见的
+ISO-style `default_week_format=3` 后，语义恒假的下推谓词返回 ids
+`1,2,3,6,7,9,10,11`；这些行回到 TiDB 后投影出的 implicit/explicit week 完全相等，
+`predicate_holds=0`。`SLEEP(0)` root barrier 返回空集。
+
+生产形状用 `DELETE ... WHERE WEEK(d)=52`。在 12 个年界日期上，显式 mode 3 与 root evaluator
+只匹配 id=5；普通 cop[tikv] 路径匹配并删除 ids 1,5,6,9。默认 strict sql_mode、MDL ON，一
+TiDB/PD/真实 TiKV，无 prepared statement、并发、retry、failpoint、source patch 或基础设施故障。
+两个副本 `ADMIN CHECK` 都通过，说明后果是逻辑数据丢失，不是结构性 index corruption。
+
+post-RED 远端库只有 id30034 的 plan-cache root；公开 #69650 也是该 cache 问题，#9669/#21510
+属于旧的本地/session loading。没有发现 TiKV pushdown 固定 mode 0 的同根 issue。2026-07-25
+current TiDB `05b396fb66` 与 TiKV `91ccfb2126` 仍保留 local getter/remote literal 的不对称源码。
+
+S74 增量：generic `capture=[ctx]` 不能算 context closure，必须逐字段证明 local getter 的值进入
+protobuf 参数或 remote context，并被函数消费。资产复用路径为
+`hidden getter inventory -> pushable signature -> transport set difference -> algebraic sibling oracle
+-> persistent DML`。这次只需要一个 12 行矩阵。触发需非零 `default_week_format`，因此 catalog
+记 high，不拔高为 critical。
+
+入口：
+`docs/bug-drafts/ai-native-tikv-week-default-format-wrong-delete-draft.md`、
+`docs/method-cases/ai-native-id3180003-hidden-session-input-pushdown-closure.md`、
+`assets/store/tikv-week-default-format-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_tikv_week_default_format_wrong_delete_repro.sh`。
+脚手架已独立复跑并自动清理；远端 `found_bug id3180003/high/confirmed` 已入库，当前为 145
+surfaces、122 roots、67 high、129 `confirmed=1`。资产图导入 6 个资产、4 条关系、RED/GREEN
+两次运行和 1 个 validated target；总计 564 revisions，RED/GREEN 各 119。
