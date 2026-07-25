@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 07:42:07 +0800
+Generated at: 2026-07-25 10:03:35 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -66,3 +66,4 @@ Generated at: 2026-07-25 07:42:07 +0800
 | 2970003 | confirmed | high | data-loss | ALTER TABLE ... AUTO_INCREMENT TO AUTO_RANDOM | AUTO_ID_CACHE=1 allocator type migration | `autoid-to-autorandom-migration-reads-wrong-allocator-owner` | Converting AUTO_ID_CACHE=1 AUTO_INCREMENT to AUTO_RANDOM can reuse primary keys and silently replace rows |  |
 | 3000003 | confirmed | high | DDL | DROP TABLE | foreign key | `drop-table-fk-future-sibling-admission` | Parent-first batch DROP TABLE can leave persistent foreign-key orphans |  |
 | 3030003 | confirmed | high | data-loss | BR PiTR restore | AUTO_ID_CACHE=1 / post-replay allocator repair | `pitr-autoid-required-repair-fail-open` | PiTR can report success after an AUTO_ID rebase failure and later overwrite restored rows |  |
+| 3060003 | confirmed | high | data-corruption | br restore table | snapshot selective restore and foreign keys | `br-filtered-batch-assumes-fk-dependency-closure` | BR selective table restore can publish a foreign-key child without its parent and silently accept orphan rows |  |

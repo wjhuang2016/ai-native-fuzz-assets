@@ -2396,3 +2396,30 @@ Cross-module targets: checkpoint repair, index reconciliation, GC recovery, orph
 reload, placement repair, metadata backfill, and restore finalization.
 
 Status: **VALIDATED** by an existing-failpoint RED and exact no-error GREEN on current master.
+
+## S71: filtered batch must close dependencies
+
+```text
+shape:      a public filter selects a subset of objects
+            + selected metadata contains references to excluded objects
+            + an internal batch consumer disables safety validation for ordering or restore
+            + terminal validation checks selected artifacts independently
+proof gap:  "selected for an internal batch" is treated as "the batch contains every dependency"
+test:       build the smallest valid two-object graph; select only the dependent object; compare
+            ordinary missing-dependency rejection, partial RED, and dependency-closed GREEN
+consumer:   observe published metadata, existing dependent data, and the first future write or
+            cleanup that relies on the missing object
+exclude:    automatic transitive dependency expansion, explicit pre-publication rejection, or a
+            runtime consumer that fails closed without changing durable state
+```
+
+Born from: id3060003. `br restore table` selects FK child `c`; `BRIECreateTables` disables FK
+checks, publishes `c` without parent `p`, restores an already-orphaned row, validates checksum, and
+reports success. A later invalid child insert also commits. The same backup restored as a complete
+database has zero orphans and rejects the write with error 1452.
+
+Cross-module targets: views, placement policies, resource groups, privileges, statistics,
+restore/import manifests, cached-table side rows, and multi-object cleanup.
+
+Status: **VALIDATED** by two official-BR/real-TiKV REDs, ordinary DDL rejection, and a same-backup
+full-restore GREEN. MDL and FK enforcement were ON; no concurrency or fault injection was used.

@@ -1,0 +1,41 @@
+== versions and defaults ==
+Release Version: v9.0.0-beta.2.pre-2019-ga942e4684f
+Git Commit Hash: a942e4684f4346e8f3b1b4985dfbba38ae6305e2
+Git Branch: HEAD
+Go Version: go1.25.10
+UTC Build Time: 2026-07-24 03:50:15
+Race Enabled: false
+Kernel Type: Classic
+TIDB_VERSION()
+Release Version: v9.0.0-beta.2.pre-2017-ged2376acc6\nEdition: Community\nGit Commit Hash: ed2376acc6e0feeff9f3e2c38db489727933aa80\nGit Branch: HEAD\nUTC Build Time: 2026-07-23 03:36:19\nGoVersion: go1.25.10\nRace Enabled: false\nCheck Table Before Drop: false\nStore: tikv\nKernel Type: Classic
+@@tidb_enable_metadata_lock	@@global.tidb_enable_foreign_key	@@foreign_key_checks
+1	1	1
+== ordinary DDL fail-closed reference ==
+ERROR 1824 (HY000) at line 1: Failed to open the referenced table 'missing_parent'
+expected: ordinary DDL rejected the missing parent
+== prepare a valid parent/child graph ==
+Detail BR log in /tmp/ai-br-fk-partial-backup.log 
+[2026/07/25 10:00:29.432 +08:00] [INFO] [collector.go:77] ["Database Backup success summary"] [total-ranges=3] [ranges-succeed=3] [ranges-failed=0] [backup-checksum=3.453375ms] [backup-total-regions=3] [write-CF-files=3] [backup-total-ranges=3] [total-take=3.688947542s] [BackupTS=467912576440729602] [total-kv=3] [total-kv-size=92B] [average-speed=24.94B/s] [backup-data-size(after-compressed)=5.489kB] [Size=5489]
+== RED: restore only the child ==
+Detail BR log in /tmp/ai-br-fk-partial-restore-red.log 
+[2026/07/25 10:00:33.208 +08:00] [INFO] [collector.go:77] ["Table Restore success summary"] [total-ranges=2] [ranges-succeed=2] [ranges-failed=0] [merge-ranges=636.334µs] [split-regions=10.841834ms] [restore-files=59.359084ms] [restore-pipeline=10.513375ms] [default-CF-files=0] [write-CF-files=2] [split-keys=1] [total-take=3.612060583s] [restore-data-size(after-compressed)=3.683kB] [Size=3683] [BackupTS=467912576440729602] [RestoreTS=467912577436614765] [total-kv=2] [total-kv-size=67B] [average-speed=18.55B/s]
+parent_table_count
+0
+Table	Create Table
+c	CREATE TABLE `c` (\n  `id` int NOT NULL,\n  `pid` int DEFAULT NULL,\n  PRIMARY KEY (`id`) /*T![clustered_index] CLUSTERED */,\n  KEY `pid` (`pid`),\n  CONSTRAINT `fk_cp` FOREIGN KEY (`pid`) REFERENCES `p` (`id`)\n) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin
+id	pid
+1	1
+id	pid
+1	1
+2	999
+== GREEN: restore the dependency-closed database ==
+Detail BR log in /tmp/ai-br-fk-partial-restore-green.log 
+[2026/07/25 10:00:39.157 +08:00] [INFO] [collector.go:77] ["DataBase Restore success summary"] [total-ranges=3] [ranges-succeed=3] [ranges-failed=0] [merge-ranges=1.49125ms] [split-regions=9.371416ms] [restore-files=87.134125ms] [restore-pipeline=10.924459ms] [write-CF-files=3] [split-keys=1] [default-CF-files=0] [total-take=3.562078083s] [restore-data-size(after-compressed)=5.489kB] [Size=5489] [BackupTS=467912576440729602] [RestoreTS=467912579009740941] [total-kv=3] [total-kv-size=92B] [average-speed=25.83B/s]
+Tables_in_ai_br_fk_partial_repro
+c
+p
+orphan_count
+0
+ERROR 1452 (23000) at line 1: Cannot add or update a child row: a foreign key constraint fails (`ai_br_fk_partial_repro`.`c`, CONSTRAINT `fk_cp` FOREIGN KEY (`pid`) REFERENCES `p` (`id`))
+expected: dependency-closed restore rejected the orphan with FK checks enabled
+RED/GREEN matrix completed; main transcript: /tmp/ai-br-fk-partial-repro.log

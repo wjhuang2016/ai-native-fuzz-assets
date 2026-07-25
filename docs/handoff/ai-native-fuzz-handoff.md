@@ -2809,3 +2809,33 @@ root 计数。资产保留执行证据，用于严重性校准和后续 fix vali
 `docs/method-cases/ai-native-nextgen-import-write-fence-known-gap.md`、
 `assets/store/nextgen-import-concurrent-dml-known-gap-results-20260725.jsonl`。资产图已导入完整的
 module/obligation/oracle/scenario/schedule/fault 复用包和 RED/RED/GREEN 三次运行，`open_gaps=[]`。
+
+### 2026-07-25: id3060003 - BR 部分恢复把“入选批次”误当成“依赖闭合”
+
+按最新要求继续跨模块扫描。新命中来自 BR snapshot `restore table`：官方文档支持只恢复一张表，
+`filterRestoreFiles` 也严格按用户表名过滤；但后续 `BRIECreateTables` 为解决批量建表顺序问题，会
+无条件关闭内部 session 的 FK 检查。代码只证明 child 被选中，就相信它引用的 parent 也在批次中。
+
+最小真实环境矩阵使用同一份父子表备份。普通 SQL 在 parent 缺失时创建 child 会报 1824；两次只恢复
+child 的官方 BR 命令都报告 `Table Restore success` 且 checksum 成功，但 parent 不存在，备份中的
+`c(1,1)` 已成为孤儿，`foreign_key_checks=ON` 下继续插入 `c(2,999)` 仍成功，
+`ADMIN CHECK TABLE` 也无法发现。改为完整恢复同一数据库后，parent/child 都存在、孤儿数为 0，同一
+非法写入报 1452。
+
+环境为一 TiDB、一 PD、一真实 TiKV，MDL、`tidb_enable_foreign_key` 和 `foreign_key_checks` 都开启；
+无 source patch、failpoint、并发、暂停、节点或网络/磁盘故障。验证 BR revision `a942e4684f` 与当前
+master `05b396fb6636` 的相关恢复路径无 diff。post-RED 去重中，#65175 是缺 parent 后的 DML
+fail-open，#65256 只记录了 PiTR log 阶段的未完成建议；两者都没有闭合 snapshot table selector，也
+不能解释恢复时已经产生的孤儿行，因此记为新 root。
+
+新增 S71 `FILTERED_BATCH_MUST_CLOSE_DEPENDENCIES`：扫描所有 partial restore/import/export/migration/
+cleanup API 时，先从对象 metadata 建引用图，再比较 selector 与传递依赖闭包；只要下游以
+“internal/batch”为由关闭校验，就用普通 DDL 拒绝、partial RED、closed-set GREEN 三格验证，并把
+terminal/checksum 降为次级 oracle。入口：
+`docs/bug-drafts/ai-native-br-selective-restore-fk-dependency-draft.md`、
+`docs/method-cases/ai-native-id3060003-filtered-batch-dependency-closure.md`、
+`assets/store/br-selective-restore-fk-dependency-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_br_selective_fk_restore_repro.sh`。脚手架端到端复跑通过并自行清理；
+远端 `found_bug id3060003/high/confirmed` 已入库，当前为 141 surfaces、118 roots、63 high、125
+confirmed。资产图已导入 7 个本轮资产、5 条关系、RED/RED/GREEN 三次运行和 1 个 validated
+target；复用包合计 8 个相关资产，`open_gaps=[]`。
