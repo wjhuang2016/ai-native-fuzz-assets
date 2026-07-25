@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-26
 
-- Remote `found_bug`: `MAX(id)=3540003`, `COUNT(*)=157`, `COUNT(DISTINCT root_cause_id)=134`
-- High-severity entries: 79 total, including 3 `known-duplicate` calibration rows
+- Remote `found_bug`: `MAX(id)=3600003`, `COUNT(*)=159`, `COUNT(DISTINCT root_cause_id)=136`
+- High-severity entries: 81 total, including 3 `known-duplicate` calibration rows
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -87,6 +87,8 @@ Last verified: 2026-07-26
 | 3480003 | confirmed | data loss | `tikv-json-integer-to-decimal-f64-precision-loss` | TiKV can narrow large JSON IDs through `f64` and make a pushed cleanup DELETE silently remove rows whose JSON and DECIMAL IDs are equal. | [draft](../bug-drafts/ai-native-tikv-json-integer-decimal-precision-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3480003-json-decimal-exact-domain.md) |
 | 3510003 | confirmed | data corruption | `classic-import-tablemode-stale-schema-claim` | Classic `IMPORT INTO` can finish with an empty new unique index; later writes can violate the public constraint. | [draft](../bug-drafts/ai-native-import-into-concurrent-add-unique-stale-schema-corruption-draft.md) | [case](../method-cases/ai-native-id3510003-atomic-fence-proof-state-cas.md) |
 | 3540003 | confirmed | data loss | `gc-prepare-transaction-session-mode-split` | FLASHBACK DATABASE can report success after an in-flight GC physically deletes the recovered table ranges, publishing empty tables. | [draft](../bug-drafts/ai-native-gc-disable-prepare-session-split-history-loss-draft.md) | [case](../method-cases/ai-native-id3540003-transaction-identity-mode-closure.md) |
+| 3570003 | confirmed | data loss | `multi-schema-autorandom-migration-before-parent-commit` | A failed composite AUTO_RANDOM migration can make a cold TiDB reuse existing IDs and let generated REPLACE silently overwrite old rows. | [draft](../bug-drafts/ai-native-multi-schema-autorandom-rollback-data-loss-draft.md) | [case](../method-cases/ai-native-id3570003-irrevocable-subjob-rollback-closure.md) |
+| 3600003 | confirmed | data loss | `tikv-json-u64-to-signed-unchecked-wraparound` | TiKV can turn JSON-to-SIGNED overflow into negative values and make a strict cleanup DELETE silently remove valid external IDs. | [draft](../bug-drafts/ai-native-tikv-json-u64-signed-overflow-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3600003-pushdown-exception-to-value-closure.md) |
 
 ## High-Severity Candidates / Legacy Queue
 
@@ -111,6 +113,7 @@ These rows are severe behaviors reproduced by the AI harness, but they match an 
 
 - Wrong-result and published-inconsistent-index bugs are the highest-value validation targets because the oracle can be hard: `ADMIN CHECK TABLE`, table/index differential, exact witness row.
 - Pushdown semantic probes must close over operator contexts. Selection equivalence does not prove TopN, Aggregate, or GroupBy equivalence; root controls must preserve the expression's exact type and collation.
+- Pushdown conformance must include terminal sets. A remote evaluator that turns overflow, truncation, rejection, or NULL into an ordinary value can convert a root-side error into successful persistent DML.
 - Durable reference scans must include publication order, retry identity, and every historical reference consumed after a successful retry.
 - DDL liveness bugs need a terminal oracle, not just a red error: distinguish `finite rollback`, `self-heal`, `unbounded running`, and `publish bad state`.
 - Runtime-control actions such as `THREAD` downscale, owner handoff, pause/resume, and persistent retryable faults are first-class matrix dimensions.

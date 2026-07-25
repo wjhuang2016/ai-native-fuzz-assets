@@ -3774,3 +3774,25 @@ Default boundary remains DDL-owner focused: executor/query rowsets are allowed a
   found no exact match.
 - Pause gate: values, row counts, shard bits, index names, and cold-start mechanics are blast radius.
   Reopen only for another irreversible subjob effect, rollback mechanism, or highest consumer.
+
+## id3600003 - pushed JSON U64 conversion must preserve the strict error terminal
+
+- Target: `target.id3600003.json-u64-signed-wrong-delete.v1`.
+- Selector: `PUSHDOWN_EXCEPTION_TO_VALUE_CLOSURE`.
+- **P**: root and remote evaluators receive the same JSON U64, SIGNED return type, and statement
+  flags.
+- **Q**: pushdown preserves the bounded value, overflow warning, or strict error terminal.
+- **F**: TiKV executes `get_u64() as i64`, wrapping values above `MaxInt64` into valid negative
+  integers before the evaluation context can observe overflow.
+- C3 oracle: default pushed DELETE succeeds and removes the two named external-ID preimages; the
+  matched root DELETE returns 1690, affects zero rows, and preserves all preimages.
+- Production trigger: an event/integration JSON object carries a full-range unsigned 64-bit ID and
+  cleanup or validation SQL explicitly casts it to SIGNED in a pushed predicate.
+- Settings: current TiDB master, recent real TiKV, default strict mode, MDL ON, and no timing,
+  concurrency, retry, failpoint, restart, or infrastructure fault.
+- Counterfactual: reuse TiKV's existing bounded U64 conversion. Warning mode returns `MaxInt64` plus
+  one warning; strict mode returns 1690.
+- Status: **CONFIRMED**, remote `found_bug id3600003`, high severity / critical persistent-data-loss
+  consequence. Post-RED issue and internal-root searches found no exact match.
+- Pause gate: U64 boundary values, JSON paths, predicate spellings, and DML verbs are blast radius.
+  Reopen only for another source type, target type, evaluator, or error policy.

@@ -2862,3 +2862,36 @@ controls:
 status:     active — 1/1 hit. Transfer to restore/import artifact batches, DDL delete-range and
             placement effects, GC/TTL consumed ranges, and cache/sequence generation changes.
 ```
+
+## S85: pushdown exception-to-value closure
+
+```text
+shape:      one expression can overflow, truncate, reject, or return NULL in the root evaluator
+            + a remote evaluator narrows or coerces before consulting its evaluation context
+            + the resulting ordinary value changes row membership
+proof gap:  matching SQL signature and return type are treated as proof of matching terminals
+test:       partition source variants; derive the first invalid destination-domain value; compare
+            warning and strict cells at root and remote altitude; lift into persistent DML
+consumer:   DELETE, UPDATE, materialization, generated values, aggregation, import, or restore
+exclude:    both evaluators use the same checked primitive, the root wrapper changes type/error
+            flags, the expression stays local, or DML aborts before mutation
+```
+
+Born from id3600003. TiDB converted a JSON U64 above `MaxInt64` with a bounded primitive, while
+TiKV executed `u64 as i64`. The remote cast turned overflow into a negative ordinary value. A
+strict root `DELETE` returned 1690 and changed zero rows; the default pushed statement succeeded,
+deleted two valid external IDs, and left `ADMIN CHECK TABLE` green.
+
+The efficient search unit is a source branch, not an arbitrary SQL expression. Enumerate source
+variants, label each branch's legal terminal set, then inspect unchecked casts, lossy
+intermediates, ignored errors, and default contexts. Use both warning and strict evaluation flags:
+a wrong warning value is useful evidence, while an error-to-success transition supplies the
+highest-quality persistent oracle.
+
+Cross-module targets: TiFlash and MPP evaluators, vectorized/scalar twins, storage codecs,
+aggregation, generated values, import/restore transforms, and optimizer rewrites that move
+error-producing expressions.
+
+Status: **VALIDATED** by current TiDB master plus recent real-TiKV RED, current TiKV master
+conversion RED, and exact checked-conversion GREEN. Default strict mode and MDL ON; no timing,
+concurrency, failpoint, retry, or infrastructure fault.

@@ -2576,3 +2576,34 @@ GREEN because its terminal oracle was weak and the side effect did not expose a 
 consumer. The source TODO was useful negative evidence for that exact rebase shape, not a reason to
 retire multi-schema rollback as a family. Asset joins should reopen a screened family only when a
 new child side effect, owner, and C3 consumer are all named.
+
+## Exception-to-value tick: JSON U64 overflow becomes successful DELETE, EXECUTED (2026-07-26)
+
+The scope moved explicitly across modules. Existing JSON exact-domain and pushdown-DML assets were
+joined, then the TiDB/TiKV conversion source was partitioned before any new SQL was generated:
+
+```text
+SOURCE VARIANTS: Literal | I64 | U64 | Double | String | non-scalar
+TIDB U64:        bounded ConvertUintToInt
+TIKV U64:        get_u64() as i64
+BOUNDARY:        MaxInt64, MaxInt64+1, MaxUint64-1, MaxUint64
+SELECT RED:      root caps with 1690 warning; TiKV returns negative values
+STRICT ROOT:     DELETE returns 1690 and changes zero rows
+PUSHED RED:      DELETE succeeds and removes two named external account IDs
+PLAN PROOF:      same cast at Selection root versus cop[tikv]
+MASTER PROOF:    TiKV 91ccfb2126 returns -1 for u64::MAX
+COUNTERFACTUAL:  existing checked U64 conversion closes warning and strict cells
+DEDUP:           #57848 is JSON-versus-DOUBLE; no exact root
+INTEGRATE:       id3600003 high / direct data loss / confirmed
+```
+
+Method improvement: add `PUSHDOWN_EXCEPTION_TO_VALUE_CLOSURE` and O75. For each independently
+implemented expression branch, record its legal terminal set, not only output value. Search for
+unchecked casts, lossy intermediates, ignored errors, and default contexts before generating data.
+Derive the first invalid boundary and run warning plus strict cells. An error-to-success transition
+should be lifted immediately into a persistent consumer.
+
+This is an efficient cross-module pattern: source partitioning reduced the candidate space to one
+branch and four values; the strong oracle joined execution ownership, error policy, selected
+handles, and exact preimages. Transfer next to TiFlash/MPP, vectorized/scalar twins, codecs,
+generated values, and import/restore transforms rather than staying in transaction code.

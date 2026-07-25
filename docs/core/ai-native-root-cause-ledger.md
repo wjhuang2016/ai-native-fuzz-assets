@@ -1041,3 +1041,25 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: shard bits, duplicate values, row counts, index names, and cold-node startup form
   are blast radius. Reopen only for another irreversible child effect, rollback owner, or more
   common production trigger.
+
+## id3600003 - TiKV erases JSON U64 overflow as a negative signed value
+
+- Root cause ID: `tikv-json-u64-to-signed-unchecked-wraparound`.
+- Module: TiDB/TiKV expression conversion and predicate pushdown.
+- Proof gap: matching CAST signature and return type are treated as proof that root and remote
+  evaluators preserve values, warnings, and strict errors.
+- RED: current TiDB master pushes
+  `CAST(JSON_EXTRACT(payload,'$.account_id') AS SIGNED)<0` to real TiKV. DELETE succeeds and
+  removes two named U64 preimages. The same predicate at root returns 1690 and changes zero rows.
+- Source RED: current TiKV master returns `-1` for `Json::from_u64(u64::MAX)` where TiDB warning
+  mode caps at `MaxInt64` and strict mode returns 1690.
+- GREEN: route the U64 branch through the existing bounded `u64::to_int(ctx,tp)` primitive. Warning
+  and strict cells both match TiDB.
+- Settings: default strict mode, MDL ON, one real TiKV, no concurrency, retry, failpoint, source
+  hook in RED, restart, or infrastructure fault.
+- Severity: high in the catalog, with direct critical-class persistent data-loss consequence.
+  Trigger requires a JSON unsigned integer above `MaxInt64` and an explicit SIGNED cast.
+- Distinctness: #57848 compares JSON with DOUBLE. id3480003 narrows JSON integer to DECIMAL through
+  `f64`. This root loses U64 overflow through `as i64`.
+- Counting rule: boundary values, JSON paths, predicates, and DML verbs are blast radius. Reopen
+  only for another source variant, destination type, evaluator, or terminal policy.

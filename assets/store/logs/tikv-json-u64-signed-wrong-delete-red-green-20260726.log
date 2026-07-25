@@ -1,0 +1,97 @@
+id3600003 JSON U64 -> SIGNED pushdown RED/GREEN evidence
+Date: 2026-07-26
+
+VERSIONS
+TiDB nightly: ed2376acc6e0feeff9f3e2c38db489727933aa80
+TiDB exact master: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+real TiKV: 730be34f959185c934b7d3db730ca1dbeb3949f8
+TiKV source master: 91ccfb212677a43fd5255183ccf2afa4e3cec23e
+MDL: 1
+sql_mode: STRICT_TRANS_TABLES default set
+
+SCALAR BOUNDARY
+id  payload               JSON_TYPE          TiDB root CAST AS SIGNED
+1   9223372036854775807   INTEGER            9223372036854775807
+2   9223372036854775808   UNSIGNED INTEGER   9223372036854775807 + warning 1690
+3   18446744073709551614  UNSIGNED INTEGER   9223372036854775807 + warning 1690
+4   18446744073709551615  UNSIGNED INTEGER   9223372036854775807 + warning 1690
+5   -1                    INTEGER            -1
+
+PUSHED SELECT
+plan: Selection in cop[tikv]
+predicate: CAST(payload AS SIGNED) < 0 AND JSON_TYPE(payload)='UNSIGNED INTEGER'
+selected ids: 2,3,4
+
+ROOT SELECT
+plan: Selection in root, using the false disjunct RAND()<0
+selected ids: none
+
+PUSHED DELETE
+affected rows: 3
+remaining ids: 1,5
+ADMIN CHECK TABLE: success
+
+ROOT DELETE
+terminal: ERROR 1690 constant 9223372036854775808 overflows bigint
+affected rows: 0
+remaining ids: 1,2,3,4,5
+
+PRODUCTION-SHAPED JSON OBJECT
+input rows:
+101 {"account_id":42,"kind":"normal"} original-normal
+102 {"account_id":9223372036854775808,"kind":"external"} original-large-id
+103 {"account_id":18446744073709551615,"kind":"external"} original-max-id
+
+normal plan:
+Selection_11 cop[tikv]
+lt(cast(json_extract(payload, "$.account_id"), bigint BINARY), 0)
+
+pushed DELETE:
+affected rows: 2
+remaining: 101 original-normal
+ADMIN CHECK TABLE: success
+
+root plan:
+Selection_7 root
+or(lt(cast(json_extract(payload, "$.account_id"), bigint BINARY), 0), lt(rand(), 0))
+
+root DELETE:
+ERROR 1690 constant 9223372036854775808 overflows bigint
+affected rows: 0
+remaining: 101,102,103 with all named preimages
+
+EXACT TIDB MASTER
+TiDB 05b396fb6636 connected to the same real PD/TiKV.
+The production-shaped pushed DELETE again affected 2 rows.
+The root-controlled DELETE returned 1690 and affected 0 rows.
+
+EXACT TIKV MASTER UNIT RED
+command:
+cargo test -p tidb_query_datatype test_json_u64_overflow_to_signed_int --lib -- --nocapture
+
+current source:
+JsonType::U64 => Ok(self.get_u64() as i64)
+
+failure:
+actual -1
+expected 9223372036854775807
+
+COUNTERFACTUAL GREEN
+temporary source:
+JsonType::U64 => self.get_u64().to_int(ctx, tp)
+
+warning-mode expected:
+u64::MAX -> i64::MAX and one warning
+
+strict-mode expected:
+error code 1690
+
+result:
+1 passed, 0 failed
+
+CLEANUP
+Temporary unit test and source change removed.
+TiDB and TiKV worktrees clean.
+Temporary TiDB master stopped.
+All ai_json_u64_* databases dropped.
+Original nightly test cluster left running.

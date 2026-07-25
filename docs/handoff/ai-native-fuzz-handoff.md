@@ -3471,3 +3471,37 @@ RowID=30001、冷写 affected=1、旧行全保留；实验改动已移除，TiDB
 `assets/store/multi-schema-autorandom-rollback-results-20260726.jsonl`、
 `assets/store/logs/multi-schema-autorandom-rollback-red-green-20260726.log`、
 `scaffolds/top-level/ai_native_multi_schema_autorandom_rollback_repro.sh`。
+
+### 2026-07-26: 跨模块表达式下推命中 id3600003 - overflow 被变成普通值后误删数据
+
+按最新范围纠正，不再以事务模块为边界。复用 id3480003 的 JSON exact-domain 资产和 id3330003 的
+pushdown persistent-DML oracle，把 TiDB/TiKV `JSON -> SIGNED` 源码按
+`Literal/I64/U64/Double/String/non-scalar` 分支比较。唯一直接丢失 overflow 语义的是 TiKV U64：
+`get_u64() as i64`；TiDB 同分支使用 bounded `ConvertUintToInt`。
+
+真实 TiKV、默认 strict、MDL ON 下，JSON object 内
+`account_id=9223372036854775808/18446744073709551615` 均为 `UNSIGNED INTEGER`。普通
+`DELETE WHERE CAST(JSON_EXTRACT(payload,'$.account_id') AS SIGNED)<0` 的 Selection 下推到 TiKV，
+成功删除两条命名 preimage，ADMIN CHECK 仍绿。加入恒 false 的 `OR RAND()<0` 只把同一表达式移到
+root；语句返回 1690、affected=0、全部 preimage 保留。
+
+精确 TiDB master `05b396fb66` 接同一 PD/真实 TiKV 重现。精确 TiKV master `91ccfb2126` 的最小测试
+直接得到 `u64::MAX -> -1`。只把 U64 分支改为现有 `get_u64().to_int(ctx,tp)` 后，warning cell 返回
+MaxInt64+warning，strict cell 返回 1690，GREEN；测试和源码改动已移除，两个 worktree 均 clean，
+临时 TiDB 和数据库已清理。
+
+新增 S85 `PUSHDOWN_EXCEPTION_TO_VALUE_CLOSURE`：独立 evaluator 的 proof obligation 必须覆盖
+`value/warning/error/NULL` terminal set。先按 source variant 分支，再找 unchecked cast、lossy
+intermediate、ignored error、default context，推导第一个越界值；warning 和 strict 各跑一格，
+一旦发现 exception-to-value 就直接提升到持久化 DML。新 oracle O75 同时检查 plan owner、error code、
+ROW_COUNT、selected handles 和 fresh named preimages。
+
+post-RED 未找到 exact upstream/internal root；#57848 是 JSON 与 DOUBLE 比较，根因不同。
+`id3600003/high/confirmed` 已入远端库；当前 159 surfaces、136 roots、81 high、141 confirmed。
+本地资产图为 658 revisions、RED 144、GREEN 140、validated targets 76。入口：
+
+`docs/bug-drafts/ai-native-tikv-json-u64-signed-overflow-wrong-delete-draft.md`、
+`docs/method-cases/ai-native-id3600003-pushdown-exception-to-value-closure.md`、
+`assets/store/tikv-json-u64-signed-results-20260726.jsonl`、
+`assets/store/logs/tikv-json-u64-signed-wrong-delete-red-green-20260726.log`、
+`scaffolds/top-level/ai_native_tikv_json_u64_signed_wrong_delete_repro.sh`。

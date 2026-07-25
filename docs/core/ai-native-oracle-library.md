@@ -2046,3 +2046,41 @@ GC prepare and production job made the old exact snapshot unreadable. Same-sessi
 locking ordered prepare before OFF and made the serialization cell GREEN. In the direct consumer,
 GC deleted five ranges and `FLASHBACK DATABASE` still published 64 rows as 0; the same fix made
 flashback wait and return 8055 before publication.
+
+## O75 pushdown_error_value_terminal_preimage
+
+```text
+Use for:
+  an expression implemented independently at root and remote execution altitude
+  whose legal terminal can be value, warning, error, or NULL
+
+Observe:
+  exact source type and boundary value
+  physical owner of the expression
+  typed result, warning count, error code, and selected handles
+  DML terminal and ROW_COUNT
+  fresh named preimages
+  ADMIN CHECK TABLE only as a secondary structural check
+
+RED:
+  root and remote plans preserve the same expression type
+  AND root evaluation returns error or NULL/no-row
+  AND remote evaluation returns an ordinary value selecting rows
+  AND persistent DML succeeds and removes or changes a named preimage
+
+GREEN:
+  both evaluators return the same value and warning
+  OR both reject before mutation with the same error class
+  AND every named preimage remains
+
+INVALID:
+  the root barrier changes type, precision, collation, flags, or multiplicity
+  OR only SELECT output is compared
+  OR DML copies do not start from the same preimages
+  OR row loss is inferred only from aggregate count
+```
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3600003. TiKV wrapped JSON U64 into negative SIGNED
+values and a default pushed DELETE removed two valid external IDs. The root-controlled statement
+returned 1690 and changed zero rows. Routing only the remote U64 branch through checked conversion
+made warning and strict cells GREEN.
