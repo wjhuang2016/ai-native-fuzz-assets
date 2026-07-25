@@ -56,6 +56,10 @@ No random values, concurrency, failpoint, or large workload were needed.
 The highest oracle is not `ADMIN CHECK TABLE`: wrong rows can be deleted while all remaining KV
 structures stay valid.
 
+An implicit `JSON <> DECIMAL` comparison is GREEN because the planner converts DECIMAL to JSON.
+This control narrows production reachability to explicit JSON-to-DECIMAL casts and prevents impact
+from being overstated.
+
 ## S76 refinement
 
 Before generating values for two evaluator implementations:

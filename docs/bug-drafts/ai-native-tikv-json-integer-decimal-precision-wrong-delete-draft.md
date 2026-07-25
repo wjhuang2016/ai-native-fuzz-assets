@@ -146,6 +146,15 @@ WHERE CAST(payload->'$.entity_id' AS DECIMAL(65,0)) <> entity_id;
 Snowflake-style IDs are normally above `2^53`. Matching rows can therefore be classified as
 inconsistent and deleted. The behavior uses default settings and ordinary one-statement DML.
 
+An implicit comparison is an important GREEN control:
+
+```sql
+WHERE payload->'$.entity_id' <> entity_id
+```
+
+The planner converts the DECIMAL operand to JSON, so both TiDB and TiKV return an empty row set.
+The bug requires the explicit JSON-to-DECIMAL conversion shown above.
+
 The consequence is direct silent data loss. The SQL shape requires an explicit JSON-to-DECIMAL
 comparison, so formal severity should be decided between high and critical based on deployment
 prevalence.
