@@ -1,0 +1,30 @@
+CURRENT MASTER
+05b396fb6636f73b3bc06b09107cf43f2c725c35
+
+RED: current publication order
+=== RUN   TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta
+migration paths after retry:
+  v1/ext_backups/test-TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta/extbackupmeta
+  v1/ext_backups/test-TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta-1/extbackupmeta
+stale meta read error:
+  open .../v1/ext_backups/test-TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta/extbackupmeta:
+  no such file or directory
+log restore ingested-SST error:
+  failed to read backup at
+  v1/ext_backups/test-TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta/extbackupmeta:
+  no such file or directory
+--- FAIL: TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta
+
+GREEN: temporary target-before-reference ordering
+=== RUN   TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta
+migration paths after retry:
+  v1/ext_backups/test-TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta-1/extbackupmeta
+stale meta read error:
+  open .../v1/ext_backups/test-TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta/extbackupmeta:
+  no such file or directory
+log restore ingested-SST error: <nil>
+--- PASS: TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta
+
+PACKAGE NOTE
+The focused GREEN test passed. Package exit remained nonzero because the repository test harness
+reported an existing unrelated MemArbitrator goroutine through goleak.

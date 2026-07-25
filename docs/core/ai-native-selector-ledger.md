@@ -2707,3 +2707,33 @@ storage-side generated values, join/hash keys, statistics sketches, and import/r
 
 Status: **VALIDATED** by current-master real-TiKV two-versus-five RED, durable summary RED, and an
 exact-owner current-master GREEN that preserved pushdown.
+
+## S81: persisted reference publication atomicity
+
+```text
+shape:      durable reference R is published before fallible target T exists
+            + crash can expose the intermediate state
+            + retry allocates a fresh identity for T
+            + consumers retain all historical R values
+proof gap:  observing R is treated as proof that T exists
+test:       interrupt between publication and creation; complete a retry; enumerate every R;
+            invoke the highest consumer and require target closure
+consumer:   restore, recovery, cleanup, segment loading, task replay, or durable queue execution
+exclude:    R and T share an atomic commit, retry repairs the exact old identity, or consumers
+            durably retire missing targets before publication
+```
+
+Born from id3450003. BR appended an `IngestedSstPaths` migration entry before writing the referenced
+`extbackupmeta`. An interrupted attempt plus a successful retry produced one missing old path and
+one valid new path. Log restore remained fail-fast on the old path.
+
+The matched counterfactual wrote the target first and published the reference second. The same
+failure then left at most an unreachable object, while the successful retry produced one readable
+reference.
+
+Cross-module targets: backup manifests, import checkpoints, object catalogs, log segments, snapshot
+indexes, cleanup queues, task payload registries, and remote artifact publication.
+
+Status: **VALIDATED** by current-master persistent-storage RED and exact ordering GREEN. Impact is
+critical for disaster recovery; confirmed reachability requires abrupt process exit in a short
+external-write window, so triage remains high.

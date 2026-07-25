@@ -2413,3 +2413,28 @@ public success with the highest persistent state; branch reachability alone is i
 This selector is independent of Lightning. The next horizontal scan should prioritize restore,
 DDL, ingestion, statistics, and cleanup paths where checksum, analyze, reporting, dry-run, or
 metrics toggles share a phase with reconciliation, repair, fencing, or deduplication.
+
+## Persisted-reference tick: BR retry leaves PiTR chain unreadable, EXECUTED (2026-07-25)
+
+The scope stayed open across modules. A BR source pass converted one action sequence into a durable
+owner table before fault injection.
+
+```text
+REFERENCE:     migration.IngestedSstPaths persisted first.
+TARGET:        per-restore extbackupmeta written second.
+FAULT:         abrupt BR lifetime end leaves reference but no target.
+RETRY:         fresh TSO creates a new directory and valid second reference.
+RED:           real log-restore metadata consumer fails on the retained old path.
+GREEN:         write target before publishing reference; retry leaves one readable path.
+DEDUP:         no exact internal or upstream issue/PR root after RED.
+INTEGRATE:     id3450003 high / critical DR impact / confirmed.
+```
+
+Method improvement: add `PERSISTED_REFERENCE_PUBLICATION_ATOMICITY`. Candidate ranking must include
+publication order, retry identity reuse, historical reference retention, and the highest consumer's
+missing-target policy. A successful retry is an intermediate event; the terminal oracle enumerates
+all old references and forces the future recovery consumer.
+
+The severity gate now records impact and reachability separately. This root has critical recovery
+impact but a short abrupt-exit window, so the next transfer should seek the same owner shape behind
+common retries, timeouts, or configuration-only paths in any non-partition module.

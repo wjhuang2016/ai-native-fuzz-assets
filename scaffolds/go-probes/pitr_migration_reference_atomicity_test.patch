@@ -1,0 +1,66 @@
+diff --git a/br/pkg/restore/snap_client/pitr_collector_test.go b/br/pkg/restore/snap_client/pitr_collector_test.go
+--- a/br/pkg/restore/snap_client/pitr_collector_test.go
++++ b/br/pkg/restore/snap_client/pitr_collector_test.go
+@@ -220,6 +220,62 @@ func TestPiTRCollectorPrepareMigWritesOperationMetadata(t *testing.T) {
+ 	require.Equal(t, coll.coll.operationContext.OperationID, meta.OwnerID)
+ 	require.Contains(t, meta.Hint, "operation_started_at="+coll.coll.operationContext.StartedAt.Format(time.RFC3339))
+ 	require.Contains(t, meta.Hint, "restore_id=789")
+ }
++type failMetaWriteOnceStorage struct {
++	storeapi.Storage
++	metaPath string
++	failed   atomic.Bool
++}
++
++func (s *failMetaWriteOnceStorage) WriteFile(ctx context.Context, name string, data []byte) error {
++	if name == s.metaPath && !s.failed.Swap(true) {
++		return fmt.Errorf("injected first extbackupmeta write failure")
++	}
++	return s.Storage.WriteFile(ctx, name, data)
++}
++
++func (s *failMetaWriteOnceStorage) CopyFrom(
++	ctx context.Context,
++	from storeapi.Storage,
++	spec storeapi.CopySpec,
++) error {
++	copier, ok := s.Storage.(storeapi.Copier)
++	if !ok {
++		return fmt.Errorf("wrapped storage %T does not support copying", s.Storage)
++	}
++	return copier.CopyFrom(ctx, from, spec)
++}
++
++func TestPiTRCollectorPublishedMigrationMustNotReferenceMissingMeta(t *testing.T) {
++	coll := newPiTRCollForTest(t)
++	staleMetaPath := coll.coll.metaPath()
++	storage := &failMetaWriteOnceStorage{
++		Storage:  coll.coll.taskStorage,
++		metaPath: staleMetaPath,
++	}
++	coll.coll.taskStorage = storage
++
++	err := coll.coll.prepareMig(coll.cx)
++	require.ErrorContains(t, err, "injected first extbackupmeta write failure")
++	// Model abrupt process exit. Calling collector.close() would repair the unfinished metadata.
++	coll.coll.writerRoutine.close()
++
++	coll.Reopen()
++	batch := restore.BatchBackupFileSet{backupFileSet(withFile(nameFile("retry.sst")))}
++	complete := coll.MustStartRestoreBatch(batch)
++	require.NoError(t, complete())
++	coll.MarkSuccess()
++	coll.Done()
++
++	migrations, err := stream.MigrationExtension(storage).Load(coll.cx)
++	require.NoError(t, err)
++	var paths []string
++	for _, migration := range migrations.ListAll() {
++		paths = append(paths, migration.IngestedSstPaths...)
++	}
++	item := stream.LoadIngestedSSTs(coll.cx, storage, paths).TryNext(coll.cx)
++	require.NoError(t, item.Err)
++	require.Len(t, paths, 1)
++}
+ 
+ type backupFileSetOp func(*restore.BackupFileSet)

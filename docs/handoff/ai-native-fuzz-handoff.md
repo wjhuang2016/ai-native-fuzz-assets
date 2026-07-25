@@ -3288,3 +3288,35 @@ dimension 或 transport boundary。
 `assets/store/pushdown-binary-groupby-results-20260725.jsonl`、
 `tools/pushdown_diff.py`、
 `scaffolds/sql-probes/binary-groupby-repro.json`。
+
+### 2026-07-25: 跨模块持久化引用命中 id3450003
+
+范围继续不限事务模块。BR 在 log backup 已开启的集群做 snapshot restore 时，`prepareMig` 先把
+`extbackupmeta` 路径追加到 durable migration，再创建该对象。若 BR 进程或 Pod 在两次对象存储写
+之间异常退出，旧 migration 会永久引用 missing target。
+
+重试不会修复：`newPiTRColl` 用新 TSO 生成新目录。重试成功后，migration 同时保留旧 missing path
+和新 valid path；真实 `stream.LoadIngestedSSTs` 消费者遍历全部历史路径并 fail-fast，后续 PiTR
+仍报 `failed to read backup ... no such file or directory`。
+
+当前 master `05b396fb66` 的 focused persistent-storage test 稳定 RED。临时只交换发布顺序，先写
+初始 meta、再 append migration，同一测试只剩一个 valid path，consumer error 为 nil，test-level
+PASS。包级进程仍被已有 `MemArbitrator` goleak 噪声置失败，已在证据中单独标注；不影响目标断言。
+临时 TiDB 源码和测试改动随后归位。
+
+post-RED 搜索未发现 exact internal/upstream root。`id3450003/high/confirmed` 入库；影响是灾备链
+长期不可读，主集群丢失时可到 critical。已确认触发需要 BR 在较短双写窗口异常退出，因此没有把
+影响等级直接当成发生概率。
+
+方法新增 S81 `PERSISTED_REFERENCE_PUBLICATION_ATOMICITY` 和 O71 historical reference closure。
+看到 durable manifest/migration/checkpoint 发布路径或 ID 时，先列 reference owner、target owner、
+发布顺序、retry 是否复用 identity、旧 reference 是否保留、最高 consumer 的 missing-target 策略。
+最小测试固定为 interrupted attempt -> successful retry -> enumerate all references -> highest consumer。
+下一轮把该 selector 横向迁移到 import manifest、checkpoint、object catalog、log segment、cleanup
+queue 等模块，优先找常见 retry/timeout/config 即可触发的 critical 根。
+
+入口：
+`docs/bug-drafts/ai-native-br-pitr-dangling-ingested-sst-meta-draft.md`、
+`docs/method-cases/ai-native-id3450003-persisted-reference-publication-atomicity.md`、
+`assets/store/pitr-migration-reference-atomicity-results-20260725.jsonl`、
+`scaffolds/go-probes/pitr_migration_reference_atomicity_test.patch`。

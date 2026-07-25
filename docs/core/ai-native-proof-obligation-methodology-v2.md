@@ -3999,3 +3999,35 @@ hidden context     -> all consumers plus persisted derived state
 
 Stop same-owner value expansion after an exact source counterfactual. Transfer the operator closure
 to another semantic dimension or transport boundary.
+
+## Verify durable references across process death and retry
+
+For a manifest, migration, checkpoint, catalog, or queue, model the reference and target as separate
+durable owners:
+
+```text
+R = durable reference
+T = separately persisted target
+```
+
+Build an owner table before injecting faults:
+
+| Question | Evidence |
+| --- | --- |
+| Which write makes `R` visible? | exact append/commit call |
+| When does `T` become durable? | exact object or metadata write |
+| Can process death occur between them? | no shared atomic owner |
+| Does retry reuse `T`'s identity? | persisted ID versus regenerated ID |
+| Who retains old `R` values? | migration/manifest/checkpoint history |
+| What does a missing target do? | skip, repair, retire, or fail-fast |
+
+Prioritize `R before T + fresh retry identity + fail-fast historical consumer`. The minimum strong
+test interrupts one attempt, completes a retry, enumerates all historical references, and invokes
+the highest consumer. Retry success alone does not prove repair.
+
+Use target-before-reference as the single-variable counterfactual. It converts a consumer-visible
+dangling reference into an unreachable object that can be garbage-collected later.
+
+Keep severity and reachability separate. A backup-chain failure can have critical impact while a
+short abrupt-exit window keeps the confirmed bug at high severity. Transfer the selector to find
+equally strong consequences under common retry, timeout, or configuration paths.

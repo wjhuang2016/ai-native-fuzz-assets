@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 14:28:47 +0800
+Generated at: 2026-07-25 16:01:29 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -78,3 +78,5 @@ Generated at: 2026-07-25 14:28:47 +0800
 | 3330003 | confirmed | high | data-loss | DELETE/UPDATE | coprocessor expression pushdown | `tikv-float-to-uint-half-tie-rounding-semantic-drift` | TiKV DOUBLE-to-UNSIGNED half-tie rounding drift can silently delete rows |  |
 | 3360003 | confirmed | high | data-integrity | ADD FOREIGN KEY | existing-row foreign-key validation | `add-fk-validator-not-in-null-poisoning` | ADD FOREIGN KEY can publish historical orphan rows when the referenced key contains NULL |  |
 | 3390003 | confirmed | high | data-corruption | TiDB Lightning local import | conflict strategy replace / post-restore | `lightning-postprocess-off-returns-before-conflict-resolution` | TiDB Lightning can report success with a corrupted unique index when checksum and analyze are disabled |  |
+| 3420003 | confirmed | high | wrong-result | NULL | coprocessor-hash-aggregation | `tidb-pb-binary-cast-collation-overwrite` | TiKV HashAgg ignores BINARY cast collation and silently merges distinct groups |  |
+| 3450003 | confirmed | high | disaster_recovery | BR snapshot restore | snapshot restore while log backup is enabled | `br-pitr-migration-reference-before-extbackupmeta` | BR retry can leave a missing metadata reference that blocks later PiTR |  |

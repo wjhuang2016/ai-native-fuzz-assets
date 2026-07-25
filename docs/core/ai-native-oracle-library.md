@@ -1882,3 +1882,40 @@ groups and TiDB root produced five.
 Sensitivity: **ADVERSARIALLY REPAIRED AND EXECUTION-CONFIRMED** by id3420003. An `IF` wrapper was
 rejected after it changed numeric type and generated a false precision mismatch; the derived-table
 barrier then found the real binary-collation HashAgg bug and passed an exact-owner GREEN.
+
+## O71 historical_durable_reference_target_closure
+
+```text
+Use for:
+  a durable manifest, migration, checkpoint, index, or queue that stores references to separately
+  persisted targets
+
+Schedule:
+  publish one interrupted attempt
+  complete one retry
+  enumerate every retained historical reference
+  force the highest production consumer to traverse them
+
+Observe:
+  durable reference list
+  target readability
+  retry identity reuse or regeneration
+  terminal consumer result
+
+RED:
+  any retained reference names a missing target
+  OR the highest consumer aborts because a target is absent
+
+GREEN:
+  every published reference is readable after retry
+  unreachable target objects are permitted for later garbage collection
+
+INVALID:
+  checking only the retry's new reference
+  checking only public retry success
+  calling a graceful finalizer when the tested boundary is process death
+```
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3450003. Current BR publication order left a missing old
+`extbackupmeta` that blocked `LoadIngestedSSTs`; target-before-reference ordering preserved consumer
+closure under the identical storage fault.

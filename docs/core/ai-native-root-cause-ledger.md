@@ -959,3 +959,20 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
 - Counting rule: error codes, table counts, ID values, and destructive upsert spellings are blast
   radius. Reopen only for another required invariant, repair owner, success terminal, or a
   materially more common trigger.
+
+## id3450003 - BR publishes a PiTR metadata reference before its target
+
+- Root cause ID: `br-pitr-migration-reference-before-extbackupmeta`.
+- Module: BR snapshot restore with log backup enabled.
+- Proof gap: appending `metaPath` to the durable migration is treated as proof that the
+  `extbackupmeta` target exists, although the target is written afterward by a different storage
+  operation.
+- RED: interrupt the first collector after migration publication and before target creation; a
+  successful retry uses a fresh path, but `LoadIngestedSSTs` fails on the retained old path.
+- GREEN: create the initial metadata object before appending the migration reference; the identical
+  retry leaves one readable path and the real log-restore metadata consumer succeeds.
+- Severity: high, with critical disaster-recovery impact. Confirmed reachability requires abrupt BR
+  process exit in the two-write window, so trigger likelihood remains narrower than default SQL or
+  configuration-only roots.
+- Counting rule: storage backends, restore scopes, and process-exit causes are blast radius. Reopen
+  only for another durable reference owner, retry identity rule, or highest consumer.
