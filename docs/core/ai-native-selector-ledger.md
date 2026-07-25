@@ -2801,3 +2801,35 @@ GC retention leases, cleanup ownership, metadata publication, and scheduler epoc
 Status: **VALIDATED** by current-master one-TiDB/PD/real-TiKV natural RED 3/3, exact scheduler RED,
 and matched pre-capture GREEN. MDL and default strict mode were enabled; the natural RED used no
 behavioral, error, or race failpoint.
+
+## S83: transaction identity and mode closure
+
+```text
+shape:      code opens a transaction to serialize a proof
+            + one or more helpers can use another session or auto-commit
+            + the intended lock also depends on transaction mode
+proof gap:  the presence of BEGIN or SELECT FOR UPDATE is treated as proof of one lock domain
+test:       tag every operation by session identity and mode; place the competing public action
+            after the decisive read; close identity and mode in separate counterfactuals
+consumer:   data deletion, safe-point publication, DDL publication, restore, cleanup, or lease
+exclude:    every proof operation shares one pessimistic transaction and external publication is
+            ordered after its durable commit
+```
+
+Born from id3540003. GC `prepare` opened a transaction intended to serialize
+`tidb_gc_enable=OFF` with the next safe-point update, but every config helper created a fresh
+session. OFF returned with value 0 before prepare resumed; the production GC path then advanced the
+frontier and made an older exact snapshot unreadable.
+
+The first counterfactual routed all helpers through the outer session and stayed RED because plain
+`BEGIN` did not provide the required wait-style locking. Adding explicit pessimistic mode made OFF
+block until prepare committed. The selector therefore records identity and mode as independent
+proof dimensions.
+
+Cross-module targets: DDL restricted sessions, checkpoint and manifest transactions, owner leases,
+TTL and cleanup workers, statistics and privilege writers, and task frameworks that mix SQL
+transactions with PD, etcd, object storage, or RPC publication.
+
+Status: **VALIDATED** by current-master one-TiDB/PD/real-TiKV history RED, same-session optimistic
+RED, and same-session pessimistic GREEN. The bug uses default GC behavior and MDL ON; scheduler
+callbacks only select the exact overlap and historical frontier.

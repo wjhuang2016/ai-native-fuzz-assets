@@ -1,0 +1,48 @@
+Finding: id3540003 GC disable does not serialize with in-flight safe-point prepare
+TiDB: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+Topology: one TiDB, one PD, one real TiKV
+MDL: enabled
+
+Source proof:
+- PR #8282 introduced tidb_gc_enable and an explicit transaction to prevent OFF from returning
+  before the current GC safe-point update.
+- PR #14403 removed GCWorker.session and changed every sys-table helper to create a fresh session.
+- Current prepare opens BEGIN on one session, while checkPrepare reads and writes through other
+  auto-commit sessions. The outer transaction protects no relevant state.
+
+RED:
+- OFF before check: prepare=false and old version remains readable.
+- Pause after prepare reads ON.
+- SET GLOBAL tidb_gc_enable=OFF returns; SELECT @@global.tidb_gc_enable returns 0.
+- Resume prepare: prepare=true and selected safe point is greater than historical v1 commit TS.
+- Run production runGCJob, including the 100-second transaction-safe-point synchronization wait,
+  resolve-lock/delete-range phases, and PD safe-point broadcast.
+- Exact read at v1 commit TS fails after GC.
+- Exact/latest read at v2 remains readable.
+- Final tidb_gc_enable remains 0.
+- Focused real-TiKV RED passed in 102.949 seconds.
+
+Counterfactual 1:
+- Route all config reads and writes through the outer session.
+- Keep plain BEGIN.
+- OFF still returns immediately; the 200ms serialization assertion fails.
+- Conclusion: transaction identity alone does not close the proof.
+
+Counterfactual 2:
+- Keep all config operations on the outer session.
+- Change only transaction mode to BEGIN PESSIMISTIC.
+- OFF remains blocked for the full 200ms observation window.
+- After release, prepare commits first; OFF then returns.
+- Stored safe point equals the prepare result and final enable is 0.
+- Focused GREEN passed in 0.59 seconds.
+
+Dedup:
+- No exact open or closed TiDB issue found for the disable/prepare linearization root.
+- #14403 is the introducing refactor, not a bug report for this consequence.
+
+Severity:
+- Impact: critical recovery consequence because historical versions become unavailable and eligible
+  for physical deletion after the user-visible disable terminal.
+- Reachability: low timing probability; requires OFF to overlap one GC prepare after its enable
+  read. PD and internal SQL latency widen the interval.
+- Bug-library severity: high.

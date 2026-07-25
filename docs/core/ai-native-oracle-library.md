@@ -1999,3 +1999,42 @@ Sensitivity: **EXECUTION-CONFIRMED** by id3510003. A current-master Classic impo
 `finished` and default required checksum passed, while the newly public unique index was empty.
 An ordinary duplicate insert then succeeded and `ADMIN CHECK TABLE` returned 8223. Moving the same
 index creation before planning made every closure check GREEN.
+
+## O74 gc_disable_linearization_history_closure
+
+```text
+Use for:
+  a user-visible switch that promises a background deletion or retention frontier has stopped
+
+Schedule:
+  create exact historical versions around the threatened frontier
+  pause the worker after its enable read
+  execute and verify the public disable terminal
+  resume the worker and run the production publication path
+
+Observe:
+  disable result and visible config value
+  stored and external safe points
+  exact old snapshot and latest snapshot
+  worker terminal result
+  whether disable blocks while the worker owns the fence
+
+RED:
+  disable returns successfully
+  AND a later publication advances beyond the command-return frontier
+  AND an exact version readable at return becomes unreadable or deletable
+
+GREEN:
+  the worker commits before disable returns
+  OR the worker observes disabled and aborts
+  AND all history promised at the public terminal remains inside the retained frontier
+
+INVALID:
+  checking only the config value or current rows
+  OR constructing versions newer than every possible frontier
+  OR replacing the production publication path with a deprecated direct-GC RPC
+```
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3540003. OFF returned with value 0, then a current-master
+GC prepare and production job made the old exact snapshot unreadable. Same-session pessimistic
+locking ordered prepare before OFF and made the serialization cell GREEN.

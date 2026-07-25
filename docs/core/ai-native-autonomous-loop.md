@@ -2497,3 +2497,30 @@ additive identity. Strong oracles must enumerate current required groups and val
 membership, and constraints before comparing totals. Stop this root after one unique-index proof;
 transfer the selector to restore, DDL reorg registration, GC leases, cleanup claims, and metadata
 publication.
+
+## Transaction-identity tick: GC disable returns before history frontier advances, EXECUTED (2026-07-26)
+
+The selector transfer from delayed guards to GC found a source comment that stated the exact
+ordering obligation. Owner tracing then showed that the named transaction did not own its helpers:
+
+```text
+PROMISE:       OFF must serialize with the enable read and safe-point metadata update
+TXN A:         prepare executes BEGIN
+SESSIONS B..N: helpers SELECT FOR UPDATE and write mysql.tidb, then auto-commit
+RED:           OFF returns with value 0; prepare resumes and advances beyond historical v1
+TERMINAL:      production GC broadcast makes the exact old snapshot unreadable
+FIX STEP 1:    route helpers through A; plain BEGIN remains RED
+FIX STEP 2:    BEGIN PESSIMISTIC; OFF waits for prepare commit and turns GREEN
+HISTORY:       #8282 introduced the proof; #14403 split the session owner
+DEDUP:         no exact open or closed upstream issue after RED
+INTEGRATE:     id3540003 high / critical recovery consequence / confirmed
+```
+
+Method improvement: add `TRANSACTION_IDENTITY_MODE_CLOSURE`. For every transaction used as safety
+evidence, record session identity, transaction mode, locked key or range, helper auto-commit, and
+external publication owner. Counterfactuals close one dimension at a time; a plausible same-session
+patch is not accepted until the competing public action demonstrably waits.
+
+The scope remains cross-module. Next scans should prioritize DDL, backup/restore, import, GC/TTL,
+metadata writers, and storage/task owners where SQL transactions are mixed with pooled sessions,
+PD/etcd calls, object storage, or irreversible cleanup.

@@ -995,3 +995,22 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   ordinary successful operations and default validation.
 - Counting rule: index kinds, file formats, discovery sizes, and timing widths are blast radius.
   Reopen only for a different proof token, guard owner, or irreversible consumer.
+
+## id3540003 - GC prepare transaction does not own its config reads and writes
+
+- Root cause ID: `gc-prepare-transaction-session-mode-split`.
+- Module: GC worker enable admission and transaction safe-point publication.
+- Proof gap: `prepare` starts a transaction to serialize against `tidb_gc_enable=OFF`, while every
+  helper creates an independent session. The transaction contains none of the reads or writes named
+  by its safety comment.
+- RED: OFF returns successfully with global value 0 while prepare is paused after reading ON.
+  Prepare then advances and broadcasts a safe point beyond a real historical version; the exact
+  old snapshot becomes unreadable while the latest value remains.
+- GREEN: same-session config access plus `BEGIN PESSIMISTIC` makes OFF wait until prepare commits.
+  Same-session access with plain `BEGIN` remains RED.
+- History: PR #8282 introduced the transaction obligation. PR #14403 removed the shared worker
+  session to fix a panic and split the lock domain.
+- Severity: high, with critical historical-recovery consequence and low timing probability. The
+  official DR workflow treats value 0 as confirmation that history is retained.
+- Counting rule: safe-point distances, GC intervals, PD latency, and recovery consumers are blast
+  radius. Reopen only for another transaction identity, mode, or external publication owner.

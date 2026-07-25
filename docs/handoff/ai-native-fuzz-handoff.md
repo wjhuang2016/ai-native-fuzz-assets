@@ -3383,3 +3383,34 @@ post-RED 未找到 exact upstream root。`id3510003/high/confirmed` 已入库，
 `docs/method-cases/ai-native-id3510003-atomic-fence-proof-state-cas.md`、
 `assets/store/import-into-schema-claim-race-results-20260725.jsonl`、
 `scaffolds/tidb-tests/ai_native_import_into_schema_claim_race_test.go`。
+
+### 2026-07-26: S83 transaction identity/mode closure 命中 id3540003
+
+范围继续不限事务模块。GC `prepare` 的注释明确声明事务用于防止：worker 读到 ON 后，用户设置 OFF
+并读取旧 safe point，随后 worker 又推进新 safe point。沿这个证明义务追 owner，发现 `prepare`
+在 session A 执行 `BEGIN`，但 `checkPrepare` 的所有配置读写 helper 都各自创建 session B..N，
+`SELECT FOR UPDATE` 和写入在外层事务之外 auto-commit。
+
+真实 TiKV RED 构造了 stored safe point 之后的两个真实 MVCC 版本。worker 读 ON 后暂停，普通
+`SET GLOBAL tidb_gc_enable=OFF` 成功返回且全局值为 0；释放后 prepare 仍返回 true。继续跑完整
+production GC job，包括 100 秒同步等待、resolve locks、delete ranges 和 PD safe-point broadcast，
+旧版本 exact snapshot 变为不可读，最新 v2 保留，最终变量仍为 0。
+
+根因历史也已定位：#8282 在 2018 年引入开关和事务证明，当时 prepare 与 helper 共用
+`GCWorker.session`；#14403 在 2020 年为修复 panic 移除共享 session，却没有迁移事务边界。
+post-RED 未找到 exact upstream issue。
+
+反事实分两步。所有 helper 改用外层 session、保留普通 `BEGIN` 时，OFF 仍立即返回；再改为
+`BEGIN PESSIMISTIC` 后，OFF 在 200ms 观察窗内保持阻塞，prepare commit 后才返回，GREEN 通过。
+因此新 selector S83 要同时记录 transaction identity、mode、lock owner 和 external publication，
+不能把“看到 BEGIN/FOR UPDATE”当作证明完成。
+
+生产可达性来自官方 DR migration 流程：先执行 OFF，再查询到 0 就认为历史不再清理。触发需要
+命令撞上一次 GC prepare 的短窗口，PD/internal SQL 延迟会放大。影响是 critical recovery
+consequence，概率较低，因此 `id3540003/high/confirmed` 入库。
+
+入口：
+`docs/bug-drafts/ai-native-gc-disable-prepare-session-split-history-loss-draft.md`、
+`docs/method-cases/ai-native-id3540003-transaction-identity-mode-closure.md`、
+`assets/store/gc-disable-prepare-session-split-results-20260726.jsonl`、
+`scaffolds/tidb-tests/ai_native_gc_disable_history_red_test.go`。
