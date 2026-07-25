@@ -21,7 +21,7 @@ It treats three things as first-class reusable assets:
 - `scaffolds/top-level/`: 70 top-level Python/shell/data scaffolds from the working directory.
 - `scaffolds/go-probes/`: 29 Go probe/source-scanner files plus `go.mod` and `go.sum`.
 - `scaffolds/client-go-tests/`: reusable client-go integration probes and counterfactual patches.
-- `scaffolds/tidb-tests/`: 91 TiDB-side AI-native test/probe and counterfactual fixtures.
+- `scaffolds/tidb-tests/`: 93 TiDB-side AI-native test/probe and counterfactual fixtures.
 - `scaffolds/pd-tools/`: isolated-testbed GC and GCV2 safe-point utilities used by collection
   frontier oracles.
 - `scripts/`: asset refresh and bug-index generation helpers.

@@ -2524,3 +2524,24 @@ patch is not accepted until the competing public action demonstrably waits.
 The scope remains cross-module. Next scans should prioritize DDL, backup/restore, import, GC/TTL,
 metadata writers, and storage/task owners where SQL transactions are mixed with pooled sessions,
 PD/etcd calls, object storage, or irreversible cleanup.
+
+### Consumer lift: the same root reaches successful FLASHBACK data loss
+
+The history RED was then joined with DDL recovery rather than counted as complete at the first
+oracle:
+
+```text
+SETUP:         drop a database containing 64 rows and one unique index
+SCHEDULE:      GC reads ON; FLASHBACK writes OFF and passes the old safe-point check
+IRREVERSIBLE:  production GC waits 100s, loads five ranges, and calls UnsafeDestroyRange
+RED TERMINAL:  FLASHBACK DATABASE reports synced/public success
+RED DATA:      fresh-session row count is 0; ADMIN CHECK passes on empty record/index ranges
+GREEN:         same-session BEGIN PESSIMISTIC makes FLASHBACK wait, then fail with 8055
+COUNTING:      same id3540003 root; stronger consequence asset, not a new bug ID
+```
+
+Method improvement: a frontier RED becomes a seed for `CONSUMER_LIFT`. Enumerate operations that
+validate the frontier once and later revoke cleanup work, then place the irreversible worker between
+validation and revocation. Rank candidates by user terminal: successful recovery with missing data
+outranks an internal safe-point mismatch. Preserve both runs because the lower oracle detects the
+root cheaply while the higher consumer establishes severity.

@@ -46,3 +46,32 @@ Severity:
 - Reachability: low timing probability; requires OFF to overlap one GC prepare after its enable
   read. PD and internal SQL latency widen the interval.
 - Bug-library severity: high.
+
+Direct consumer lift: FLASHBACK DATABASE
+- Current master, one TiDB test process, one PD, one real TiKV, MDL ON.
+- Preimage: dropped database with one table, 64 rows, sum(id)=2080, sum(u)=66080, and one unique
+  index. Delete-range observations were scoped to the exact drop job ID.
+- GC prepare read ON and paused. FLASHBACK DATABASE wrote OFF, passed the old safe-point check, and
+  paused before removing the drop job's delete-range task.
+- Production runGCJob kept its fixed 100-second synchronization wait.
+- 2026-07-26 01:42:28 start delete ranges, ranges=5.
+- 2026-07-26 01:42:28 finish delete ranges, num of ranges=5.
+- FLASHBACK schema job then reached done/public and synced; SQL returned success.
+- Fresh-session postimage: count=0, sum(id)=0, sum(u)=0.
+- ADMIN CHECK TABLE passed because GC removed both record and index keyspaces.
+- Focused real-TiKV RED passed in 100.87 seconds.
+
+Direct consumer matched GREEN:
+- Changed only the fence proof: BEGIN PESSIMISTIC and the enable SELECT FOR UPDATE used the outer
+  prepare session.
+- FLASHBACK remained blocked for the 500ms observation window while prepare owned the row lock.
+- Prepare committed the new safe point first.
+- FLASHBACK was cancelled with [variable:8055] snapshot is older than GC safe point.
+- The database was not published and the drop job's delete-range task remained active.
+- Focused GREEN passed in 1.16 seconds.
+
+Method result:
+- The direct consumer is the same gc-prepare-transaction-session-mode-split root, so id3540003 is
+  not counted again.
+- Add CONSUMER_LIFT: use a cheap frontier oracle to find the root, then join irreversible consumers
+  until the strongest feasible user terminal proves severity.

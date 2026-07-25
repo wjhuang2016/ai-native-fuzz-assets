@@ -1,0 +1,71 @@
+diff --git a/pkg/store/gcworker/gc_worker.go b/pkg/store/gcworker/gc_worker.go
+--- a/pkg/store/gcworker/gc_worker.go
++++ b/pkg/store/gcworker/gc_worker.go
+@@
+-	_, err := se.ExecuteInternal(ctx, "BEGIN")
++	_, err := se.ExecuteInternal(ctx, "BEGIN PESSIMISTIC")
+@@
+-	doGC, safePoint, err := w.checkPrepare(ctx)
++	doGC, safePoint, err := w.checkPrepare(ctx, se)
+@@
+-func (w *GCWorker) checkPrepare(ctx context.Context) (bool, uint64, error) {
+-	enable, err := w.checkGCEnable()
++func (w *GCWorker) checkPrepare(
++	ctx context.Context,
++	se sessionapi.Session,
++) (bool, uint64, error) {
++	enable, err := w.checkGCEnable(se)
+@@
+-func (w *GCWorker) checkGCEnable() (bool, error) {
+-	return w.loadBooleanWithDefault(gcEnableKey, gcDefaultEnableValue)
++func (w *GCWorker) checkGCEnable(se sessionapi.Session) (bool, error) {
++	str, err := w.loadValueFromSysTableWithSession(se, gcEnableKey)
++	if err != nil {
++		return false, errors.Trace(err)
++	}
++	if str == "" {
++		err = w.saveValueToSysTableWithSession(se, gcEnableKey, booleanTrue)
++		return gcDefaultEnableValue, errors.Trace(err)
++	}
++	return strings.EqualFold(str, booleanTrue), nil
+ }
+@@
+ func (w *GCWorker) loadValueFromSysTable(key string) (string, error) {
+-	ctx := kv.WithInternalSourceType(context.Background(), kv.InternalTxnGC)
+ 	se := createSession(w.store)
+ 	defer se.Close()
++	return w.loadValueFromSysTableWithSession(se, key)
++}
++
++func (w *GCWorker) loadValueFromSysTableWithSession(
++	se sessionapi.Session,
++	key string,
++) (string, error) {
++	ctx := kv.WithInternalSourceType(context.Background(), kv.InternalTxnGC)
+ 	rs, err := se.ExecuteInternal(ctx,
+ 		`SELECT HIGH_PRIORITY (variable_value)
+ 		 FROM mysql.tidb WHERE variable_name=%? FOR UPDATE`, key)
+@@
+ func (w *GCWorker) saveValueToSysTable(key, value string) error {
++	se := createSession(w.store)
++	defer se.Close()
++	return w.saveValueToSysTableWithSession(se, key, value)
++}
++
++func (w *GCWorker) saveValueToSysTableWithSession(
++	se sessionapi.Session,
++	key, value string,
++) error {
+ 	const stmt = `INSERT HIGH_PRIORITY INTO mysql.tidb VALUES (%?, %?, %?)
+ 		       ON DUPLICATE KEY
+ 		       UPDATE variable_value = %?, comment = %?`
+-	se := createSession(w.store)
+-	defer se.Close()
+ 	ctx := kv.WithInternalSourceType(context.Background(), kv.InternalTxnGC)
+
+# Matched GREEN contract:
+# 1. Pause prepare after the same-session SELECT FOR UPDATE reads ON.
+# 2. Start FLASHBACK DATABASE and require it to remain blocked for 500ms.
+# 3. Release prepare and require it to commit the selected safe point first.
+# 4. Require FLASHBACK to return error 8055 before database publication.
+# 5. Require the current drop job's delete-range task to remain active.

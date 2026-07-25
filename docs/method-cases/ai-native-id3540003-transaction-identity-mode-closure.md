@@ -31,8 +31,31 @@ that the intended locking semantics actually held.
 4. Run the production GC terminal path.
 5. Read the old exact snapshot and the latest version independently.
 6. In the GREEN, observe whether OFF is blocked while prepare owns the fence.
+7. Join the frontier with a recovery consumer: require `FLASHBACK DATABASE` terminal success, the
+   drop job's active/done delete-range state, recovered record/index membership, and fresh-session
+   row counts.
 
 Current-row checks, config-value checks, and metadata-only checks all miss the history loss.
+`ADMIN CHECK TABLE` also misses the direct-consumer RED because GC deletes both record and index
+ranges, leaving an internally consistent empty table.
+
+## Consumer lift
+
+The first RED proved that history could disappear after OFF returned. The higher consumer made the
+impact concrete:
+
+```text
+DROP DATABASE
+  -> FLASHBACK validates the old safe point
+  -> in-flight GC loads five delete ranges
+  -> UnsafeDestroyRange deletes record and index keyspaces
+  -> FLASHBACK removes no active task and publishes the schema
+  -> SQL terminal succeeds with 64 rows reduced to 0
+```
+
+After proving a frontier or ownership violation, enumerate irreversible consumers that can cross
+the same boundary. Prefer the consumer whose successful terminal makes the loss visible without
+interpreting internal metadata.
 
 ## Selector improvement
 
@@ -80,6 +103,7 @@ keep the scheduler and oracle fixed and vary the remaining proof dimensions one 
 - TTL and cleanup workers that read configuration before deleting durable data;
 - statistics and privilege writers that open nested restricted sessions;
 - import and task frameworks whose transaction wraps only bookkeeping, not external publication.
+- recovery paths that validate a frontier once and later revoke cleanup tasks.
 
 ## Stop rule
 

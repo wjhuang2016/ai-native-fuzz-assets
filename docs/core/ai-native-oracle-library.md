@@ -2018,23 +2018,31 @@ Observe:
   exact old snapshot and latest snapshot
   worker terminal result
   whether disable blocks while the worker owns the fence
+  for recovery consumers: active/done delete-range tasks, recovery terminal, fresh-session rows,
+  every recovered public index, and ADMIN CHECK TABLE
 
 RED:
   disable returns successfully
   AND a later publication advances beyond the command-return frontier
   AND an exact version readable at return becomes unreadable or deletable
+  OR recovery accepts the old frontier, GC physically deletes its ranges, and recovery still
+  reports success with missing rows
 
 GREEN:
   the worker commits before disable returns
   OR the worker observes disabled and aborts
   AND all history promised at the public terminal remains inside the retained frontier
+  AND a recovery consumer below the new frontier is rejected before publication
 
 INVALID:
   checking only the config value or current rows
   OR constructing versions newer than every possible frontier
   OR replacing the production publication path with a deprecated direct-GC RPC
+  OR treating ADMIN CHECK TABLE as sufficient when record and index ranges can both disappear
 ```
 
 Sensitivity: **EXECUTION-CONFIRMED** by id3540003. OFF returned with value 0, then a current-master
 GC prepare and production job made the old exact snapshot unreadable. Same-session pessimistic
-locking ordered prepare before OFF and made the serialization cell GREEN.
+locking ordered prepare before OFF and made the serialization cell GREEN. In the direct consumer,
+GC deleted five ranges and `FLASHBACK DATABASE` still published 64 rows as 0; the same fix made
+flashback wait and return 8055 before publication.

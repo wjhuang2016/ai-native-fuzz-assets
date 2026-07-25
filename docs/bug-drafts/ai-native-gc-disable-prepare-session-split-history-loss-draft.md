@@ -9,8 +9,9 @@ issue found.
 advances and later broadcasts a newer safe point. The variable reads `0`, yet historical versions
 that were readable when the command returned become unavailable and eligible for physical deletion.
 
-Current rows remain intact. The lost state is the historical recovery frontier used by snapshot
-reads, flashback, migration, and forensic recovery.
+This can become direct data loss during `FLASHBACK DATABASE`: GC can load and physically delete the
+dropped tables' delete-range tasks after flashback has accepted the old safe point but before it
+removes those tasks. Flashback then reports success and publishes the tables with zero rows.
 
 ## Production trigger
 
@@ -51,6 +52,33 @@ focused test: PASS in 102.949s
 The scheduler callbacks choose timing and a deterministic historical target. They inject no error
 and do not replace the production GC terminal path.
 
+## Direct data-loss consumer
+
+A second real-TiKV test joins the same root with the production recovery consumer:
+
+1. create one database with a 64-row table and a unique index, then drop the database;
+2. start a due periodic GC prepare and pause it immediately after it reads `ON`;
+3. start `FLASHBACK DATABASE`; it writes `OFF`, validates the old safe point, and pauses before
+   removing the drop job's delete-range task;
+4. resume GC prepare and run the full production job, including the fixed 100-second wait;
+5. GC loads five eligible ranges, calls `UnsafeDestroyRange`, and moves the tasks to done;
+6. resume flashback and observe a successful `public/synced` DDL terminal;
+7. read the recovered table through a fresh session.
+
+Observed RED on current master:
+
+```text
+GC delete ranges: 5
+FLASHBACK DATABASE terminal: success, schema public/synced
+recovered row count: 0
+ADMIN CHECK TABLE: success because both record and index ranges are empty
+focused real-TiKV test: PASS in 100.87s
+```
+
+The trigger is a large database recovery that remains in progress across the GC worker's 100-second
+wait. More tables, metadata loading, and schema synchronization widen that ordinary production
+window. It needs no TiKV failure, network fault, process crash, multiple TiDB nodes, or MDL change.
+
 ## Root cause
 
 The 2018 implementation added a transaction specifically to order the GC enable read and safe-point
@@ -71,8 +99,10 @@ The fix experiment had two stages:
 2. Change A to `BEGIN PESSIMISTIC`. The disable remained blocked while prepare held the row lock,
    prepare committed first, and only then did `OFF` return.
 
-The second focused test passed in 0.59 seconds. This distinguishes transaction identity from
-transaction mode: both are required for the intended happens-before contract.
+The original history GREEN passed in 0.59 seconds. In the direct-consumer GREEN, the same
+`FLASHBACK DATABASE` waited while prepare held the fence, then returned error 8055 after the newer
+safe point committed. The database was not published and its delete-range task remained active.
+That focused test passed in 1.16 seconds.
 
 ## Expected behavior
 
@@ -91,10 +121,10 @@ in the SQL transaction. The confirmed bug here is the user-visible disable order
 
 ## Impact and severity
 
-The consequence can be critical for recovery: data inside the operator's assumed retention window
-becomes unreadable and eligible for irreversible deletion. Trigger probability is lower because the
-disable must hit a short prepare interval. The bug library records `high / critical consequence`
-rather than conflating impact with frequency.
+The consequence is direct recovery data loss: a successful `FLASHBACK DATABASE` can publish empty
+tables after GC physically deletes their ranges. Trigger probability is lower because recovery must
+overlap a GC prepare after its enable read and remain active through the GC wait. The bug library
+keeps `high / critical consequence` rather than conflating impact with frequency.
 
 ## Dedup and history
 

@@ -2819,7 +2819,9 @@ exclude:    every proof operation shares one pessimistic transaction and externa
 Born from id3540003. GC `prepare` opened a transaction intended to serialize
 `tidb_gc_enable=OFF` with the next safe-point update, but every config helper created a fresh
 session. OFF returned with value 0 before prepare resumed; the production GC path then advanced the
-frontier and made an older exact snapshot unreadable.
+frontier and made an older exact snapshot unreadable. Following that frontier into the DDL consumer
+showed a stronger terminal: GC deleted five dropped-table ranges and `FLASHBACK DATABASE` still
+reported success with 64 rows reduced to 0.
 
 The first counterfactual routed all helpers through the outer session and stayed RED because plain
 `BEGIN` did not provide the required wait-style locking. Adding explicit pessimistic mode made OFF
@@ -2832,4 +2834,6 @@ transactions with PD, etcd, object storage, or RPC publication.
 
 Status: **VALIDATED** by current-master one-TiDB/PD/real-TiKV history RED, same-session optimistic
 RED, and same-session pessimistic GREEN. The bug uses default GC behavior and MDL ON; scheduler
-callbacks only select the exact overlap and historical frontier.
+callbacks only select the exact overlap and historical frontier. The direct-consumer RED/GREEN adds
+one rule: once a frontier violation is proven, rank irreversible consumers by terminal severity and
+continue until the highest feasible consumer closes or rejects the boundary.

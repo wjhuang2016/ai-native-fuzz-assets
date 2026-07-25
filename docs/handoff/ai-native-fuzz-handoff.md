@@ -3414,3 +3414,22 @@ consequence，概率较低，因此 `id3540003/high/confirmed` 入库。
 `docs/method-cases/ai-native-id3540003-transaction-identity-mode-closure.md`、
 `assets/store/gc-disable-prepare-session-split-results-20260726.jsonl`、
 `scaffolds/tidb-tests/ai_native_gc_disable_history_red_test.go`。
+
+### 2026-07-26: id3540003 consumer lift 命中 FLASHBACK DATABASE 直接数据丢失
+
+没有停在“旧快照不可读”。沿 GC safe point 的不可逆消费者继续追到 DDL recovery：单 TiDB、单 PD、
+真实 TiKV、MDL ON，创建 64 行和 unique index 后 DROP DATABASE。GC prepare 读 ON 后暂停；
+FLASHBACK DATABASE 写 OFF、通过旧 safe point 检查后暂停。释放 GC，完整 production job 等待
+100 秒并加载、删除 5 个 range；再释放 flashback，DDL 仍以 `public/synced` 成功结束。
+
+新会话读取恢复表得到 0 行。`ADMIN CHECK TABLE` 仍通过，因为 record 和 index keyspace 一起被删，
+所以结构闭包本身无法发现“整组消失”。这把 id3540003 从 recovery frontier loss 升级为成功恢复后的
+直接数据丢失，但 root、proof gap 和 fix 相同，不新增 bug ID。
+
+匹配 GREEN 只改 GC fence：enable read 使用外层 session，并执行 `BEGIN PESSIMISTIC`。同一 schedule
+下 FLASHBACK 先等待，prepare commit 后返回 8055，database 未发布，delete-range task 仍在。
+RED 100.87 秒，GREEN 1.16 秒。
+
+方法新增 `CONSUMER_LIFT`：证明 frontier/owner 缺陷后，枚举会跨越它的不可逆消费者，优先寻找
+“用户命令成功但持久化数据缺失”的终端。低层 oracle 用于快速找 root，高层 consumer 用于证明
+严重性；两者都入资产库。
