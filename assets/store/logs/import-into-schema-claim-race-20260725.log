@@ -1,0 +1,67 @@
+Finding: id3510003 Classic IMPORT INTO stale schema before TableMode claim
+Date: 2026-07-25
+TiDB: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+Topology: one in-process TiDB, one PD, one real TiKV
+Kernel: Classic
+MDL: enabled (mdlCheckLoop active)
+SQL mode: default strict
+Checksum: required (default)
+
+Natural production-shaped RED:
+  source directory: 60,000 unrelated readable entries plus data-000.csv
+  session A: IMPORT INTO t FROM '.../data-*.csv'
+  session B after 250ms: ALTER TABLE t ADD UNIQUE INDEX kv(v)
+  command:
+    go test -tags=intest ./tests/realtikvtest/importintotest \
+      -run '^TestImportInto/TestAINativeImportIntoAddIndexDuringNaturalFileDiscovery$' \
+      -count=3 -timeout 15m
+  result:
+    ok github.com/pingcap/tidb/tests/realtikvtest/importintotest 53.555s
+
+RED assertions:
+  ADD UNIQUE INDEX terminal: success
+  IMPORT job terminal: finished
+  record scan: 1:101, 2:102, 3:103
+  FORCE INDEX(kv): empty
+  default checksum remote groups:
+    indexID=1, totalKvs=0, totalBytes=0
+    indexID=-1, totalKvs=3
+  checksum terminal: pass
+  INSERT (4,101): success
+  record scan after insert: 1:101, 2:102, 3:103, 4:101
+  ADMIN CHECK TABLE:
+    ERROR 8223 data inconsistency in table t, index kv, missing old-row index entry
+
+Exact scheduler RED:
+  barrier: callback at importer.NewImportPlan
+  callback action: ordinary ALTER TABLE ADD UNIQUE INDEX only
+  injected component/data error: none
+  command:
+    make failpoint-enable
+    go test -tags=intest ./tests/realtikvtest/importintotest \
+      -run '^TestImportInto/TestAINativeImportIntoAddIndexAfterTargetResolution$' \
+      -count=1 -timeout 15m
+    make failpoint-disable
+  result:
+    ok github.com/pingcap/tidb/tests/realtikvtest/importintotest 10.897s
+    failpoint refcount restored to 0
+
+Matched GREEN:
+  only change: ADD UNIQUE INDEX completes before IMPORT INTO planning
+  result:
+    import finished
+    record scan: 3
+    unique-index scan: 3
+    duplicate INSERT (4,101): ERROR 1062
+    ADMIN CHECK TABLE: pass
+  command result:
+    ok github.com/pingcap/tidb/tests/realtikvtest/importintotest 10.034s
+
+Dedup:
+  searched open and closed pingcap/tidb issues after RED for:
+    "IMPORT INTO" "ADD INDEX"
+    "IMPORT INTO" "schema change"
+    "IMPORT INTO" "data inconsistency"
+    "IMPORT INTO" "missing index"
+  exact root: none
+  issue 69798: empty umbrella with no direct bug

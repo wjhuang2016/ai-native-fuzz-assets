@@ -3352,3 +3352,34 @@ root fingerprints、known-duplicate packs、negative persistent-lift assets；�
 `assets/store/tikv-json-integer-decimal-precision-results-20260725.jsonl`、
 `scaffolds/top-level/ai_native_tikv_json_decimal_precision_wrong_delete_repro.sh`、
 `scaffolds/rust-probes/tikv_json_integer_decimal_precision_test.patch`。
+
+### 2026-07-25: S82 atomic fence proof-state CAS 命中 id3510003
+
+范围继续保持跨模块。Classic `IMPORT INTO` 在 `NewImportPlan` 捕获目标 schema S0，经过文件发现、
+资源估算和 precheck 后，才把表切到 `TableModeImport`。`IMPORT INTO` 跳过 statement MDL；模式切换
+只阻止未来 DDL，没有原子比较当前 schema 是否仍等于 S0。
+
+在这个 gap 中执行普通 `ADD UNIQUE INDEX`，DDL 和 import 都成功，import job 为 `finished`。真实
+TiKV 上 record scan 有 3 行，新 public unique index 为 0 行；随后普通 duplicate INSERT 成功，
+`ADMIN CHECK TABLE` 报 8223。默认 `checksum=required` 仍显示 pass，因为旧 schema 生成的 expected
+只有 record group，而完全缺失的 index group 对 KVs、bytes、checksum 都贡献 0。
+
+生产形状不依赖故障：目标为空表，批量导入在对象发现或采样阶段耗时，独立 schema deployment 在
+这段时间增加索引。用一个匹配 CSV 加 60,000 个同目录无关文件扩大自然 discovery window，当前
+master、单 TiDB/PD/真实 TiKV、MDL ON、默认 strict 下连续 3/3 RED；精确 scheduler RED 与“先建
+索引再 planning”的 GREEN 进一步隔离了根因。
+
+新 selector S82 固定检查 `capture proof state -> unguarded preparation -> acquire guard`。guard 若只
+防未来变化，必须在 acquisition 时 CAS 完整 proof token，否则把一个合法 mutation 放入 gap。新
+oracle O73 同时检查双方 terminal、job、record、每个当前 public index、duplicate write、ADMIN 和
+checksum group presence。不要继续枚举 index 类型或文件数量；下一轮横向迁移到 restore admission、
+DDL reorg registration、GC retention lease、cleanup ownership 和 metadata publication。
+
+post-RED 未找到 exact upstream root。`id3510003/high/confirmed` 已入库，当前 156 surfaces、
+133 roots、78 high、138 confirmed。
+
+入口：
+`docs/bug-drafts/ai-native-import-into-concurrent-add-unique-stale-schema-corruption-draft.md`、
+`docs/method-cases/ai-native-id3510003-atomic-fence-proof-state-cas.md`、
+`assets/store/import-into-schema-claim-race-results-20260725.jsonl`、
+`scaffolds/tidb-tests/ai_native_import_into_schema_claim_race_test.go`。

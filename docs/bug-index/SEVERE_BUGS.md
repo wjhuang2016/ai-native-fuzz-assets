@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=3480003`, `COUNT(*)=155`, `COUNT(DISTINCT root_cause_id)=132`
-- High-severity entries: 77 total, including 3 `known-duplicate` calibration rows
+- Remote `found_bug`: `MAX(id)=3510003`, `COUNT(*)=156`, `COUNT(DISTINCT root_cause_id)=133`
+- High-severity entries: 78 total, including 3 `known-duplicate` calibration rows
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -85,6 +85,7 @@ Last verified: 2026-07-25
 | 3420003 | confirmed | wrong result | `tidb-pb-binary-cast-collation-overwrite` | TiKV partial HashAgg can merge byte-distinct `BINARY` keys and persist wrong summaries through `INSERT ... SELECT`. | [draft](../bug-drafts/ai-native-tikv-hashagg-binary-cast-collation-wrong-group-draft.md) | [case](../method-cases/ai-native-id3420003-pushdown-root-closure-method-case.md) |
 | 3450003 | confirmed | disaster recovery | `br-pitr-migration-reference-before-extbackupmeta` | An interrupted BR restore can leave a missing metadata reference that blocks later PiTR even after retry succeeds. | [draft](../bug-drafts/ai-native-br-pitr-dangling-ingested-sst-meta-draft.md) | [case](../method-cases/ai-native-id3450003-persisted-reference-publication-atomicity.md) |
 | 3480003 | confirmed | data loss | `tikv-json-integer-to-decimal-f64-precision-loss` | TiKV can narrow large JSON IDs through `f64` and make a pushed cleanup DELETE silently remove rows whose JSON and DECIMAL IDs are equal. | [draft](../bug-drafts/ai-native-tikv-json-integer-decimal-precision-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3480003-json-decimal-exact-domain.md) |
+| 3510003 | confirmed | data corruption | `classic-import-tablemode-stale-schema-claim` | Classic `IMPORT INTO` can finish with an empty new unique index; later writes can violate the public constraint. | [draft](../bug-drafts/ai-native-import-into-concurrent-add-unique-stale-schema-corruption-draft.md) | [case](../method-cases/ai-native-id3510003-atomic-fence-proof-state-cas.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

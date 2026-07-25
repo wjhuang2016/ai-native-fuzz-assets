@@ -1963,3 +1963,39 @@ INVALID:
 Sensitivity: **EXECUTION-CONFIRMED** by id3480003. TiKV narrowed JSON `I64/U64` through `f64`;
 `2^53+1` changed by one, and a pushed reconciliation DELETE removed matching rows. Direct integer
 to Decimal conversion made the current-master focused test GREEN.
+
+## O73 import_current_schema_unique_constraint_closure
+
+```text
+Use for:
+  an importer or restore worker that can carry schema-dependent state across an admission fence
+
+Observe:
+  both DDL/import terminals and durable job status
+  record scan with no secondary access path
+  one forced scan for every current public index
+  an ordinary duplicate write against each current unique constraint
+  ADMIN CHECK TABLE
+  local expected and remote actual checksum groups, including zero-cardinality groups
+
+RED:
+  both operations report success and the job is finished
+  AND a current public index omits an imported record
+  OR a duplicate write succeeds against an imported unique value
+  OR ADMIN CHECK TABLE reports record/index inconsistency
+
+GREEN:
+  record and every current public index contain the same imported handles
+  AND duplicate writes are rejected
+  AND ADMIN CHECK TABLE passes
+
+INVALID:
+  checking only total row count, job success, or aggregate checksum
+  OR the DDL did not reach public before the irreversible import
+  OR the reference uses an obsolete rather than current schema
+```
+
+Sensitivity: **EXECUTION-CONFIRMED** by id3510003. A current-master Classic import reported
+`finished` and default required checksum passed, while the newly public unique index was empty.
+An ordinary duplicate insert then succeeded and `ADMIN CHECK TABLE` returned 8223. Moving the same
+index creation before planning made every closure check GREEN.

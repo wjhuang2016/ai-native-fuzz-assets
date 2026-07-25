@@ -2767,3 +2767,37 @@ indexes, cleanup queues, task payload registries, and remote artifact publicatio
 Status: **VALIDATED** by current-master persistent-storage RED and exact ordering GREEN. Impact is
 critical for disaster recovery; confirmed reachability requires abrupt process exit in a short
 external-write window, so triage remains high.
+
+## S82: atomic fence proof-state CAS
+
+```text
+shape:      proof state P is captured before a later lock, lease, mode, epoch, or owner claim G
+            + preparation between P and G can overlap a legal mutation
+            + an irreversible consumer continues to use P after G succeeds
+proof gap:  acquiring G is treated as proof that P stayed unchanged before acquisition
+test:       place one legal state transition after P and before G; compare with the same
+            transition before P and after G
+consumer:   import, restore, DDL reorg, GC, cleanup, publication, or scheduler execution
+exclude:    G atomically compares the complete proof token, or one outer guard covers both P and
+            every irreversible use
+```
+
+Born from id3510003. Classic `IMPORT INTO` captured schema S0, performed file discovery and
+prechecks without MDL, then acquired `TableModeImport`. A concurrent `ADD UNIQUE INDEX` completed
+in the gap. The mode blocked future DDL but did not compare the current schema with S0, so workers
+encoded records without the public index.
+
+The accepted matrix has three semantic cells: mutation before proof capture is GREEN, mutation in
+the capture-to-claim gap is RED, and mutation after claim is blocked or waits. The RED must join
+both successful terminals with current-owner closure; reaching the gap alone is not evidence.
+
+The same case exposed an oracle weakness. A completely absent required index contributes zero KVs,
+bytes, and checksum, so a row-only expected checksum can equal the current-schema remote total.
+Required groups therefore need explicit presence and cardinality checks before additive validation.
+
+Cross-module targets: restore target admission, DDL reorg registration, backup source generations,
+GC retention leases, cleanup ownership, metadata publication, and scheduler epoch claims.
+
+Status: **VALIDATED** by current-master one-TiDB/PD/real-TiKV natural RED 3/3, exact scheduler RED,
+and matched pre-capture GREEN. MDL and default strict mode were enabled; the natural RED used no
+behavioral, error, or race failpoint.

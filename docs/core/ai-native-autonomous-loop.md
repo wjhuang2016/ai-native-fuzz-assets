@@ -2465,3 +2465,35 @@ and persistent preimages.
 This tick also exposed a workflow waste: id3120003 was rediscovered before the known-root lookup.
 Future matrix admission loads validated roots, known duplicates, and negative persistent-lift
 assets first. Known cells remain oracle calibration only.
+
+## Atomic-fence tick: Classic import claims a stale schema, EXECUTED (2026-07-25)
+
+The next source pass ordered proof capture, preparation, and guard acquisition instead of treating
+the presence of `TableModeImport` as sufficient protection:
+
+```text
+P:             import captures target schema S0
+GAP:           file discovery, resource estimation, and prechecks run without MDL
+F:             ADD UNIQUE INDEX publishes schema S1
+GUARD:         TableModeImport is acquired without comparing S1 to S0
+RED:           import finishes with three records and an empty public unique index
+CONSEQUENCE:   duplicate INSERT succeeds; ADMIN CHECK TABLE returns 8223
+CHECKSUM:      required checksum passes because the missing index group contributes zero
+NATURAL:       60k-entry discovery reproduces 3/3 with one TiDB/PD/real TiKV
+GREEN:         create the same index before proof capture; rows, index, duplicate check, and ADMIN
+               all close
+DEDUP:         no exact open or closed upstream root found after RED
+INTEGRATE:     id3510003 high / critical consequence / confirmed; 156 surfaces, 133 roots,
+               78 high, 138 confirmed.
+```
+
+Method improvement: add `ATOMIC_FENCE_PROOF_STATE_CAS`. For every delayed guard, record the exact
+state that justified later work and ask whether guard acquisition atomically compares that state,
+or merely blocks future changes. Put one legal mutation in the gap and use before-capture GREEN
+plus after-claim exclusion to isolate the defect.
+
+O73 also closes a blind spot in aggregate validation: an entirely absent required group can be an
+additive identity. Strong oracles must enumerate current required groups and validate presence,
+membership, and constraints before comparing totals. Stop this root after one unique-index proof;
+transfer the selector to restore, DDL reorg registration, GC leases, cleanup claims, and metadata
+publication.

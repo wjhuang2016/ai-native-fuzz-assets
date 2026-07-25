@@ -976,3 +976,22 @@ the high-consequence lane are in P4 of the scheduler — both in `ai-native-auto
   configuration-only roots.
 - Counting rule: storage backends, restore scopes, and process-exit causes are blast radius. Reopen
   only for another durable reference owner, retry identity rule, or highest consumer.
+
+## id3510003 - Classic import acquires TableMode after its schema proof is stale
+
+- Root cause ID: `classic-import-tablemode-stale-schema-claim`.
+- Module: Classic `IMPORT INTO` admission and schema fencing.
+- Proof gap: `Plan.TableInfo` is captured before unguarded file discovery and prechecks;
+  `TableModeImport` later blocks future DDL but does not atomically compare the current schema with
+  that captured proof state.
+- RED: publish `ADD UNIQUE INDEX` in the capture-to-claim gap. Both operations and the import job
+  succeed, records are present, the public unique index is empty, a duplicate write succeeds, and
+  `ADMIN CHECK TABLE` reports 8223.
+- GREEN: publish the same index before plan construction. Record/index membership closes, the
+  duplicate write returns 1062, and `ADMIN CHECK TABLE` passes.
+- Validation blind spot: default required checksum passes because a completely missing index group
+  is the additive identity while the local expected state was encoded from the obsolete schema.
+- Severity: high in the repository taxonomy, with critical persistent-corruption consequence under
+  ordinary successful operations and default validation.
+- Counting rule: index kinds, file formats, discovery sizes, and timing widths are blast radius.
+  Reopen only for a different proof token, guard owner, or irreversible consumer.
