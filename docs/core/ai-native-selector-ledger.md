@@ -2451,3 +2451,29 @@ population, object-store manifests, and cleanup queues.
 
 Status: **VALIDATED** by two official-BR/real-TiKV REDs, a preexisting-target rejection, and a
 no-concurrent-DDL GREEN. Default checkpoint and MDL were enabled; no product injection was used.
+
+## S73: pushdown row-set semantic closure
+
+```text
+shape:      one deterministic SQL expression has independent TiDB and TiKV implementations
+            + the optimizer admits the remote signature as semantically equivalent
+            + the remote evaluator owns row admission for a persistent consumer
+            + a numeric, temporal, collation, JSON, error, or context boundary differs
+proof gap:  "both sides implement the signature" is treated as "both select exactly the same rows"
+test:       derive boundary triples from source comments/tests; prove pushdown with EXPLAIN; compare
+            exact pushed/root IDs; project the predicate onto returned rows; lift through DML
+consumer:   UPDATE, DELETE, uniqueness, CHECK, index generation, or another durable row-set owner
+exclude:    unpushed expressions, warning-only or formatting-only differences, and equal row sets
+```
+
+Born from: id3120003. For `TIME(6)=-00:00:00.500000`, TiKV's pushed
+`CAST(dur AS SIGNED)` returns `-1` while TiDB returns `0`. A query returned the row with
+`predicate_holds=0`; ordinary UPDATE changed it anyway. The root-forced control changed only the
+adjacent true row.
+
+Cross-module targets: casts, arithmetic, temporal and JSON functions, collations, generated
+expressions, index keys, constraints, and session-context-sensitive evaluators.
+
+Status: **VALIDATED** by official-nightly real-TiKV row-set/DML RED, adjacent boundary and
+root-evaluation GREEN controls, and a current TiKV master focused compatibility failure. Default
+strict mode and MDL were enabled; no fault injection was used.

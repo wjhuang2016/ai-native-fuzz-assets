@@ -1,0 +1,33 @@
+environment:
+  TiDB nightly ed2376acc6e0feeff9f3e2c38db489727933aa80
+  TiKV nightly 730be34f959185c934b7d3db730ca1dbeb3949f8
+  one TiDB, one PD, one real TiKV
+  default strict sql_mode
+  tidb_enable_metadata_lock=1
+
+script:
+  scaffolds/top-level/ai_native_tikv_duration_cast_wrong_dml_repro.sh
+
+output:
+  push_ids=2,3
+  root_ids=3
+  self-contradictory pushed result:
+  2  -00:00:00.500000   0   0
+  3  -00:00:00.500001  -1   1
+  UPDATE plan:
+  Update N/A root N/A
+  +-TableReader root data:Selection
+    +-Selection cop[tikv] lt(cast(ai_duration_cast_diff.t.dur, bigint BINARY), 0)
+      +-TableFullScan cop[tikv] table:t
+  pushed_update=2:2,3
+  wrongly_updated_ids=2
+  root_update_control=1:3
+  matrix=RED_CONFIRMED
+
+current-master focused confirmation:
+  repo: tikv/tikv
+  commit: 91ccfb212677a43fd5255183ccf2afa4e3cec23e
+  command: cargo test -p tidb_query_expr test_duration_as_int --lib
+  temporary expected pair: -00:00:00.50 -> 0
+  failure: input -00:00:00.50, expect 0, output Ok(Some(-1))
+  cleanup: temporary assertion removed; worktree clean

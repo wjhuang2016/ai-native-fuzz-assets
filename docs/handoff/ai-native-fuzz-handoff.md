@@ -2874,3 +2874,35 @@ gap 中放入不同 fingerprint 的对象，用 preexisting GREEN、gap RED、no
 `found_bug id3090003/high/confirmed` 已入库，当前为 142 surfaces、119 roots、64 high、126
 confirmed。资产图已导入 7 个新资产、5 条关系、4 次运行和 1 个 validated target；按
 `br/snapshot-restore + S72` 生成的复用包包含 9 个相关资产，`open_gaps=[]`。
+
+### 2026-07-25: id3120003 - TiDB/TiKV 的 duration cast 差分导致普通 DML 改错行
+
+范围放开后开始验证跨层表达式差分。出发点来自 TiKV duration-to-int 代码里留下的语义一致性线索，
+随后把输入压缩为 `.499999/.500000/.500001` 三点边界，并用同一谓词分别走 TiKV pushdown 与
+TiDB root evaluator。
+
+`TIME(6)=-00:00:00.500000` 命中 RED：TiKV 把
+`CAST(dur AS SIGNED)` 算成 `-1`，TiDB 算成 `0`。普通查询因此返回 id=2，却在同一结果行显示
+`cast_value=0,predicate_holds=0`。`UPDATE ... WHERE CAST(dur AS SIGNED)<0` 的
+`cop[tikv] Selection` 持久化修改 ids 2,3；强制 root evaluator 的 matched control 只修改 id=3。
+邻接值 `.499999` 与 `.500001` 都一致，证明是负数 exact-half tie 规则分叉。
+
+官方 nightly 的一 TiDB/PD/真实 TiKV、默认 strict sql_mode、MDL ON 环境直接复现，无并发、retry、
+failpoint、source patch 或节点/网络/磁盘故障。TiKV 当前 master `91ccfb2126` 的现有
+`test_duration_as_int` 加入兼容性断言后也直接失败：actual `-1`、TiDB expected `0`；探针已经撤销。
+post-RED 在 TiDB、TiKV issue 和远端 bug 库中未找到同根问题。
+
+新增 S73 `PUSHDOWN_ROWSET_SEMANTIC_CLOSURE`。方法增量是把 source clue 变成跨 evaluator 的小矩阵：
+先用 EXPLAIN 证明 owner 真正在 TiKV，再比较 exact row IDs，把 predicate 投影回返回行形成
+self-contradiction，最后只把 row-set mismatch 提升到 UPDATE/DELETE 等持久化 consumer。warning、
+格式或错误文本差异不进入高危队列。该 bug 有持久化错改后果，但触发要求负 TIME 精确半秒和显式
+cast，因此记为 high，不拔高为 critical。
+
+入口：
+`docs/bug-drafts/ai-native-tikv-duration-cast-half-tie-wrong-dml-draft.md`、
+`docs/method-cases/ai-native-id3120003-pushdown-rowset-semantic-closure.md`、
+`assets/store/tikv-duration-cast-half-tie-results-20260725.jsonl`、
+`scaffolds/top-level/ai_native_tikv_duration_cast_wrong_dml_repro.sh`。脚手架已独立复跑并自动清理；
+远端 `found_bug id3120003/high/confirmed` 已入库，当前为 143 surfaces、120 roots、65 high、
+127 `confirmed=1`。资产图已导入 7 个资产、6 条关系、3 次运行和 1 个 validated target；
+复用包 `open_gaps=[]`。

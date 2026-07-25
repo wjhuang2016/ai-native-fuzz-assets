@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 10:24:11 +0800
+Generated at: 2026-07-25 10:58:54 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -68,3 +68,4 @@ Generated at: 2026-07-25 10:24:11 +0800
 | 3030003 | confirmed | high | data-loss | BR PiTR restore | AUTO_ID_CACHE=1 / post-replay allocator repair | `pitr-autoid-required-repair-fail-open` | PiTR can report success after an AUTO_ID rebase failure and later overwrite restored rows |  |
 | 3060003 | confirmed | high | data-corruption | br restore table | snapshot selective restore and foreign keys | `br-filtered-batch-assumes-fk-dependency-closure` | BR selective table restore can publish a foreign-key child without its parent and silently accept orphan rows |  |
 | 3090003 | confirmed | high | data-corruption | br restore table | target existence admission and schema identity | `br-target-absence-check-idempotent-create-identity-gap` | BR can restore into a concurrently created incompatible table and report success with a corrupted index |  |
+| 3120003 | confirmed | high | data-corruption | UPDATE/DELETE | coprocessor expression pushdown | `tikv-duration-cast-negative-half-tie-semantic-drift` | TiKV pushdown rounds negative TIME half-seconds differently and DML can modify rows that fail its predicate |  |
