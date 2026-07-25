@@ -6,8 +6,8 @@ Source of truth for status and severity is the remote `found_bug` table. This fi
 
 Last verified: 2026-07-25
 
-- Remote `found_bug`: `MAX(id)=3330003`, `COUNT(*)=150`, `COUNT(DISTINCT root_cause_id)=127`
-- High-severity entries: 72 total, including 3 `known-duplicate` calibration rows
+- Remote `found_bug`: `MAX(id)=3360003`, `COUNT(*)=151`, `COUNT(DISTINCT root_cause_id)=128`
+- High-severity entries: 73 total, including 3 `known-duplicate` calibration rows
 
 ## Confirmed / Issue-Filed High-Severity Assets
 
@@ -80,6 +80,7 @@ Last verified: 2026-07-25
 | 3210003 | confirmed | data corruption | `partial-index-timestamp-membership-writer-timezone-dependent` | Mixed writer time zones can corrupt TIMESTAMP partial-index membership, violate logical uniqueness, and make indexed DELETE silently miss rows. | [draft](../bug-drafts/ai-native-partial-index-timestamp-session-timezone-draft.md) | [case](../method-cases/ai-native-id3210003-persisted-evaluator-context-closure.md) |
 | 3240003 | confirmed | data loss | `virtual-generated-timestamp-index-writer-timezone-dependent` | An indexed virtual `DATE(TIMESTAMP)` can return a row whose current predicate is false and make ordinary DELETE silently remove it after a session time-zone change. | [draft](../bug-drafts/ai-native-virtual-generated-timestamp-index-timezone-data-loss-draft.md) | [case](../method-cases/ai-native-id3240003-composable-safety-gate-closure.md) |
 | 3330003 | confirmed | data loss | `tikv-float-to-uint-half-tie-rounding-semantic-drift` | TiKV can round `CAST(DOUBLE AS UNSIGNED)` half ties differently and make ordinary DELETE silently remove a row that fails the TiDB predicate. | [draft](../bug-drafts/ai-native-tikv-float-uint-half-tie-wrong-delete-draft.md) | [case](../method-cases/ai-native-id3330003-rounding-parity-method-case.md) |
+| 3360003 | confirmed | data integrity | `add-fk-validator-not-in-null-poisoning` | `ADD FOREIGN KEY` can publish a constraint over historical orphan rows when the referenced nullable key contains `NULL`. | [draft](../bug-drafts/ai-native-add-fk-nullable-parent-notin-draft.md) | [case](../method-cases/ai-native-id3360003-null-safe-absence-proof-method-case.md) |
 
 ## High-Severity Candidates / Legacy Queue
 

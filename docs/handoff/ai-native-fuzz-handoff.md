@@ -3152,3 +3152,37 @@ primitive。
 `scaffolds/top-level/ai_native_tikv_float_uint_half_tie_wrong_delete_repro.sh`。已知根入口为
 `docs/bug-drafts/ai-native-tikv-max-packet-wrong-delete-known.md` 与
 `assets/store/tikv-max-packet-pushdown-known-results-20260725.jsonl`。
+
+### 2026-07-25: 跨模块 DDL validator 命中 id3360003
+
+范围继续保持开放，不限于事务模块。源码检查到 `ADD FOREIGN KEY` 在公开约束前，用
+`child tuple NOT IN (SELECT referenced tuple)` 验证历史数据。这里的证明义务是：查询没有返回行，
+是否足以证明历史孤儿不存在。
+
+真实 TiKV 最小 RED 使用 parent keys `(1,NULL)`、child keys `(1,2)`。实现形状的 `NOT IN`
+返回 0 个 violation，相关 `NOT EXISTS` 返回 1 个。`ALTER TABLE ... ADD FOREIGN KEY` 成功，
+information_schema 中约束已 public，但 LEFT JOIN 仍能找到 child key 2 的历史孤儿。此后插入
+新的 key 3 会报 1452，说明约束处于“新写入执行、历史坏数据保留”的持久化分裂状态。
+`ADMIN CHECK TABLE` 不报告这个逻辑完整性问题。
+
+matched GREEN 只删除 parent 的 `NULL` 行，同一 ALTER 立即报 1452，约束没有发布。当前 master
+临时回归测试在原代码上得到 `expected error, got nil`；把 validator 改成相关 `NOT EXISTS` 后通过。
+测试和源码改动均已移除，TiDB worktree 干净。post-RED GitHub 和内部 root 去重没有命中同根。
+
+由此新增 `ABSENCE_PROOF_MUST_BE_NULL_SAFE`：凡是“查询为空就允许 publish/success/delete”的路径，
+先检查 predicate 是否可能产生 UNKNOWN，再用 match / absence / NULL contamination 三格矩阵与
+NULL-safe oracle 对比。这个 selector 下一步横向迁移到 restore、import、GC/cleanup、uniqueness
+admission 等模块，不继续枚举 FK 类型。
+
+压缩上下文去重也收紧为两段：执行前只查内部资产的 root fingerprint 和 lifecycle，避免重复已有
+实验；外部 issue/PR/history 仍放在 RED 后，避免用历史答案选择目标。
+
+入口：
+`docs/bug-drafts/ai-native-add-fk-nullable-parent-notin-draft.md`、
+`docs/method-cases/ai-native-id3360003-null-safe-absence-proof-method-case.md`、
+`assets/store/add-fk-nullable-parent-notin-results-20260725.jsonl`、
+`assets/store/logs/add-fk-nullable-parent-notin-red-control-20260725.log`、
+`scaffolds/top-level/ai_native_add_fk_nullable_parent_notin_repro.sh`。
+
+远端 `found_bug id3360003/high/confirmed` 已入库，当前为 151 surfaces、128 roots、73 high、
+133 confirmed。资产图为 597 revisions、RED 127、GREEN 127、validated targets 67。

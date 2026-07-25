@@ -1,0 +1,29 @@
+VERSIONS_AND_SETTINGS
+Release Version: v9.0.0-beta.2.pre-2017-ged2376acc6
+Edition: Community
+Git Commit Hash: ed2376acc6e0feeff9f3e2c38db489727933aa80
+Git Branch: HEAD
+UTC Build Time: 2026-07-23 03:36:19
+GoVersion: go1.25.10
+Race Enabled: false
+Check Table Before Drop: false
+Store: tikv
+Kernel Type: Classic
+pd	9.0.0-beta.2.pre-454-gf7db42521	f7db42521223b92fa30d68352b15e6962b699b7e
+tidb	9.0.0-beta.2.pre-2017-ged2376acc6	ed2376acc6e0feeff9f3e2c38db489727933aa80
+tikv	9.0.0-beta.2	730be34f959185c934b7d3db730ca1dbeb3949f8
+mdl=1,fk_enabled=1,fk_checks=1,sql_mode=ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+RED_VALIDATOR_ORACLE
+validator_not_in=0 correct_not_exists=1
+RED_ADD_FOREIGN_KEY
+published_constraint=1 historical_orphans=1
+RED_POST_PUBLICATION_ENFORCEMENT
+ERROR 1452 (23000) at line 2: Cannot add or update a child row: a foreign key constraint fails (`ai_add_fk_nullable_parent`.`child_red`, CONSTRAINT `fk_child_red_parent_red` FOREIGN KEY (`parent_key`) REFERENCES `parent_red` (`business_key`))
+new orphan rejected while the historical orphan remains
+1	1
+2	2
+GREEN_NO_NULL_IN_REFERENCED_KEY
+ERROR 1452 (23000) at line 2: Cannot add or update a child row: a foreign key constraint fails (`ai_add_fk_nullable_parent`.`child_green`, CONSTRAINT `fk_child_green_parent_green` FOREIGN KEY (`parent_key`) REFERENCES `parent_green` (`business_key`))
+control ALTER rejected the historical orphan
+green_published_constraint=0
+matrix=RED_CONFIRMED

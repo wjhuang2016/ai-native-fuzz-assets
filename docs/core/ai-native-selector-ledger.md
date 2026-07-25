@@ -2593,3 +2593,31 @@ JSON/vector conversion, and storage-side evaluators implemented in another langu
 Status: **VALIDATED** by official-nightly real-TiKV rowset/self-predicate/DELETE RED, matched parity
 GREEN, and a current TiKV master focused compatibility failure. Default strict mode and MDL were
 enabled; no injection or configuration change was used.
+
+## S77: NULL-safe absence-proof closure
+
+```text
+shape:      a validator or cleaner treats an empty result as proof of absence
+            + the predicate consumes nullable data or can evaluate UNKNOWN
+            + zero rows authorizes publication, success, or destruction
+proof gap:  "predicate did not return TRUE" is treated as "the forbidden state is absent"
+test:       hold match and absence rows fixed; add/remove one NULL-producing input; compare the
+            implementation predicate with a NULL-safe anti-join; observe the terminal owner
+consumer:   DDL publication, restore/import success, GC/cleanup, uniqueness admission, or routing
+exclude:    inputs proven NOT NULL, predicate explicitly normalizes UNKNOWN, or an independent
+            later validator covers the same state before publication
+```
+
+Born from: id3360003. `ADD FOREIGN KEY` generated a child-tuple `NOT IN` referenced-key subquery.
+With parent keys `1,NULL` and child keys `1,2`, it found zero violations while correlated
+`NOT EXISTS` found one. The DDL published a public constraint over the historical orphan. Removing
+only parent `NULL` made the DDL fail with 1452.
+
+Cross-module targets: restore preconditions, import conflict cleanup, GC candidate exclusion,
+privilege or policy closure, uniqueness validation, stale-object cleanup, and any generated SQL
+whose empty result authorizes a terminal action. Search especially for `NOT IN`, `<> ALL`,
+`COUNT(nullable_expr)=0`, and negated nullable predicates.
+
+Status: **VALIDATED** by official-nightly real-TiKV SQL/publication RED, matched no-NULL GREEN, and a
+current TiDB master focused RED/counterfactual GREEN. Default strict mode, MDL, and FK checks were
+enabled; no injection or concurrency was used.

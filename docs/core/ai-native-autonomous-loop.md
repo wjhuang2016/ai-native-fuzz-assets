@@ -2323,3 +2323,29 @@ evaluator to its final conversion primitive, classify the semantic difference, a
 smallest boundary partition from that class. Only a rowset RED proceeds to self-predicate and DML
 oracles. This tick also reproduced the known MaxAllowedPacket transport gap as a default-config
 wrong DELETE; post-RED dedup mapped it to TiKV #3736 and stored it as id3300003 known-duplicate.
+
+## NULL-safe absence-proof tick: ADD FOREIGN KEY historical orphans, EXECUTED (2026-07-25)
+
+The next source pass moved from evaluator code to a DDL publication validator. The proof obligation
+was whether an empty generated-query result really proves that no historical violation exists.
+
+```text
+PREDICATE:      child tuple NOT IN referenced-key subquery.
+BOUNDARY:       parent keys 1 versus 1,NULL; child keys fixed at 1,2.
+RED PROOF:      implementation-shaped NOT IN=0; NULL-safe NOT EXISTS=1.
+PUBLICATION:    ADD FOREIGN KEY succeeds; public constraint=1; historical orphan=1.
+TERMINAL SPLIT: a new orphan is rejected with 1452 while the old orphan remains.
+GREEN:          remove only parent NULL; the same ALTER returns 1452; constraint=0.
+COUNTERFACTUAL: current-master focused test fails on original source and passes with NOT EXISTS.
+DEDUP:          no exact internal root or upstream issue found.
+INTEGRATE:      id3360003 high / confirmed; default config, MDL ON, real TiKV.
+```
+
+Method improvement: add `ABSENCE_PROOF_MUST_BE_NULL_SAFE`. Whenever an empty query authorizes
+publication, cleanup, restore success, or destructive action, partition the predicate by SQL
+three-valued inputs before generating a broad matrix. Compare the implementation predicate with a
+NULL-safe oracle, then lift only a proven false negative to the terminal consumer.
+
+Dedup now has two deliberately separate gates. Before execution, query internal root fingerprints
+and lifecycle status only, which prevents compressed-context repetition. Search external issues,
+pull requests, and history only after RED, preserving independent target selection.

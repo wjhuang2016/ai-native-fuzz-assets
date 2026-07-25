@@ -3861,3 +3861,34 @@ Keep post-RED dedup separate from target selection. The same field-level context
 reproduced a default-config MaxAllowedPacket wrong DELETE, then matched TiKV #3736. That run remains
 valuable as consequence amplification and selector calibration, while the new-root count stays
 unchanged.
+
+## Treat zero-row validators as formal absence proofs
+
+An empty validation result is often the last gate before a public or destructive action:
+
+```text
+generated predicate returns zero rows
+  -> caller concludes no violation exists
+  -> schema, restore, cleanup, or import is allowed to finish
+```
+
+Audit that implication under SQL three-valued logic. A small reusable matrix is:
+
+| Cell | Candidate key | Compared set | Required result |
+| --- | --- | --- | --- |
+| match | present | no `NULL` | no violation |
+| absence | absent | no `NULL` | violation |
+| contamination | absent | contains `NULL` | still a violation |
+
+Compare the implementation predicate with a NULL-safe reference, usually a correlated
+`NOT EXISTS`. Include the terminal owner in the oracle: public metadata, deleted objects, restored
+rows, imported indexes, or accepted uniqueness state.
+
+`id3360003` is the calibration. `ADD FOREIGN KEY` used tuple `NOT IN`; one `NULL` in the referenced
+unique key changed a real orphan from `TRUE` to `UNKNOWN`. The validator returned zero rows and
+published the FK. Removing only that `NULL` made the same DDL reject the orphan. The full matrix
+needed two parent datasets and one child dataset.
+
+Use internal assets before execution only as root fingerprints: selector, root-cause ID, title, and
+lifecycle status. This prevents accidental reruns after context compression. Keep upstream issue
+and history search after RED so external solutions do not choose the target or oracle.
