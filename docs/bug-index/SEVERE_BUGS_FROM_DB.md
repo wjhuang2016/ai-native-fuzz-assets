@@ -1,6 +1,6 @@
 # Severe Bugs From found_bug
 
-Generated at: 2026-07-25 12:43:29 +0800
+Generated at: 2026-07-25 14:10:35 +0800
 
 | ID | Status | Severity | Category | DDL / op | Feature | Root cause ID | Title | Issue |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -72,5 +72,8 @@ Generated at: 2026-07-25 12:43:29 +0800
 | 3150003 | confirmed | high | data-loss | UPDATE/DELETE | JSON cast coprocessor pushdown | `tikv-json-cast-string-return-type-context-omission` | TiKV JSON-to-CHAR pushdown ignores target length and DELETE can remove rows after TiDB would abort |  |
 | 3180003 | confirmed | high | data-loss | DELETE/UPDATE | WEEK(date) coprocessor pushdown | `tikv-week-without-mode-default-week-format-context-omission` | TiKV ignores default_week_format for pushed WEEK(date) and DELETE can remove the wrong dates |  |
 | 3210003 | confirmed | high | data-corruption | CREATE INDEX/INSERT/DELETE | partial index over TIMESTAMP | `partial-index-timestamp-membership-writer-timezone-dependent` | TIMESTAMP partial index membership depends on writer time zone and causes wrong DELETE |  |
-| 3240003 | confirmed | high | data-loss | CREATE TABLE/INSERT/DELETE | indexed virtual generated column | `virtual-generated-timestamp-index-writer-timezone-dependent` | Indexed virtual DATE(TIMESTAMP) can delete rows that fail the predicate after a time-zone change |  |
+| 3240003 | confirmed | high | data-corruption | CREATE TABLE/INSERT/DELETE | indexed virtual generated column | `indexed-virtual-generated-session-context-safety-gate-bypass` | Indexed virtual generated columns can drift across session contexts and corrupt secondary indexes |  |
 | 3270003 | known-duplicate | high | data-loss | BR restore table | snapshot restore checkpoint resume | `br-checkpoint-reuses-table-id-with-pending-delete-range` | BR checkpoint resume can reuse a dropped TableID and let GC erase a successful restore | [https://github.com/pingcap/tidb/issues/68709](https://github.com/pingcap/tidb/issues/68709) |
+| 3300003 | known-duplicate | high | data-loss | DELETE | coprocessor expression pushdown | `tikv-max-allowed-packet-context-not-pushed` | TiKV MaxAllowedPacket omission can make pushed DELETE succeed where root evaluation aborts | [https://github.com/tikv/tikv/issues/3736](https://github.com/tikv/tikv/issues/3736) |
+| 3330003 | confirmed | high | data-loss | DELETE/UPDATE | coprocessor expression pushdown | `tikv-float-to-uint-half-tie-rounding-semantic-drift` | TiKV DOUBLE-to-UNSIGNED half-tie rounding drift can silently delete rows |  |
+| 3360003 | confirmed | high | data-integrity | ADD FOREIGN KEY | existing-row foreign-key validation | `add-fk-validator-not-in-null-poisoning` | ADD FOREIGN KEY can publish historical orphan rows when the referenced key contains NULL |  |

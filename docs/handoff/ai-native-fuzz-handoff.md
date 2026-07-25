@@ -3186,3 +3186,32 @@ admission 等模块，不继续枚举 FK 类型。
 
 远端 `found_bug id3360003/high/confirmed` 已入库，当前为 151 surfaces、128 roots、73 high、
 133 confirmed。资产图为 597 revisions、RED 127、GREEN 127、validated targets 67。
+
+### 2026-07-25: id3240003 root 升级 - 成功 DELETE 留下双向物理索引损坏
+
+范围继续不限于事务模块。复用此前积累的 `default_week_format` 隐藏输入，把它从 plan cache 和
+TiKV pushdown 迁移到 indexed virtual generated column 的持久化 owner。直接
+`CREATE INDEX ... ((WEEK(d)))` 在默认配置下报 8200 unsafe function；等价的
+`g AS (WEEK(d)) VIRTUAL, UNIQUE(g)` 被接受。
+
+真实 TiKV 上，mode 0 写入 `id1/date=2021-01-01`，mode 3 写入同一日期的 id2。mode 3 下源表两行
+都投影为 `g=53`，覆盖索引却是 `id1:g0,id2:g53`。默认 `DELETE WHERE g=0` 通过 unique
+Point_Get 成功影响 1 行，matched `IGNORE INDEX` DELETE 影响 0。成功后源表只剩 `id2:g53`，
+覆盖索引只剩不存在的 `id1:g0`，`ADMIN CHECK TABLE` 报 8223。删除过程选择旧 key0 的 id1，
+再按当前 mode3 重算 key53，误删 id2 的索引项并留下 id1 的旧项。显式 `WEEK(d,3)` control
+正确报 1062，ADMIN 通过。自包含脚本 3/3 复现，MDL ON、默认 strict mode、无并发/failpoint。
+
+当前 master 的临时准入测试在原代码 RED；仅拒绝单参数 WEEK、保留显式 mode 后 GREEN，改动已移除，
+worktree 干净。runtime 到 current master 的相关源码无 diff。
+
+严格 root 去重后不新增 ID：它与 id3240003 共用 `checkIllegalFn4Generated` 的 composition bypass
+owner 和通用修复，应把 root 泛化为
+`indexed-virtual-generated-session-context-safety-gate-bypass`。它不同于 id3180003 的 TiKV
+remote context omission和 id30034 的 plan-cache folding。方法新增 S78 hidden-input lifecycle
+transfer：隐藏输入脱离首个 bug 单独入资产，横向迁移 cache/remote/persistence/recovery/cleanup；
+每个 owner 都提升到最高不可逆 consumer；同修复点 sibling 升级证据和 oracle，不增加 bug 数。
+
+入口：
+`scaffolds/top-level/ai_native_virtual_generated_week_format_index_corruption_repro.sh`、
+`assets/store/logs/virtual-generated-week-format-index-corruption-20260725.log`、
+`assets/store/virtual-generated-week-format-index-corruption-results-20260725.jsonl`。

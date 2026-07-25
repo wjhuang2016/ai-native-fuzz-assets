@@ -2621,3 +2621,25 @@ whose empty result authorizes a terminal action. Search especially for `NOT IN`,
 Status: **VALIDATED** by official-nightly real-TiKV SQL/publication RED, matched no-NULL GREEN, and a
 current TiDB master focused RED/counterfactual GREEN. Default strict mode, MDL, and FK checks were
 enabled; no injection or concurrency was used.
+
+## S78: hidden-input lifecycle transfer
+
+```text
+shape:      a function or decision has a stored hidden input asset
+            + another lifecycle owner evaluates, persists, retries, repairs, or cleans its result
+            + the owner does not represent or freeze that input
+proof gap:  correctness at one consumer is treated as context closure for every later consumer
+test:       hold the semantic value fixed; vary one hidden input; compare source truth with the
+            derived state before and after the highest irreversible consumer
+consumer:   unique enforcement, UPDATE/DELETE, restore publication, recovery, or delayed cleanup
+dedup:      merge when the same owner-level fix closes every witness; retain stronger oracles and
+            scenarios as assets without increasing the bug count
+```
+
+Born from: the `default_week_format` asset moved from id30034 plan cache and id3180003 TiKV
+pushdown into id3240003 indexed virtual generated state. Mode 0 and mode 3 writes of the same DATE
+created physical keys 0 and 53 while both source rows projected 53. Successful DELETE left
+source `id2:g53` and covering index `id1:g0`.
+
+Status: **VALIDATED** by three deterministic official-nightly real-TiKV RED runs, an explicit-mode
+GREEN, direct ERROR 8200 admission control, and current-master focused RED/counterfactual GREEN.

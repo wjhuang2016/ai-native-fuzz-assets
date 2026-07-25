@@ -1,0 +1,97 @@
+Environment
+===========
+TiDB runtime: ed2376acc6e0feeff9f3e2c38db489727933aa80
+TiDB current master: 05b396fb6636f73b3bc06b09107cf43f2c725c35
+TiKV runtime: 730be34f959185c934b7d3db730ca1dbeb3949f8
+Topology: one TiDB, one PD, one real TiKV
+Configuration: default strict sql_mode, MDL ON, no failpoint
+Relevant TiDB source files are unchanged between the runtime and current master.
+
+The self-contained scaffold reproduced the matrix three consecutive times.
+
+DEFAULT SAFETY GATE
+===================
+CREATE INDEX direct_week ON direct_expr((WEEK(d)));
+
+ERROR 8200 (HY000): Unsupported creating expression index containing unsafe
+functions without allow-expression-index in config
+
+Equivalent composition accepted under the same default configuration:
+
+CREATE TABLE red_fast(
+  id INT PRIMARY KEY,
+  d DATE NOT NULL,
+  g INT AS (WEEK(d)) VIRTUAL,
+  UNIQUE KEY ug(g)
+);
+
+RED BEFORE DELETE
+=================
+Session mode 0 inserts id 1 with physical index key 0.
+Session mode 3 inserts id 2 with physical index key 53.
+
+Under session mode 3, the source rows project:
+
+red_base_before=1:53:53:0,2:53:53:0
+
+The covering unique-index view is:
+
+red_index_before=1:0,2:53
+
+The root-owned predicate returns no rows:
+
+red_root_g0=NULL
+
+The default index path returns a row that disproves its own predicate:
+
+red_fast_g0=1:53:53:0
+
+Both source rows now have the same logical unique value:
+
+red_logical_duplicate=53:2
+
+ADMIN CHECK TABLE reports:
+
+ERROR 8223: data inconsistency in table: red_fast, index: ug, handle: 2,
+index-values 53 != record-values 0
+
+RED DELETE AND PHYSICAL TERMINAL
+================================
+The default DELETE is a unique-index Point_Get:
+
+DELETE FROM red_fast WHERE g=0;
+ROW_COUNT() = 1
+
+The matched source-owned DELETE affects zero:
+
+DELETE FROM red_root IGNORE INDEX(ug) WHERE g=0;
+ROW_COUNT() = 0
+
+After the successful default DELETE:
+
+red_base_after=2:53
+red_index_after=1:0
+red_root_after=1:53,2:53
+
+The record store contains only id 2. The covering index contains only stale id 1.
+The DELETE removed record id 1, recomputed WEEK(d) as 53 in the current session,
+deleted id 2's unique key 53, and left id 1's old key 0 behind.
+
+ADMIN CHECK TABLE reports:
+
+ERROR 8223: data inconsistency in table: red_fast, index: ug, handle: 1,
+index-values 0 != missing record
+
+GREEN CONTROL
+=============
+The generated expression uses an explicit mode:
+
+g INT AS (WEEK(d, 3)) VIRTUAL
+
+Writing the same date under session modes 0 and 3 returns:
+
+ERROR 1062: Duplicate entry '53' for key 'green_explicit.ug'
+
+The surviving source and index state is id 1, key 53. ADMIN CHECK TABLE passes.
+
+matrix=CRITICAL_RED_CONFIRMED

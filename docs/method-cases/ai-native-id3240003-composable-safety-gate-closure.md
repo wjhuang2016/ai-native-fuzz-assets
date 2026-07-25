@@ -1,6 +1,6 @@
 # id3240003: safety gates must cover equivalent compositions
 
-Status: confirmed high catalog severity with critical silent-data-loss consequence.
+Status: confirmed high catalog severity with critical persistent-corruption consequence.
 
 ## Starting proof
 
@@ -97,8 +97,43 @@ one-row matrix then reached direct data loss.
 This is much more efficient than fuzzing arbitrary generated expressions because the rejected
 operation acts as a compact specification of what the system already considers unsafe.
 
+## Asset transfer raised the consequence
+
+The first witness varied `time_zone` around `DATE(TIMESTAMP)`. The next round did not enumerate more
+offsets or DML forms. It reused a hidden-input asset discovered earlier around
+`default_week_format`, then moved that input to the same persistent consumer:
+
+```text
+hidden getter:     WEEK(date) reads default_week_format
+persistent owner:  indexed virtual generated value
+mutation owner:    DELETE reevaluates the value in its current session
+```
+
+The minimal matrix fixes the base `DATE` at `2021-01-01` and varies only mode 0 versus mode 3:
+
+| View before DELETE | State |
+| --- | --- |
+| source rows | `id1:g53,id2:g53` |
+| covering unique index | `id1:g0,id2:g53` |
+
+`DELETE WHERE g=0` affects one row while the root-owned twin affects zero. After success, the source
+contains `id2:g53`; the index contains stale `id1:g0`. This raises the oracle from a wrong-row
+consumer to bidirectional physical parity.
+
+The sibling does not create another bug ID. It shares the same admission owner and generic fix with
+the original time-zone witness, so it revises the root fingerprint and severity evidence.
+
+Add one LOOP rule:
+
+1. store hidden inputs independently from the first consumer that exposed them;
+2. move each input across cache, remote evaluation, persistence, recovery, and cleanup owners;
+3. at each owner, choose the strongest irreversible consumer;
+4. merge siblings when one owner-level fix closes every witness;
+5. keep the stronger oracle and production scenario as new assets even when the bug count is stable.
+
 ## Stop rule
 
-Other date functions, offsets, generated-column storage modes, and DML forms are the same admission
-root. Reopen only for another safety gate, another equivalent construction, or a separate derived
-consumer with its own missing revalidation.
+Other functions, settings, storage modes, and DML forms remain the same admission root. A sibling is
+worth executing when it reaches a stronger lifecycle consumer, but it upgrades this root instead of
+increasing the bug count. Reopen as a new bug only for another safety gate, another owner, or a fix
+that is independent of the indexed generated-column admission defect.

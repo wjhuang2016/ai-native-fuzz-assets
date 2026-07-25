@@ -3892,3 +3892,27 @@ needed two parent datasets and one child dataset.
 Use internal assets before execution only as root fingerprints: selector, root-cause ID, title, and
 lifecycle status. This prevents accidental reruns after context compression. Keep upstream issue
 and history search after RED so external solutions do not choose the target or oracle.
+
+## Transfer hidden inputs across lifecycle consumers
+
+A hidden input remains useful after its first bug. Store the input separately from the consumer that
+first exposed it, then move it across:
+
+```text
+plan/cache -> remote evaluator -> persisted derived state -> retry/recovery -> delayed cleanup
+```
+
+For each new owner, ask whether the input is represented, frozen, validated, or recomputed. Use the
+highest consumer available at that owner. A read mismatch is an intermediate oracle; uniqueness,
+successful DML, restore publication, recovery, and cleanup can expose a stronger terminal.
+
+`default_week_format` demonstrates the transfer. It first exposed plan-cache staleness, then a TiKV
+pushdown context omission. Moving the same getter to an indexed virtual generated column found a
+stronger persisted-state witness: writes under modes 0 and 3 created source rows that both projected
+`g=53`, while the unique index contained keys 0 and 53. A successful `DELETE WHERE g=0` then left
+the live row without its index and retained a stale index entry for the deleted row.
+
+Count roots by owner and repair closure. This witness upgrades `id3240003` because it shares the same
+generated-column/index admission owner and generic fix as the earlier time-zone case. The new
+scenario and physical-parity oracle remain reusable assets even though the bug count does not
+increase.

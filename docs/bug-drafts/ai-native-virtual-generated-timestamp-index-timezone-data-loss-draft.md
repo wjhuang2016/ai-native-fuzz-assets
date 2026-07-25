@@ -1,15 +1,17 @@
-# Indexed virtual DATE(TIMESTAMP) can delete a predicate-false row after a time-zone change
+# Indexed virtual generated columns can drift across session contexts and corrupt indexes
 
 ## Summary
 
-Under the default TiDB configuration, a direct expression index containing `DATE(TIMESTAMP)` is
-rejected as unsafe. The equivalent structure can be created through a virtual generated column plus
-an ordinary secondary index.
+Under the default TiDB configuration, direct context-sensitive expression indexes are rejected as
+unsafe. The equivalent structure can be created through a virtual generated column plus an ordinary
+secondary index.
 
 The index key is evaluated in the writer session time zone, while the virtual column is evaluated
 again in the reader session time zone. After the time zone changes across a calendar boundary, the
 index can return a row whose current generated value and predicate are both false. Ordinary indexed
-`DELETE` then silently removes that row.
+`DELETE` then silently removes that row. A second hidden input, `default_week_format`, reaches a
+stronger terminal: a successful DELETE leaves one live row without its unique-index entry and one
+stale index entry for a deleted row.
 
 ## Reproduction
 
@@ -71,6 +73,45 @@ An index on a virtual generated column must represent the value that the virtual
 to the current query. A row whose current generated value fails the `WHERE` predicate must never be
 returned or deleted.
 
+## Stronger physical-corruption witness
+
+Use a plain `DATE`, so this path is independent of TIMESTAMP representation:
+
+```sql
+CREATE TABLE week_t (
+  id INT PRIMARY KEY,
+  d DATE NOT NULL,
+  g INT AS (WEEK(d)) VIRTUAL,
+  UNIQUE KEY ug(g)
+);
+
+SET default_week_format=0;
+INSERT INTO week_t VALUES (1,'2021-01-01',DEFAULT);
+
+SET default_week_format=3;
+INSERT INTO week_t VALUES (2,'2021-01-01',DEFAULT);
+```
+
+Under mode 3, a source scan projects both rows as `g=53`. A covering index scan exposes physical
+entries `id1:g0,id2:g53`, so logical uniqueness has already been violated.
+
+```sql
+DELETE FROM week_t WHERE g=0;
+```
+
+The statement succeeds and affects one row. Its index lookup selects stale key `g=0 -> id1`, then
+index maintenance reevaluates `WEEK(d)` under mode 3 and removes key `g=53`, which belongs to id2.
+The terminal state is:
+
+```text
+record scan:         id2:g53
+covering index scan: id1:g0
+ADMIN CHECK TABLE:   ERROR 8223
+```
+
+The matched `IGNORE INDEX` DELETE affects zero. With `g AS (WEEK(d,3))`, the second insert correctly
+returns duplicate-key error 1062 and `ADMIN CHECK TABLE` passes.
+
 ## Default safety-gate bypass
 
 The direct equivalent is rejected:
@@ -94,8 +135,10 @@ the current object is a direct expression index. A user-defined generated column
 ## Source chain
 
 - `pkg/ddl/generated_column.go`: non-GA functions are rejected only for `typeIndex`.
-- `pkg/sessionctx/variable/varsutil.go`: `DATE` is absent from
+- `pkg/sessionctx/variable/varsutil.go`: `DATE` and `WEEK` are absent from
   `GAFunction4ExpressionIndex`.
+- `pkg/expression/builtin_time.go`: single-argument `WEEK` reads
+  `GetDefaultWeekFormatMode`.
 - `pkg/executor/insert_common.go`: generated expressions are evaluated with the writer session
   `EvalContext` before table mutation builds index keys.
 - `pkg/table/column.go`: virtual generated values are reevaluated with the reader session
@@ -116,6 +159,17 @@ An ingestion service writes in one session time zone. A regional service, report
 task, or connection pool later reads or deletes in another time zone. A TIMESTAMP near midnight
 crosses the calendar boundary between the zones.
 
+Another ordinary schema stores a weekly bucket:
+
+```sql
+week_no INT AS (WEEK(event_date)) VIRTUAL,
+UNIQUE KEY uk_week(week_no)
+```
+
+Two services or connection pools use different `default_week_format` values, commonly mode 0 and
+ISO-style mode 3. Inserts can bypass logical uniqueness; a later update or cleanup reevaluates the
+key under its own session mode.
+
 The trigger needs no partial index, concurrency, retry, failpoint, source change, nondefault SQL
 mode, disabled MDL, or infrastructure failure.
 
@@ -128,6 +182,6 @@ expression context, or require a base-row recheck before an index result can fee
 
 ## Severity
 
-Critical impact. A common default-configuration indexing pattern can make ordinary DELETE silently
-remove a row whose current predicate is false. The local bug catalog stores it as `high`, following
-the existing catalog convention for critical-consequence findings.
+Critical impact. A common indexed generated-column pattern can make ordinary DELETE silently remove
+a predicate-false row or leave bidirectional physical index corruption. The local bug catalog stores
+it as `high`, following the existing catalog convention for critical-consequence findings.

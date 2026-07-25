@@ -2349,3 +2349,26 @@ NULL-safe oracle, then lift only a proven false negative to the terminal consume
 Dedup now has two deliberately separate gates. Before execution, query internal root fingerprints
 and lifecycle status only, which prevents compressed-context repetition. Search external issues,
 pull requests, and history only after RED, preserving independent target selection.
+
+## Hidden-input transfer tick: indexed generated-column physical corruption, EXECUTED / ROOT UPGRADE (2026-07-25)
+
+This tick kept the module scope open and transferred the stored `default_week_format` getter from
+plan cache and TiKV pushdown to a persistent secondary-index owner.
+
+```text
+DIRECT GATE:   expression index WEEK(d) => ERROR 8200 unsafe function.
+COMPOSITION:   virtual g AS (WEEK(d)) + UNIQUE(g) => accepted.
+WRITE 1:       mode 0 stores id1:key0 for date 2021-01-01.
+WRITE 2:       mode 3 stores id2:key53; both source rows now project g=53.
+PRE-DELETE:    source id1:g53,id2:g53; index id1:g0,id2:g53; ADMIN 8223.
+DML LIFT:      DELETE g=0 affects 1; root-owned twin affects 0.
+TERMINAL:      source only id2:g53; covering index only stale id1:g0; ADMIN 8223.
+GREEN:         WEEK(d,3) rejects the second insert with 1062; ADMIN passes.
+REPEAT:        self-contained real-TiKV scaffold reproduced 3/3.
+DEDUP:         same admission owner and generic fix as id3240003; upgrade, no new ID.
+```
+
+Method improvement: store hidden inputs independently and transfer them through cache, remote,
+persistence, recovery, and cleanup consumers. At each owner, raise the oracle to the strongest
+irreversible operation. Deduplicate by owner-level repair closure: a stronger sibling upgrades the
+root and its assets when one fix closes both witnesses.
